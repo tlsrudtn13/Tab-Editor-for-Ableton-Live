@@ -1,0 +1,20 @@
+# 의존성 (npm install로 복원)
+node_modules/
+
+# 빌드 산출물 (npm run build로 생성)
+dist/
+dist-ui/
+
+# 패키지 결과물
+*.ablx
+
+# 환경 변수 (민감 정보 가능성)
+.env
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Ableton 비공개 베타 SDK (각자 받아서 배치)
+*.tgz
