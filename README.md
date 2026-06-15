@@ -1,3 +1,5 @@
+<img width="2904" height="1472" alt="Tab editor for ableton-title2" src="https://github.com/user-attachments/assets/7107e788-6803-43e3-8e26-32718d219390" />
+
 # Tab Editor for Ableton Live
 
 A built-in guitar/bass tablature & standard-notation editor for Ableton Live 12.
@@ -13,6 +15,8 @@ Converts MIDI clips into Guitar Pro–quality scores. (Powered by [alphaTab](htt
 - Chord detection · Fretboard scale overlay · Inspector
 - MusicXML 4.0–based engine · PDF export · AlphaTex export
 - Dark / Light theme
+  
+<img width="2592" height="1664" alt="Tab editor for ableton-title" src="https://github.com/user-attachments/assets/c81eb22c-b148-4141-ba13-86b36bec207c" />
 
 ## Installation
 
