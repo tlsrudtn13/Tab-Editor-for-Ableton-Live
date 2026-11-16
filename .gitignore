@@ -8,3 +8,4 @@ dist-ui/
 .env.*
 # Ableton SDK packages: licensed, do not redistribute (keep locally for npm install)
 *.tgz
+.devstore/

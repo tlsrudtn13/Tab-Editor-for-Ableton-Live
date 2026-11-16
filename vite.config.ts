@@ -5,8 +5,11 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 import path from "path";
 
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: "ui",
+
+  // `vite build --mode dev` turns on ui/src/devReporter.ts (test harness only)
+  define: { __TAB_DEV__: JSON.stringify(mode === "dev") },
 
   build: {
     outDir: "../dist-ui",
@@ -26,4 +29,4 @@ export default defineConfig({
   },
 
   plugins: [viteSingleFile()],
-});
+}));

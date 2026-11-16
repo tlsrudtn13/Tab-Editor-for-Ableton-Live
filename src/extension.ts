@@ -18,49 +18,13 @@ import modalInterface from "../dist-ui/index.html";
 // ── notation 모듈 임포트 (node16 규칙: .js 확장자 필수) ──
 import type { Note, TrackPayload } from "./notation/index.js";
 import { collectNotes, notesFromClip } from "./notation/collectNotes.js";
-import { toAlphaTex }   from "./notation/toAlphaTex.js";
-import { toMusicXml }   from "./notation/toMusicXml.js";
+import { buildPayload } from "./notation/payload.js";
+import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
-import { applyGuitarVoicing } from "./notation/voicing.js";
-import { DEFAULT_INSTRUMENT } from "./notation/instruments.js";
-import { detectQuantizeGrid, quantizeBeat } from "./notation/music.js";
 import fs   from "node:fs";
 import path from "node:path";
 
-// ============================================================
-// 공용 헬퍼 1: Note[] → TrackPayload 변환 파이프라인
-// (퀀타이즈 → 보이싱 → MusicXML/AlphaTex)
-// 세 진입점(Track/Selection/Clip) 모두 이 함수를 공유합니다.
-// ============================================================
-function buildPayload(
-    id: string,          // 트랙/클립 식별자
-    name: string,        // 에디터 탭에 표시될 이름
-    allNotes: Note[],    // 수집된 원본 노트
-    tempo: number        // BPM
-): TrackPayload | null {
-    if (allNotes.length === 0) return null; // 노트 없으면 페이로드 생성 안 함
-
-    // 퀀타이즈 먼저 → 같은 박자로 snap된 음표들을 코드로 묶어 보이싱
-    const grid = detectQuantizeGrid(allNotes);
-    const quantized = allNotes.map(n => ({
-        ...n,
-        b: quantizeBeat(n.b, grid),
-    })) as Note[];
-    const tabNotes = applyGuitarVoicing(quantized, DEFAULT_INSTRUMENT)
-        .filter(n => n.s >= 1 && n.s <= DEFAULT_INSTRUMENT.stringCount && n.f >= 0);
-
-    const xmlOpts = { instrument: DEFAULT_INSTRUMENT, skipVoicing: true };
-    return {
-        id,
-        name,
-        noteCount: tabNotes.length,
-        notes: tabNotes,
-        instruments: DEFAULT_INSTRUMENT,
-        bpm: tempo,
-        musicXml: toMusicXml(tabNotes, tempo, xmlOpts),
-        alphaTex: toAlphaTex(tabNotes, { bpm: tempo }),
-    };
-}
+// 공용 헬퍼 1 (buildPayload) 은 src/notation/payload.ts 로 이동 — dev harness 와 공유
 
 // ============================================================
 // 공용 헬퍼 2: 페이로드 배열 → 모달 에디터 열기
@@ -105,7 +69,9 @@ async function showEditor(
     const fileUrl = encodeURI("file:///" + fwdPath);
     console.log(`[TAB] loading from file: ${fileUrl}`);
     
-    await context.ui.showModalDialog(fileUrl, 1400, 900);
+    // dev build: load through the harness server so the editor can report back
+    const url = (__TAB_DEV__ && devEditorUrl(htmlPath)) || fileUrl;
+    await context.ui.showModalDialog(url, 1400, 900);
 }
 
 // ============================================================
@@ -123,6 +89,7 @@ function getTempo(context: ReturnType<typeof initialize>): number {
 // ============================================================
 export function activate(activation: ActivationContext) {
     const context = initialize(activation, "1.0.0");
+    if (__TAB_DEV__) startDevHarness(context);
 
     // ──────────────────────────────────────────────────────
     // ① 전체 트랙 모드 (트랙 이름 우클릭)

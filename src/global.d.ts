@@ -4,3 +4,5 @@ declare module "*.html" {
   const content: string;
   export default content;
 }
+/** true only in dev builds (npm run dev / build:dev); set by build.ts and vite.config.ts. */
+declare const __TAB_DEV__: boolean;

@@ -24,7 +24,11 @@ import { adjustDuration, moveString } from "./editing";
 import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggleSidebar } from "./inspector";
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
+import { startDevReporter } from "./devReporter";
 import "./style.css";
+
+// Dev builds only: report to the test harness, expose state for its UI commands.
+if (__TAB_DEV__) { window.__tabState = state; startDevReporter(); }
 
 /* ── Init & start-up (same order as today) ────────────────────────────────── */
 var txtColor = initTheme();
