@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab Editor for Ableton Live</title>
+  <script type="module" src="./src/main.ts"></script>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="ph" onclick="toggleSidebar()" title="Click to collapse / expand" style="cursor:pointer;">Tracks</div>
+  <div id="track-list"></div>
+</div>
+
+<div id="main">
+
+  <div id="toolbar">
+    <span class="tl">View</span>
+    <div class="seg">
+      <button class="sb on" id="m-both"   onclick="setMode('both')">Staff+TAB</button>
+      <button class="sb"    id="m-tab"    onclick="setMode('tab')">TAB</button>
+      <button class="sb"    id="m-staff"  onclick="setMode('staff')">Staff</button>
+    </div>
+    <div class="sp"></div>
+
+    <!-- ★ v5: 악기 변환 -->
+    <span class="tl">Instr</span>
+    <select id="ui-instrument" class="tsel" title="Instrument — re-voices the track">
+      <option value="guitar6" selected>Guitar 6</option>
+      <option value="guitar7">Guitar 7</option>
+      <option value="guitar8">Guitar 8</option>
+      <option value="guitar12">Guitar 12</option>
+      <option value="bass4">Bass 4</option>
+      <option value="bass5">Bass 5</option>
+      <option value="bass6">Bass 6</option>
+    </select>
+    <div class="sp"></div>
+
+    <span class="tl">Play</span>
+    <button class="btn" id="btn-play" onclick="togglePlay()">&#9654; Play</button>
+    <button class="btn" id="btn-stop" onclick="stopPlay()">&#9632; Stop</button>
+    <div class="sp"></div>
+
+    <span class="tl">Quantize</span>
+    <select id="ui-quantize" class="tsel" title="Rhythm quantize grid">
+      <option value="8">1/8</option>
+      <option value="16" selected>1/16</option>
+      <option value="32">1/32</option>
+      <option value="auto">Auto</option>
+    </select>
+    <div class="sp"></div>
+
+    <span class="tl">Pitch</span>
+    <label class="numlab">Trans
+      <input type="number" id="ui-transpose" value="0" min="-24" max="24" />
+    </label>
+    <label class="numlab">Capo
+      <input type="number" id="ui-capo" value="0" min="0" max="12" />
+    </label>
+    <div class="sp"></div>
+
+    <span class="tl">Export</span>
+    <button class="btn pdf" onclick="exportPDF()" title="Save as PDF">&#x1F5B6; PDF</button>
+    <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex">&#128194; ATex</button>
+    <div class="sp"></div>
+
+    <span class="tl">Panels</span>
+    <button class="btn" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
+    <button class="btn" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
+    <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark / light theme">&#9728;</button>
+    <div class="sp"></div>
+
+    <span class="tn2" id="status">&ndash;</span>
+  </div>
+
+  <div id="viewer"><div id="alphaTab"></div></div>
+
+  <!-- 선택 정보 바: 화음 표시 + 코드명 + 길이 편집 + 줄옮김 -->
+  <div id="selection-bar">
+    <span class="tl" style="color:var(--p-live-text-primary);">&#127928; Inspector:</span>
+    <span id="inspector-note-display">Click a note on the score...</span>
+    <span id="inspector-chord-display" class="ca"></span>
+    <span class="sb-spacer"></span>
+    <span class="tl">Duration</span>
+    <button class="btn" onclick="adjustDuration('-1')"   title="Shorten by one grid unit">&#8722;</button>
+    <button class="btn" onclick="adjustDuration('+1')"   title="Lengthen by one grid unit">+</button>
+    <button class="btn" onclick="adjustDuration('Auto')"        title="Extend to next note &mdash; cleans up humanized gaps (auto-creates ties across barlines)">Auto</button>
+    <div class="sp"></div>
+    <span class="tl">Move</span>
+    <button class="btn" onclick="moveString(-1)" title="Move selected note to a thinner string">&#9650; Str</button>
+    <button class="btn" onclick="moveString(1)"  title="Move selected note to a thicker string">&#9660; Str</button>
+  </div>
+
+  <div id="fretboard-panel">
+    <div class="ph" id="fb-header">
+      <span>Fretboard</span>
+      <span id="fb-note-label"></span>
+      <span class="sb-spacer"></span>
+      <span class="fb-ctl">Scale
+        <select id="ui-scale-root" class="tsel">
+          <option value="0">C</option><option value="1">C#</option>
+          <option value="2">D</option><option value="3">Eb</option>
+          <option value="4">E</option><option value="5">F</option>
+          <option value="6">F#</option><option value="7">G</option>
+          <option value="8">Ab</option><option value="9">A</option>
+          <option value="10">Bb</option><option value="11">B</option>
+        </select>
+        <select id="ui-scale" class="tsel">
+          <option value="off" selected>Off</option>
+          <option value="major">Major</option>
+          <option value="minor">Minor</option>
+          <option value="pent-major">Pentatonic Maj</option>
+          <option value="pent-minor">Pentatonic Min</option>
+          <option value="blues">Blues</option>
+          <option value="dorian">Dorian</option>
+          <option value="mixolydian">Mixolydian</option>
+          <option value="harm-minor">Harmonic Minor</option>
+        </select>
+      </span>
+    </div>
+    <div id="fretboard-wrap"><div id="fretboard-grid"></div></div>
+  </div>
+
+  <div id="inspector" class="hidden">
+    <div id="insp-hdr">
+      <span class="ph" style="border:none;padding:0;background:none;">MIDI Note Data</span>
+      <span class="tl" id="insp-stats" style="margin-left:8px;"></span>
+    </div>
+    <div id="vel-lane"></div>
+    <div id="note-list">
+      <table>
+        <thead><tr>
+          <th>Bar:Beat</th><th>Duration</th><th>Note</th>
+          <th>Velocity</th><th>TAB</th><th>Clip</th><th>Src</th>
+        </tr></thead>
+        <tbody id="note-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="log-panel" class="hidden">
+    <div class="ph">Log</div>
+    <div id="log"></div>
+  </div>
+
+</div>
+</body>
+</html>

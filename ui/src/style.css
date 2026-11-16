@@ -1,0 +1,311 @@
+/* ── Ableton SDK official CSS variables ── */
+:root {
+  --p-live-ui-bg:          hsl(0,0%,21%);
+  --p-live-control-bg:     hsl(0,0%,16%);
+  --p-live-input-bg:       hsl(0,0%,12%);
+  --p-live-text-primary:   hsl(0,0%,71%);
+  --p-live-text-secondary: hsl(0,0%,41%);
+  --p-live-control-border: hsl(0,0%,7%);
+  --p-live-accent-primary: hsl(31,100%,67%);
+  --at-fg: rgb(181,181,181);
+
+}
+
+/* ★ 라이트 테마 (OS 설정 연동 — Live 라이트 스킨 근사값) */
+  :root.light {
+    --p-live-ui-bg:          hsl(0,0%,87%);
+    --p-live-control-bg:     hsl(0,0%,93%);
+    --p-live-input-bg:       hsl(0,0%,97%);
+    --p-live-text-primary:   hsl(0,0%,13%);
+    --p-live-text-secondary: hsl(0,0%,40%);
+    --p-live-control-border: hsl(0,0%,68%);
+    --p-live-accent-primary: hsl(28,95%,45%);
+    /* 프렛보드 라이트 */
+    --fb-bg:          #e8e8e8;
+    --fb-border:      #b0b0b0;
+    --fb-string:      #8a8a8a;
+    --fb-cell-border: #cfcfcf;
+    :root.light .fc.scale .nd { background: #4a9ead; color: #000000; }
+    :root.light .fc.scale-root .nd { background: var(--p-live-accent-primary); color: #fff; }
+  }
+
+
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html,body {
+  height:100%; width:100%;
+  font-family:"AbletonSansSmall","Inter",ui-sans-serif,sans-serif;
+  font-size:11.5px; font-weight:500; -webkit-font-smoothing:antialiased;
+  background:var(--p-live-ui-bg); color:var(--p-live-text-primary); overflow:hidden;
+}
+body { display:flex; flex-direction:row; }
+
+/* ── 공용 ── */
+.hidden { display:none !important; }   /* 패널 토글용 */
+.sb-spacer { flex:1; }                  /* flex 행에서 우측 밀기 */
+
+/* ── Sidebar ── */
+#sidebar {
+  width:200px; min-width:200px; background:var(--p-live-control-bg);
+  border-right:1px solid var(--p-live-control-border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#sidebar { transition: width .15s ease, min-width .15s ease; }
+#sidebar.collapsed { width: 26px; min-width: 26px; }
+#sidebar.collapsed #track-list { display: none; }
+#sidebar.collapsed .ph {
+  writing-mode: vertical-rl;
+  padding: 12px 5px;
+  height: 100%;
+  border-bottom: none;
+}
+.ph {
+  padding:7px 10px; font-size:10px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--p-live-text-secondary); background:var(--p-live-input-bg);
+  border-bottom:1px solid var(--p-live-control-border);
+  user-select:none; flex-shrink:0;
+}
+#track-list { flex:1; overflow-y:auto; }
+.ti {
+  display:flex; align-items:center; gap:8px; padding:0 10px; height:28px;
+  cursor:pointer; border-bottom:1px solid var(--p-live-control-border);
+  user-select:none; transition:background .08s;
+}
+.ti:hover  { background:rgba(255,255,255,.05); }
+.ti.active { background:var(--p-live-ui-bg); }
+.tn  { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
+.ti.active .tn { color:var(--p-live-accent-primary); }
+.tc  { font-size:9px; color:var(--p-live-text-secondary); flex-shrink:0; }
+.no-tracks { padding:14px 10px; color:var(--p-live-text-secondary); font-size:11px; line-height:1.8; }
+
+/* ── Main ── */
+#main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* ── Toolbar ── */
+#toolbar {
+  display:flex; align-items:center; gap:5px; padding:4px 10px;
+  background:var(--p-live-input-bg);
+  border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
+  flex-wrap:wrap;
+}
+.tl { font-size:9.5px; color:var(--p-live-text-secondary); user-select:none; white-space:nowrap; }
+.seg {
+  display:flex; background:var(--p-live-control-bg);
+  border:1px solid var(--p-live-control-border); border-radius:2px; padding:1px; gap:1px;
+}
+.sb {
+  padding:2px 7px; font-size:10px; font-weight:600; cursor:pointer; user-select:none;
+  border:none; border-radius:1px; background:transparent;
+  color:var(--p-live-text-secondary); transition:background .1s,color .1s;
+  font-family:inherit; white-space:nowrap;
+}
+.sb:hover { background:rgba(255,255,255,.06); color:var(--p-live-text-primary); }
+.sb.on    { background:var(--p-live-ui-bg); color:var(--p-live-accent-primary); }
+.sp { width:1px; height:16px; background:var(--p-live-control-border); margin:0 2px; flex-shrink:0; }
+.btn {
+  padding:2px 9px; font-size:10px; font-weight:600; cursor:pointer; user-select:none;
+  background:var(--p-live-control-bg); border:1px solid var(--p-live-control-border);
+  color:var(--p-live-text-primary); border-radius:2px; font-family:inherit;
+  white-space:nowrap; transition:background .1s;
+}
+.btn:hover { background:rgba(255,255,255,.08); }
+.btn.on    { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
+.btn.pdf   { color:hsl(200,80%,65%); border-color:hsl(200,50%,30%); }
+.btn.pdf:hover { background:rgba(100,180,255,.08); }
+.tn2 { font-size:9px; color:var(--p-live-text-secondary); font-style:italic; user-select:none; white-space:nowrap; }
+
+/* 드롭다운 & 숫자 입력 (툴바/패널 공용) */
+.tsel {
+  height:20px; font-size:10px; font-family:inherit;
+  background:var(--p-live-control-bg); color:var(--p-live-text-primary);
+  border:1px solid var(--p-live-control-border); border-radius:2px;
+  padding:1px 3px; cursor:pointer;
+}
+.numlab {
+  color:var(--p-live-text-secondary); font-size:10px;
+  display:flex; align-items:center; gap:4px; user-select:none;
+}
+.numlab input {
+  width:42px; height:20px; background:var(--p-live-control-bg);
+  color:var(--p-live-text-primary); border:1px solid var(--p-live-control-border);
+  padding:2px; font-size:11px; text-align:center; border-radius:2px; font-family:inherit;
+}
+
+/* ── Score viewer ── */
+#viewer { flex:1; overflow-y:auto; overflow-x:hidden; padding:20px 24px; }
+#alphaTab { min-height:300px; position:relative; }  /* ★ v5: 오버레이 기준점 */
+
+/* ★ v5: 악보 위 선택 노트 강조 박스 (boundsLookup 좌표 기반) */
+.note-sel-overlay {
+  position:absolute; z-index:10; pointer-events:none;
+  border:1.5px solid var(--p-live-accent-primary);
+  border-radius:3px;
+  background:rgba(255,140,0,.20);
+  box-shadow:0 0 6px rgba(255,140,0,.45);
+}
+.note-sel-overlay.single {
+  background:rgba(255,140,0,.34);
+  box-shadow:0 0 9px rgba(255,140,0,.75);
+}
+
+/* ★ v3: SVG 색 강제(!important) 블록 제거됨.
+   음표/오선 색은 main.ts 의 display.resources 가 결정:
+   - 음표·TAB 숫자(mainGlyphColor) = 밝게
+   - 오선·마디선(staffLineColor 등) = 어둡게 → 배경처럼 가독성 향상 */
+#alphaTab .at-cursor-bar   { background:rgba(255,140,0,.15) !important; }
+#alphaTab .at-selection > div {
+  background: rgba(255, 140, 0, 0.35) !important;
+  border-left: 2px solid rgba(255, 140, 0, 0.9) !important;
+}
+#alphaTab .at-cursor-beat  { background:rgba(255,140,0,.50) !important; }
+#alphaTab .at-selection div{ background:rgba(255,255,255,.10) !important; }
+#alphaTab > div[style*="text-align"] { display:none !important; }
+
+/* ── Selection bar (Inspector 헤더 + 줄옮김) ── */
+#selection-bar {
+  flex-shrink:0; display:flex; gap:12px; align-items:center;
+  padding:5px 10px; background:var(--p-live-input-bg);
+  border-top:1px solid var(--p-live-control-border);
+}
+#inspector-note-display {
+  color:var(--p-live-accent-primary); font-weight:700; font-size:11px;
+}
+#inspector-chord-display { font-size:11px; font-weight:700; }
+
+/* ── Guitar Fretboard HUD (★ v3 확대: 122px → 188px) ── */
+#fretboard-panel {
+  flex-shrink:0; background:var(--p-live-control-bg);
+  border-top:1px solid var(--p-live-control-border);
+  display:flex; flex-direction:column; height:188px;
+}
+#fb-header { display:flex; align-items:center; gap:8px; }
+#fb-note-label {
+  font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;
+  margin-left:4px; color:var(--p-live-accent-primary);
+}
+.fb-ctl {
+  display:flex; gap:5px; align-items:center;
+  font-weight:400; text-transform:none; letter-spacing:0;
+  color:var(--p-live-text-secondary);
+}
+#fretboard-wrap {
+  flex:1; overflow-x:auto; overflow-y:hidden; padding:8px 14px;
+  display:flex; align-items:center;
+}
+#fretboard-grid {
+  display:flex; flex-direction:column; background:var(--fb-bg, #1a1a1a); border:1px solid var(--fb-border, #3a3a3a); border-radius:3px; user-select:none;
+}
+.string-lane { display:flex; height:21px; align-items:center; position:relative; }
+.string-lane::after {
+  content:''; position:absolute; left:0; right:0; top:50%; z-index:1;
+  pointer-events:none; background:var(--fb-string, #555); height:1px;
+}
+.string-lane[data-s="5"]::after { height:1.5px; background:#666; }
+.string-lane[data-s="6"]::after { height:2px;   background:#777; }
+.fc {
+  width:42px; min-width:42px; height:100%; border-right:1px solid var(--fb-cell-border, #2a2a2a);
+  position:relative; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:2; transition:background .08s;
+}
+.fc[data-f="0"] { width:28px; min-width:28px; background:var(--p-live-input-bg); border-right:3px double #444; }
+.fc:hover { background:rgba(255,255,255,.05); }
+.fc.dot::before {
+  content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
+  width:5px; height:5px; background:#3a3a3a; border-radius:50%; pointer-events:none; z-index:0;
+}
+.nd {
+  width:14px; height:14px; border-radius:50%; font-size:8px; font-weight:900;
+  display:flex; align-items:center; justify-content:center; z-index:3;
+  background:var(--p-live-text-secondary); color:#000;
+  opacity:0; transform:scale(0.3); transition:opacity .1s, transform .1s;
+}
+
+/* ★ v3: Scale 오버레이 — 스케일 구성음 = 흰/회색, 루트 = 흰색 강조
+   (정의 순서 중요: .lit 이 아래에 있어 MIDI 하이라이트(주황)가 항상 우선) */
+/* ✅ 스케일음: 작은 청록색 원 */
+.fc.scale .nd {
+  opacity: 0.9;
+  transform: scale(0.99);
+  background: #4a9ead;   /* 청록 — 루트/MIDI와 구별 */
+  color: #000000;
+  font-size: 8px;
+  font-weight: 600;
+}
+/* ✅ 루트: 주황 accent, 눈에 띄게 크게 */
+.fc.scale-root .nd {
+  opacity: 0.95;
+  transform: scale(1);
+  background: hsl(28,95%,45%);   /* 테마 주황 */
+  color: #000;
+  font-size: 8px;
+  font-weight: 900;
+  box-shadow: 0 0 7px rgba(255,140,0,.6);
+}
+/* ✅ MIDI 활성(lit): 더 밝고 크게, 스케일 위에 항상 우선 */
+.fc.lit .nd {
+  opacity: 1;
+  transform: scale(1.18);
+  background: #ffb347;   /* 밝은 주황 — 루트보다 더 밝게 */
+  box-shadow: 0 0 10px rgba(255,140,0,.85);
+  color: var(--p-live-input-bg);
+  font-weight: 900;
+}
+.str-label {
+  width:20px; min-width:20px; display:flex; align-items:center; justify-content:center;
+  font-size:8.5px; color:var(--p-live-text-secondary); border-right:1px solid #2a2a2a;
+  background:var(--p-live-input-bg); height:100%; flex-shrink:0;
+}
+.string-lane[data-s="1"] .str-label { color:#e2e; }
+.string-lane[data-s="6"] .str-label { color:#ea8; }
+
+/* ── MIDI Inspector (기본 숨김, 토글) ── */
+#inspector {
+  flex-shrink:0; border-top:1px solid var(--p-live-control-border);
+  background:var(--p-live-control-bg); display:flex; flex-direction:column; height:155px;
+}
+#insp-hdr {
+  display:flex; align-items:center; gap:8px; padding:4px 10px;
+  background:var(--p-live-input-bg);
+  border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
+}
+#vel-lane {
+  display:flex; align-items:flex-end; gap:1px; height:34px; padding:3px 10px 1px;
+  overflow-x:auto; flex-shrink:0; border-bottom:1px solid var(--p-live-control-border);
+}
+.vb { width:5px; min-width:5px; background:var(--p-live-accent-primary); border-radius:1px 1px 0 0; }
+#note-list { flex:1; overflow:auto; font-size:10px; font-family:"Courier New",monospace; }
+table { width:100%; border-collapse:collapse; }
+thead th {
+  position:sticky; top:0; padding:3px 6px; text-align:left;
+  background:var(--p-live-input-bg); color:var(--p-live-text-secondary);
+  font-weight:700; font-size:9px;
+  border-bottom:1px solid var(--p-live-control-border); user-select:none;
+}
+tbody td { padding:1px 6px; border-bottom:1px solid rgba(255,255,255,.03); }
+tbody tr { cursor:pointer; }
+tbody tr:hover td { background:rgba(255,255,255,.04); }
+tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-accent-primary); }
+.ca { color:var(--p-live-accent-primary); }
+.cg { color:var(--p-live-text-secondary); }
+
+/* ── Log (기본 숨김, 토글) ── */
+#log-panel {
+  flex-shrink:0; border-top:1px solid var(--p-live-control-border);
+  background:var(--p-live-input-bg);
+}
+#log {
+  height:48px; overflow-y:auto; padding:3px 10px;
+  font-size:10px; font-family:"Courier New",monospace;
+  color:var(--p-live-text-secondary); line-height:1.5; white-space:pre-wrap;
+}
+
+/* ── PDF 렌더 컨테이너 (화면 밖, jsPDF용) ── */
+#pdf-render {
+  position: fixed;
+  left: -99999px;
+  top: 0;
+  width: 1406px;   /* A4 가용폭 703px × 2배 해상도 */
+  background: #fff;
+}

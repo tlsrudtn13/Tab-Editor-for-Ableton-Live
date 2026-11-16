@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-ui/
+*.ablx
+*.log
+.orchestration/
+.env
+.env.*
+# Ableton SDK packages: licensed, do not redistribute (keep locally for npm install)
+*.tgz
