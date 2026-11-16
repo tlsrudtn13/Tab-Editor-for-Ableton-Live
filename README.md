@@ -30,7 +30,7 @@ Converts MIDI clips into Guitar Pro–quality scores. (Powered by [alphaTab](htt
 ## Development
 
 ```bash
-# Place the Ableton Extensions beta SDK (.tgz) in the project root first
+# Put the Ableton Extensions SDK 1.0.0-beta.1 .tgz files (sdk, cli) in vendor/ first
 npm install
 npm run build     # Production build
 npm run start     # Launch Live Extension Host (development)
@@ -86,7 +86,7 @@ MIDI 클립을 Guitar Pro 수준의 악보로 변환합니다. ([alphaTab](https
 ## 개발
 
 ```bash
-# Ableton Extensions 베타 SDK(.tgz)를 루트에 배치한 후
+# Ableton Extensions SDK 1.0.0-beta.1 .tgz(sdk, cli)를 vendor/에 넣은 후
 npm install
 npm run build     # 프로덕션 빌드
 npm run start     # Live Extension Host 실행 (개발)
