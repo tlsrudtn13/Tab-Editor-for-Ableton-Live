@@ -83,7 +83,13 @@
 3. `ui/src/main.ts`를 모듈로 분리: `render/`, `fretboard/`, `inspector/`, `export/`, `state/`. `@ts-nocheck` 제거.
 4. `src/notation/`에 vitest 단위 테스트 추가 (보이싱, 퀀타이즈, MusicXML 스냅샷). 테스트용 MIDI 픽스처 10개 정도(아르페지오, 파워코드, 베이스 라인, 셋잇단, 레가토).
 
+**P0 결과 (2026-11-16 완료)**: git 저장소 생성(`.env`, SDK `.tgz` 제외), 구버전 폴더는 `../_archive/`로 이동, vitest 29개, `main.ts` → 모듈 11개 분리(동작 변경 없음, 미리보기로 확인), 미리보기 도구 `scripts/preview.ts` + `scripts/serve.mjs`, Auto 길이 버튼 버그 수정.
+남은 P0 항목: 최신 SDK 교체(베타 프로그램 로그인이 필요해서 직접 받아야 함), `@ts-nocheck` 제거(모듈별로 P1 진행하면서).
+
 ### P1. 정확도 (1~2주)
+0. **P0에서 찾은 버그 먼저** (테스트에 `it.fails`로 고정해 둠):
+   - 베이스 프리셋이 한 옥타브 높게 잡혀 있다. 실제 음역(E1=28)으로 쓴 베이스 라인이 전부 "음역 밖"으로 접혀 노란 괄호로 나온다.
+   - 퀀타이즈 자동 감지가 점8분 간격(0.75박)에서 4분음표 격자를 고른다. 멜로디 음이 서로 겹쳐 화음으로 합쳐진다.
 1. 운지 최적화 엔진 `src/notation/fingering/` — `tutts` 채택 검토 먼저, 안 맞으면 직접 Viterbi(비용 함수 + 프리셋 + 사용자 고정 음). 기존 `applyGuitarVoicing`은 폴백으로 남긴다. AbleTab과 같은 픽스처로 결과 비교.
 1-b. 튜닝 프리셋 추가 (Drop D, DADGAD, Open G, 우쿨렐레, 커스텀).
 2. 클립 루프/마커 반영, "Open (Track)"은 우클릭한 트랙만 열고 "Open (All Tracks)" 메뉴를 따로 둔다.
