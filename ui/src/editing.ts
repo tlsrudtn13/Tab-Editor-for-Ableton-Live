@@ -24,7 +24,9 @@ export function adjustDuration(mode) {
     var n = notes[state.selectedNoteIndices[i]];
     if (!n) continue;
 
-    if (mode === "next") {
+    // The toolbar's "Auto" button sends "Auto"; it used to fall through to
+    // the shorten branch below.
+    if (mode === "next" || mode === "Auto") {
       // 이 노트 뒤에서 가장 가까운 onset 까지 연장 (let-ring 스타일)
       var next = Infinity;
       for (var k = 0; k < notes.length; k++) {
@@ -41,7 +43,7 @@ export function adjustDuration(mode) {
   }
 
   if (changed > 0) {
-    log("Duration " + (mode === "next" ? "⟶ next note" : mode) +
+    log("Duration " + (mode === "next" || mode === "Auto" ?"⟶ next note" : mode) +
         " (" + changed + " note(s))");
     rebuildScore();
     renderInspector(state.curTrack);

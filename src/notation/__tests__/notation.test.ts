@@ -44,6 +44,13 @@ describe("quantize", () => {
     it("ignores chord tones when detecting the grid", () => {
         expect(detectQuantizeGrid([n(0, 60), n(0, 64), n(0, 67), n(1, 62)])).toBe(4);
     });
+    // KNOWN BUG (fix in P1): dotted-8th spacing (0.75 beat) picks the quarter
+    // grid, so 0.75/1.5/2.25 snap to 1/2/2 and separate melody notes merge
+    // into a chord. 0.75 = three 16ths, so the grid must be 16.
+    it.fails("known bug: dotted-8th rhythm keeps a 1/16 grid", () => {
+        const dotted = [0, 0.75, 1.5, 2.25, 3].map((b, i) => n(b, 60 + i));
+        expect(detectQuantizeGrid(dotted)).toBe(16);
+    });
     it("current behaviour: 1/8 triplets fall back to the 1/16 grid", () => {
         const trip = [n(0, 60), n(1 / 3, 62), n(2 / 3, 64)];
         expect(detectQuantizeGrid(trip)).toBe(16);
