@@ -289,6 +289,20 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             ctx.commands.executeCommand("tabeditor.open", t.handle);
             return { opened: name };
         }
+        case "openScene": {
+            // Same as right-clicking scene N (1-based): the scene's handle is the argument.
+            const sc = (ctx.application.song as any).scenes[Number(cmd.clip ?? 1) - 1];
+            if (!sc) throw new Error(`scene not found: ${cmd.clip}`);
+            ctx.commands.executeCommand("tabeditor.openScene", sc.handle);
+            return { opened: `scene ${cmd.clip}` };
+        }
+        case "openClips": {
+            // Same as selecting every clip slot of scene row N (1-based) and right-clicking the selection.
+            const i = Number(cmd.clip ?? 1) - 1;
+            const slots = (ctx.application.song.tracks as any[]).map(t => t?.clipSlots?.[i]).filter(Boolean);
+            ctx.commands.executeCommand("tabeditor.openClips", { selected_clip_slots: slots.map((s: any) => s.handle) });
+            return { opened: `${slots.length} slots of row ${cmd.clip}` };
+        }
         case "openAll":
             ctx.commands.executeCommand("tabeditor.openAll");
             return { opened: "all tracks" };

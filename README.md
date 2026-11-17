@@ -4,7 +4,7 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.12.1). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.13.0). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
@@ -83,7 +83,9 @@ Edited fingering is kept per clip, also after renaming or moving the clip; Re-fi
 | A MIDI clip | Open (Clip) | That clip's loop region, editable |
 | An arrangement selection on a MIDI track | Open (Selection) | The selected range (view only) |
 | A MIDI track | Open (Track) | All arrangement clips on that track, editable (Apply to Clips writes each clip) |
-| An audio track or a scene | Open (All Tracks) | Every MIDI track (view only) |
+| An audio track | Open (All Tracks) | Every MIDI track's Arrangement clips (view only) |
+| A scene (Session View) | Open (Scene) | Every MIDI clip in that scene, guitar/bass as TAB and drums as drum notation, one tab each (view only) |
+| Several selected Session clips | Open (Selected Clips) | Those clips, one tab each (view only) |
 
 Click inside the editor once before pressing Play: the browser engine starts audio only after a click.
 
@@ -92,7 +94,7 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 - While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
 - Overlapping notes are written as one voice (with a let-ring mark).
 - New notes go only into rests; use Shift + fret click for chord tones.
-- Selection view and Open (All Tracks) cannot write back. In track view a note cannot move from one clip into another.
+- Selection view, Open (All Tracks), Open (Scene) and Open (Selected Clips) cannot write back; open a single clip to edit it. In track view a note cannot move from one clip into another.
 - Very long tracks (thousands of notes) take a few seconds to render.
 
 ## Development
@@ -125,7 +127,7 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.12.1). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.13.0). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 
@@ -204,7 +206,9 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 | MIDI 클립 | Open (Clip) | 그 클립의 루프 구간, 편집 가능 |
 | MIDI 트랙의 어레인지 선택 구간 | Open (Selection) | 선택 구간 (보기 전용) |
 | MIDI 트랙 | Open (Track) | 그 트랙의 모든 어레인지 클립, 편집 가능 (Apply to Clips가 클립마다 반영) |
-| 오디오 트랙 또는 씬 | Open (All Tracks) | 모든 MIDI 트랙 (보기 전용) |
+| 오디오 트랙 | Open (All Tracks) | 모든 MIDI 트랙의 어레인지 클립 (보기 전용) |
+| 씬 (세션 뷰) | Open (Scene) | 그 씬의 모든 MIDI 클립. 기타·베이스는 TAB, 드럼은 드럼 악보로 클립마다 탭 하나 (보기 전용) |
+| 세션 클립 여러 개 선택 | Open (Selected Clips) | 선택한 클립들, 클립마다 탭 하나 (보기 전용) |
 
 재생하기 전에 에디터 안을 한 번 클릭하세요. 브라우저 엔진은 클릭이 있어야 소리를 냅니다.
 
@@ -213,7 +217,7 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 - Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
-- 선택 구간 보기와 Open (All Tracks)에서는 클립에 반영할 수 없습니다. 트랙 보기에서 노트를 다른 클립으로 옮길 수는 없습니다.
+- 선택 구간 보기, Open (All Tracks), Open (Scene), Open (Selected Clips)에서는 클립에 반영할 수 없습니다. 편집하려면 클립 하나를 여세요. 트랙 보기에서 노트를 다른 클립으로 옮길 수는 없습니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
 
 ## 크레딧

@@ -11,6 +11,9 @@ import {
     DataModelObject,                   // 선택 레인 핸들의 범용 복원용
     TakeLane,                          // 테이크 레인 → 부모 트랙 추적용
     MidiTrack,                         // 트랙 우클릭 핸들 복원용
+    Scene,                             // 씬 우클릭 핸들 복원용
+    ClipSlot,                          // 클립 슬롯 선택 복원용
+    type ClipSlotSelection,            // 세션 클립 여러 개 선택
     type ActivationContext,
     type ArrangementSelection,         // 어레인지 선택영역 인자 타입
 } from "@ableton-extensions/sdk";
@@ -397,6 +400,55 @@ export function activate(activation: ActivationContext) {
         try { const message=JSON.parse(result || "null"); if(message?.layer && message.layer.v === 1) saveLayer(context, message.layerKey, message.layer); if(message?.drumLayer) saveDrumLayer(context, message.layerKey, message.drumLayer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     }
 
+    /** View-only payload for one Session/Arrangement clip (TAB with its saved fingering, or drum notation). */
+    function viewClipPayload(clip: any, track: any, slotIndex: number | undefined, id: string, tempo: number, live: any): TrackPayload | null {
+        if (!clip || !Array.isArray(clip.notes) || !clip.notes.length) return null;
+        const clipName = safeStr(clip.name, "Clip");
+        const trackName = safeStr(track?.name, "Track");
+        const raw = notesFromClip(clip, 0, "ses", clipName);
+        let notes = clipRegion(raw, { looping: clip.looping, loopStart: clip.loopStart, loopEnd: clip.loopEnd, startMarker: clip.startMarker, endMarker: clip.endMarker });
+        if (!notes.length) return null;
+        const hint = { track: trackName, clip: clipName };
+        const storageKey = layerKey(trackName, clipName);
+        const foundV2 = findClipLayer(context, clip, hint);
+        const v1Layer = readLayer(context, storageKey);
+        let timeSig = foundV2.layer?.timeSig ?? v1Layer?.timeSig;
+        try {
+            const scene: any = Number.isInteger(slotIndex) ? (context.application.song as any).scenes?.[slotIndex as number] : undefined;
+            const beats = Number(scene?.signatureNumerator), type = Number(scene?.signatureDenominator);
+            if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
+        } catch { /* default to 4/4 */ }
+        const name = `${trackName} · ${clipName}`;
+        const drum = drumPayloadFor(context, track, id, name, notes, tempo, live, layerKey(trackName, ""), timeSig);
+        if (drum) return drum;
+        let p: TrackPayload | null;
+        if (foundV2.layer) {
+            const inst = INSTRUMENT_BY_KEY[foundV2.layer.instrument] || DEFAULT_INSTRUMENT;
+            notes = applyLayerV2(notes, foundV2.layer, inst);
+            p = buildPayload(id, name, notes, tempo, live, { instrument: inst, capo: foundV2.layer.capo, timeSig });
+        } else {
+            p = buildPayload(id, name, notes, tempo, live, { instrument: instrumentForLayer(v1Layer), layer: v1Layer, capo: v1Layer?.capo, timeSig });
+        }
+        if (p) { (p as any).layerStorageKey = storageKey; (p as any).layerHint = hint; }
+        return p;
+    }
+
+    /** Open several Session clips side by side (one tab per clip). View only: no write-back, like Open (All Tracks). */
+    async function openSessionClips(items: { clip: any; track: any; slotIndex?: number }[], emptyMessage: string): Promise<void> {
+        const tempo = getTempo(context);
+        const live = liveContext(context);
+        delete live.cues;   // clips start at beat 0: Arrangement cues do not apply
+        const payloads: TrackPayload[] = [];
+        items.forEach((it, i) => {
+            try { const p = viewClipPayload(it.clip, it.track, it.slotIndex, `ses_${i}`, tempo, live); if (p) payloads.push(p); }
+            catch (e) { console.warn("[TAB] session clip skipped:", e); }
+        });
+        console.log(`[TAB] session clips: ${payloads.length} of ${items.length} opened`);
+        if (!payloads.length) { await showEditor(context, [], emptyMessage); return; }
+        const result = await showEditor(context, payloads);
+        try { const message=JSON.parse(result || "null"); if(message?.layer && message.layer.v === 1) saveLayer(context, message.layerKey, message.layer); if(message?.drumLayer) saveDrumLayer(context, message.layerKey, message.drumLayer); } catch(e) { console.warn("[TAB] session layer message ignored:",e); }
+    }
+
     // Every command goes through this: an exception inside one must never take down the extension host.
     const register = (id: string, fn: (...args: any[]) => Promise<void>) =>
         context.commands.registerCommand(id, (...args: unknown[]) => {
@@ -448,6 +500,38 @@ export function activate(activation: ActivationContext) {
     });
 
     register("tabeditor.openAll", async () => { await openAllTracks(); });
+
+    // Scene: every MIDI clip in that scene's row (guitar, bass, drums ...) in one editor.
+    register("tabeditor.openScene", async (arg: unknown) => {
+        let scene: any = null;
+        try { scene = context.getObjectFromHandle(arg as any, Scene); } catch (e) { console.warn("[TAB] scene resolve failed:", e); }
+        const song: any = context.application.song;
+        const sceneIdx = scene ? (song.scenes as any[]).indexOf(scene) : -1;
+        if (sceneIdx < 0) { await openAllTracks(); return; }
+        const items: { clip: any; track: any; slotIndex: number }[] = [];
+        for (const t of song.tracks as any[]) {
+            const clip = Array.isArray(t?.clipSlots) ? t.clipSlots[sceneIdx]?.clip : null;
+            if (clip && Array.isArray(clip.notes)) items.push({ clip, track: t, slotIndex: sceneIdx });
+        }
+        console.log(`[TAB] scene mode: scene ${sceneIdx + 1}, ${items.length} MIDI clips`);
+        await openSessionClips(items, `No MIDI clips with notes in scene ${sceneIdx + 1}.`);
+    });
+
+    // Several selected Session clips (Shift/Ctrl+click) in one editor.
+    register("tabeditor.openClips", async (arg: unknown) => {
+        const sel = arg as ClipSlotSelection;
+        const slots: any[] = [];
+        for (const h of sel?.selected_clip_slots ?? []) {
+            try { const s = context.getObjectFromHandle(h as any, ClipSlot); if (s) slots.push(s); } catch (e) { console.warn("[TAB] clip slot resolve failed:", e); }
+        }
+        const items: { clip: any; track: any; slotIndex?: number }[] = [];
+        for (const t of context.application.song.tracks as any[]) {
+            const ts: any[] = Array.isArray(t?.clipSlots) ? t.clipSlots : [];
+            ts.forEach((s, i) => { if (slots.includes(s) && s?.clip && Array.isArray(s.clip.notes)) items.push({ clip: s.clip, track: t, slotIndex: i }); });
+        }
+        console.log(`[TAB] selected clips mode: ${items.length} MIDI clips of ${slots.length} slots`);
+        await openSessionClips(items, "No MIDI clips with notes in the selection.");
+    });
 
     // ──────────────────────────────────────────────────────
     // ② 선택영역 모드 (어레인지: 클립 우클릭 or 드래그 범위)
@@ -626,7 +710,8 @@ export function activate(activation: ActivationContext) {
         ["MidiClip",                       "Open (Clip)",      "tabeditor.openClip"],
         ["MidiTrack",                      "Open (Track)",     "tabeditor.open"],
         ["AudioTrack",                     "Open (All Tracks)", "tabeditor.openAll"],
-        ["Scene",                          "Open (All Tracks)", "tabeditor.openAll"],
+        ["Scene",                          "Open (Scene)",     "tabeditor.openScene"],
+        ["ClipSlotSelection",              "Open (Selected Clips)", "tabeditor.openClips"],
     ];
     for (const [loc, label, cmd] of menus) {
         try {
