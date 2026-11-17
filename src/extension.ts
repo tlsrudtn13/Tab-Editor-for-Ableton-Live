@@ -433,7 +433,7 @@ export function activate(activation: ActivationContext) {
         return p;
     }
 
-    /** Open several Session clips side by side (one tab per clip). View only: no write-back, like Open (All Tracks). */
+    /** Open several Session clips side by side (one tab per clip). View only: no write-back, like Open (All Tracks) - View. */
     async function openSessionClips(items: { clip: any; track: any; slotIndex?: number }[], emptyMessage: string): Promise<void> {
         const tempo = getTempo(context);
         const live = liveContext(context);
@@ -476,7 +476,7 @@ export function activate(activation: ActivationContext) {
         const p = trackPayload(track, 1, tempo, live, editCtx);
         if (!p) {
             console.warn(`[TAB] track "${name}" has no notes in Arrangement clips — editor not opened.`);
-            await showEditor(context, [], `No notes in Arrangement clips of "${name}". Open a clip instead (right-click the clip → Open (Clip)).`);
+            await showEditor(context, [], `No notes in Arrangement clips of "${name}". Open a clip instead (right-click the clip → Open (Clip) - Edit).`);
             return;
         }
         console.log(`[TAB] track mode: "${name}"`);
@@ -706,12 +706,12 @@ export function activate(activation: ActivationContext) {
     //  - MidiTrack: 그 트랙만 / AudioTrack·Scene: 전체 트랙
     // ──────────────────────────────────────────────────────
     const menus: Array<[string, string, string]> = [
-        ["MidiTrack.ArrangementSelection", "Open (Selection)", "tabeditor.openSelection"],
-        ["MidiClip",                       "Open (Clip)",      "tabeditor.openClip"],
-        ["MidiTrack",                      "Open (Track)",     "tabeditor.open"],
-        ["AudioTrack",                     "Open (All Tracks)", "tabeditor.openAll"],
-        ["Scene",                          "Open (Scene)",     "tabeditor.openScene"],
-        ["ClipSlotSelection",              "Open (Selected Clips)", "tabeditor.openClips"],
+        ["MidiTrack.ArrangementSelection", "Open (Selection) - View", "tabeditor.openSelection"],
+        ["MidiClip",                       "Open (Clip) - Edit",      "tabeditor.openClip"],
+        ["MidiTrack",                      "Open (Track) - Edit",     "tabeditor.open"],
+        ["AudioTrack",                     "Open (All Tracks) - View", "tabeditor.openAll"],
+        ["Scene",                          "Open (Scene) - View",     "tabeditor.openScene"],
+        ["ClipSlotSelection",              "Open (Selected Clips) - View", "tabeditor.openClips"],
     ];
     for (const [loc, label, cmd] of menus) {
         try {

@@ -107,7 +107,7 @@ export function updateEditUi() {
   const enabled = active();
   if (apply) {
     (apply as HTMLButtonElement).disabled = !enabled;
-    apply.title = enabled ? "" : "Apply works in Open (Clip) and Open (Track)";
+    apply.title = enabled ? "" : "Apply works in Open (Clip) - Edit and Open (Track) - Edit";
     apply.textContent = enabled && state.curTrack.edit.mode === "track" ? "Apply to Clips" : "Apply to Clip";
   }
   if (cancel) { (cancel as HTMLButtonElement).disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }

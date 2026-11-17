@@ -37,9 +37,9 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    node scripts/dev-cmd.mjs list
    node scripts/dev-cmd.mjs payload "TT open chords"  # notes, string/fret result (add --full for MusicXML)
    node scripts/dev-cmd.mjs open "TT open chords"     # opens the real editor through the registered command
-   node scripts/dev-cmd.mjs openTrack "TAB-TEST"      # "Open (Track)" on one track; openAll = all tracks
-   node scripts/dev-cmd.mjs openScene 2               # "Open (Scene)" on scene 2 (every MIDI clip of that row)
-   node scripts/dev-cmd.mjs openClips 1               # "Open (Selected Clips)" with every slot of row 1 selected
+   node scripts/dev-cmd.mjs openTrack "TAB-TEST"      # "Open (Track) - Edit" on one track; openAll = all tracks
+   node scripts/dev-cmd.mjs openScene 2               # "Open (Scene) - View" on scene 2 (every MIDI clip of that row)
+   node scripts/dev-cmd.mjs openClips 1               # "Open (Selected Clips) - View" with every slot of row 1 selected
    node scripts/dev-cmd.mjs report                    # editor state: log, errors, TAB numbers drawn
    node scripts/dev-cmd.mjs ui "setMode('tab'); return __tabState.dispMode"
    node scripts/dev-cmd.mjs close
