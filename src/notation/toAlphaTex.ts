@@ -91,8 +91,10 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
     const techToFx: Record<Tech, string> = { lr: "lr", pm: "pm", hp: "h", sl: "sl", x: "x", vb: "v" };
     const effectsStr = (note: Note, idx: number): string => {
         const fromUser = note.tech !== undefined ? (note.tech as Tech[]) : (letRingIdx.has(idx) ? (["lr"] as Tech[]) : []);
-        if (fromUser.length === 0) return "";
-        return `{${fromUser.map(t => techToFx[t]).join(" ")}}`;
+        const fx = fromUser.map(t => techToFx[t]);
+        if (note.bend) fx.push(`b (0 ${note.bend})`);   // AlphaTex bend: quarter-tone values
+        if (fx.length === 0) return "";
+        return `{${fx.join(" ")}}`;
     };
 
     const timeSig = opts.timeSig ?? { beats: 4, type: 4 };

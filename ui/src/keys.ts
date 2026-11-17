@@ -4,7 +4,9 @@ import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
 import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overlay";
 import { adjustDuration, moveString } from "./editing";
-import { TECH_KEY, toggleSelectedTech } from "./techUi";
+import { detectQuantizeGrid } from "../../src/notation/music.js";
+import { log } from "./log";
+import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
 export function saveUndo(before?: any, deletedBefore?: any) {
@@ -70,6 +72,11 @@ export function insertNote(s: number, f: number, chord = false) {
   } else {
     const rc = state.restCursor; if (!rc) return false;
     b = rc.b; d = rc.d;
+    const len = state.curTrack.edit.regionLength;
+    if (typeof len === "number") {
+      if (b >= len - 1e-6) { log("Insert: that rest is past the end of the clip"); return false; }
+      d = Math.min(d, len - b);
+    }
   }
   const tmpl = state.curTrack.notes[0] || {};
   const before = state.curTrack.notes.map((n: any) => ({ ...n }));
@@ -79,6 +86,24 @@ export function insertNote(s: number, f: number, chord = false) {
   state.selectedNoteIndices = [state.curTrack.notes.length - 1];
   render();
   return true;
+}
+/** Move the selected notes in time by `steps` grid steps (or whole beats). Refuses a move onto a string already used there. */
+export function moveTime(steps: number, wholeBeats = false) {
+  if (!active() || !state.selectedNoteIndices.length) return;
+  const notes = state.curTrack.notes;
+  const grid = state.uiQuantize === "auto" ? detectQuantizeGrid(notes) : state.uiQuantize;
+  const unit = wholeBeats ? 1 : 4 / grid, delta = steps * unit;
+  const sel = new Set(state.selectedNoteIndices);
+  const moved = state.selectedNoteIndices.map(i => notes[i]).filter(Boolean);
+  if (moved.some((n: any) => n.b + delta < -1e-6)) { log("Move: already at the start"); return; }
+  const len = state.curTrack.edit.regionLength;
+  if (typeof len === "number" && moved.some((n: any) => n.b + delta >= len - 1e-6)) { log("Move: that is past the end of the clip"); return; }
+  const clash = moved.find((n: any) => notes.some((o: any, j: number) => !sel.has(j) && o.s === n.s && Math.abs(o.b - (n.b + delta)) < unit / 2));
+  if (clash) { log("Move: string " + clash.s + " is already used there"); return; }
+  const before = notes.map((n: any) => ({ ...n }));
+  moved.forEach((n: any) => { n.b = Math.max(0, n.b + delta); if (n.oid !== undefined) n.dirty = true; });
+  saveUndo(before);
+  render();
 }
 export function setSelectedStringFret(s,f) {
   if(!active())return; const n=state.curTrack.notes[state.selectedNoteIndices[0]], open=getOpenStrings()[s]; if(!n||typeof open!=="number")return;
@@ -99,15 +124,17 @@ function onKey(e) {
   }
   if(!state.curTrack)return;
   const sorted=state.curTrack.notes.map((n,i)=>({n,i})).sort((a,b)=>a.n.b-b.n.b||b.n.p-a.n.p).map(x=>x.i);
+  if((k==="ArrowLeft"||k==="ArrowRight")&&e.shiftKey&&active()&&selected.length){e.preventDefault();moveTime(k==="ArrowLeft"?-1:1,e.ctrlKey);return;}
   if(k==="ArrowLeft"||k==="ArrowRight"){e.preventDefault();let pos=sorted.indexOf(selected[0]);if(pos<0)pos=k==="ArrowLeft"?sorted.length: -1;selectIndex(sorted[Math.max(0,Math.min(sorted.length-1,pos+(k==="ArrowLeft"?-1:1)))] as number);return;}
   if(!active())return;
   if((k==="ArrowUp"||k==="ArrowDown")&&selected.length){e.preventDefault();if(e.altKey)moveString(k==="ArrowUp"?-1:1);else pitchChange((k==="ArrowUp"?1:-1)*(e.shiftKey?12:1));return;}
   if((k==="["||k==="]")&&selected.length){adjustDuration(k==="]"?"+1":"-1");return;}
   if(k.toLowerCase()==="d"&&selected.length){adjustDuration("Auto");return;}
+  if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&selected.length&&k.toLowerCase()==="b"){e.preventDefault();cycleSelectedBend(saveUndo,render);return;}
   if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&selected.length&&TECH_KEY[k.toLowerCase()]){e.preventDefault();toggleSelectedTech(TECH_KEY[k.toLowerCase()],saveUndo,render);return;}
   if((k==="Delete"||k==="Backspace")&&selected.length){e.preventDefault();const before=state.curTrack.notes.map(n=>({...n})), deletedBefore=state.deletedOids.slice();const removed=selected.slice().sort((a,b)=>b-a);removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});state.selectedNoteIndices=[];saveUndo(before,deletedBefore);render();return;}
   if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]];if(!n)return;const open=getOpenStrings()[n.s];if(open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
 }
 /** Palette button / window handler. */
-export function toggleTech(t){ toggleSelectedTech(t, saveUndo, render); }
+export function toggleTech(t){ if (t === "bend") cycleSelectedBend(saveUndo, render); else toggleSelectedTech(t, saveUndo, render); }
 export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi,insertNote,setRestCursor};updateEditUi();}

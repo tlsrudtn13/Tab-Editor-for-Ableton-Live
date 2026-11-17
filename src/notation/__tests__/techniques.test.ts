@@ -56,3 +56,19 @@ describe("techniques", () => {
     expect(out.has(1)).toBe(false);
   });
 });
+
+describe("bends", () => {
+    it("are saved in the layer, restored, and written to AlphaTex", async () => {
+        const { layerFromNotes, applyLayer } = await import("../tabLayer.js");
+        const { toAlphaTex } = await import("../toAlphaTex.js");
+        const { GUITAR_6 } = await import("../instruments.js");
+        const note = { b: 0, d: 1, p: 67, v: 100, s: 2, f: 8, src: "ses" as const, clip: "t", bend: 4 as const };
+        const layer = layerFromNotes([note], "guitar6");
+        expect(layer.notes[0]).toMatchObject({ bd: 4, k: 0 });
+        const restored = applyLayer([{ ...note, bend: undefined }], JSON.parse(JSON.stringify(layer)), GUITAR_6);
+        expect(restored[0]!.bend).toBe(4);
+        const bad = applyLayer([{ ...note, bend: undefined }], { ...layer, notes: [{ ...layer.notes[0]!, bd: 5 as any }] }, GUITAR_6);
+        expect(bad[0]!.bend).toBeUndefined();
+        expect(toAlphaTex([note], { bpm: 120 })).toContain("8.2{b (0 4)}");
+    });
+});

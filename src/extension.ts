@@ -367,7 +367,8 @@ export function activate(activation: ActivationContext) {
             await showEditor(context, [], "This clip has no notes in its loop region.");
             return;
         }
-        p.edit = { mode: "clip", regionStart, noteCount: clip.notes.length };
+        const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
+        p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
         (p as any).layerStorageKey = storageKey;
         // Snapshot of the notes as opened: edits refer to them by index (oid).
         const openedNotes = JSON.stringify(clip.notes);

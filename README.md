@@ -24,6 +24,7 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Key | Action |
 |---|---|
 | ← / → | Select previous / next note |
+| Shift + ← / → | Move the note one grid step earlier / later (Ctrl + Shift: one beat) |
 | ↑ / ↓ | Pitch up / down a semitone (Shift: an octave) |
 | Alt + ↑ / ↓ | Move the note to another string (kept the next time you open the clip) |
 | 0–9 | Type a fret on the current string (two digits within 0.4 s) |
@@ -33,6 +34,7 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Ctrl + Z | Undo the last edit in the editor |
 | Ctrl + Enter | Apply to Clip |
 | L / P / H / S / X / V | Let ring, palm mute, hammer-on/pull-off, slide, dead note, vibrato (toggle) |
+| B | Bend: ½ → full → 1½ → off |
 | Esc | Clear the selection |
 
 Clicking a fret on the fretboard moves the selected note there.
@@ -66,7 +68,6 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 ## Known limitations (beta)
 
 - Overlapping notes are written as one voice (with a let-ring mark).
-- No bend marks yet.
 - New notes go only into rests; use Shift + fret click for chord tones.
 - Track and selection views cannot write back.
 - Very long tracks (thousands of notes) take a few seconds to render.
@@ -121,6 +122,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | 키 | 동작 |
 |---|---|
 | ← / → | 이전/다음 노트 선택 |
+| Shift + ← / → | 노트를 그리드 한 칸 앞/뒤로 이동 (Ctrl + Shift: 한 박) |
 | ↑ / ↓ | 반음 올림/내림 (Shift: 한 옥타브) |
 | Alt + ↑ / ↓ | 다른 줄로 이동 (다음에 열 때도 유지) |
 | 0–9 | 현재 줄의 프렛 입력 (0.4초 안에 두 자리) |
@@ -130,6 +132,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | Ctrl + Z | 에디터 안에서 마지막 편집 되돌리기 |
 | Ctrl + Enter | 클립에 반영 (Apply to Clip) |
 | L / P / H / S / X / V | let ring, 브리지 뮤트, 해머링·풀링, 슬라이드, 데드 노트, 비브라토 (켜고 끄기) |
+| B | 벤드: ½ → 온음 → 1½ → 끄기 |
 | Esc | 선택 해제 |
 
 프렛보드의 칸을 누르면 선택한 노트가 그 자리로 옮겨집니다.
@@ -163,7 +166,6 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 ## 알려진 제한 (베타)
 
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
-- 벤드 표기는 아직 없습니다.
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
 - 트랙·선택 구간 보기에서는 클립에 반영할 수 없습니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.

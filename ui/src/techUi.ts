@@ -4,7 +4,7 @@ import { state } from "./state";
 import { log } from "./log";
 import { getStringCount } from "./fretboard";
 import { detectLetRing, TECHS } from "../../src/notation/techniques.js";
-import type { Tech } from "../../src/notation/types.js";
+import { BEND_AMOUNTS, type BendAmount, type Tech } from "../../src/notation/types.js";
 
 export const TECH_LABEL: Record<Tech, string> = {
   lr: "Let ring", pm: "Palm mute", hp: "Hammer-on / pull-off", sl: "Slide", x: "Dead note", vb: "Vibrato",
@@ -57,7 +57,12 @@ export function applyTechniquesToScore(score: any) {
         }
         if (best < 0) return;
         const tech = effectiveTech(best);
-        if (!tech.length) return;
+        const bend = notes[best].bend;
+        if (!tech.length && !bend) return;
+        if (bend && !an.hasBend) {
+          an.addBendPoint(new alphaTab.model.BendPoint(0, 0));
+          an.addBendPoint(new alphaTab.model.BendPoint(alphaTab.model.BendPoint.MaxPosition, bend));
+        }
         if (tech.includes("lr")) an.isLetRing = true;
         if (tech.includes("pm")) an.isPalmMute = true;
         if (tech.includes("hp")) an.isHammerPullOrigin = true;
@@ -97,6 +102,24 @@ export function toggleSelectedTech(t: Tech, saveUndo: (before: any[]) => void, r
   render();
 }
 
+export const BEND_LABEL: Record<BendAmount, string> = { 2: "½", 4: "full", 6: "1½" };
+
+/** Cycle the bend of the selected notes: none → ½ → full → 1½ → none (follows the first note). */
+export function cycleSelectedBend(saveUndo: (before: any[]) => void, render: () => void) {
+  if (!state.curTrack || !state.curTrack.edit) return;
+  const sel = state.selectedNoteIndices.filter(i => state.curTrack.notes[i]);
+  if (!sel.length) return;
+  const before = state.curTrack.notes.map((n: any) => ({ ...n }));
+  const cur = state.curTrack.notes[sel[0]!].bend as BendAmount | undefined;
+  const next = cur === undefined ? BEND_AMOUNTS[0] : BEND_AMOUNTS[BEND_AMOUNTS.indexOf(cur) + 1];
+  for (const i of sel) {
+    if (next === undefined) delete state.curTrack.notes[i].bend; else state.curTrack.notes[i].bend = next;
+  }
+  log(next === undefined ? "Bend off" : "Bend " + BEND_LABEL[next]);
+  saveUndo(before);
+  render();
+}
+
 /** Palette buttons light up for techniques every selected note has. */
 export function updateTechPalette() {
   const sel = state.curTrack ? state.selectedNoteIndices.filter(i => state.curTrack.notes[i]) : [];
@@ -105,4 +128,11 @@ export function updateTechPalette() {
     b.classList.toggle("on", sel.length > 0 && sel.every(i => effectiveTech(i).includes(t)));
     b.classList.toggle("idle", sel.length === 0);
   });
+  const bendBtn = document.querySelector<HTMLElement>("#tech-palette [data-bend]");
+  if (bendBtn) {
+    const amt = sel.length ? state.curTrack.notes[sel[0]!].bend as BendAmount | undefined : undefined;
+    bendBtn.textContent = amt ? "B " + BEND_LABEL[amt] : "B";
+    bendBtn.classList.toggle("on", !!amt);
+    bendBtn.classList.toggle("idle", sel.length === 0);
+  }
 }

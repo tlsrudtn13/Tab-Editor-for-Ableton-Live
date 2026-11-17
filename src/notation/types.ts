@@ -7,6 +7,8 @@
 import type { InstrumentConfig } from "./instruments.js";
 
 /** 에이블톤에서 수집한 MIDI 노트 (compact 포맷 — 필드명을 단일 문자로 유지해 JSON 크기 최소화) */
+export type BendAmount = 2 | 4 | 6;
+export const BEND_AMOUNTS: readonly BendAmount[] = [2, 4, 6];
 export type Tech = "lr" | "pm" | "hp" | "sl" | "x" | "vb"; // let ring, palm mute, hammer-on/pull-off, legato slide, dead note, vibrato
 
 export type Note = {
@@ -20,6 +22,8 @@ export type Note = {
     clip: string;          // 클립 이름
     /** Guitar techniques set by the user. undefined = not decided; [] = user cleared all. */
     tech?: Tech[];
+    /** Bend shown on the note, in quarter tones: 2 = ½ step, 4 = full, 6 = 1½. Display only (MIDI unchanged). */
+    bend?: BendAmount;
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
     lock?: boolean;
     oid?: number;
@@ -53,7 +57,8 @@ export type TrackPayload = {
         grid?: { quantization: number; triplet: boolean };
         message?: string;
     };
-    edit?: { mode: "clip"; regionStart: number; noteCount: number };
+    /** regionLength: beats shown (loop or start/end markers); edits must stay inside it. */
+    edit?: { mode: "clip"; regionStart: number; regionLength?: number; noteCount: number };
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */

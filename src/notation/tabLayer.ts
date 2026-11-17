@@ -1,8 +1,8 @@
-import type { Note, Tech, TimeSig } from "./types.js";
+import { BEND_AMOUNTS, type BendAmount, type Note, type Tech, type TimeSig } from "./types.js";
 import type { InstrumentConfig } from "./instruments.js";
 import { TECHS } from "./techniques.js";
 
-type LayerNote = { h: string; s: number; f: number; t?: Tech[]; k?: 0 };
+type LayerNote = { h: string; s: number; f: number; t?: Tech[]; bd?: BendAmount; k?: 0 };
 
 export type TabLayer = {
     v: 1;
@@ -39,6 +39,7 @@ export function applyLayer(notes: Note[], layer: TabLayer, instrument: Instrumen
         if (t !== undefined || (Array.isArray(saved.t) && saved.t.length === 0)) {
             out = { ...out, tech: t ?? [] };
         }
+        if (BEND_AMOUNTS.includes(saved.bd as BendAmount)) out = { ...out, bend: saved.bd };
         const lockAllowed = saved.k !== 0;
         if (!lockAllowed) return out;
         if (!Number.isInteger(saved.s) || saved.s < 1 || saved.s > instrument.stringCount ||
@@ -52,10 +53,11 @@ export function layerFromNotes(
     notes: Note[], instrument: string, capo = 0, timeSig?: TimeSig
 ): TabLayer {
     const layerNotes: LayerNote[] = notes
-        .filter(n => n.lock === true || n.tech !== undefined)
+        .filter(n => n.lock === true || n.tech !== undefined || n.bend !== undefined)
         .map(n => {
             const entry: LayerNote = { h: noteHash(n), s: n.s, f: n.f };
             if (n.tech !== undefined) entry.t = [...n.tech];
+            if (n.bend !== undefined) entry.bd = n.bend;
             if (n.lock !== true) entry.k = 0;
             return entry;
         });
