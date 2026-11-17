@@ -5,6 +5,7 @@ import { clearFretboard, getOpenStrings, getStringCount, lightFret } from "./fre
 import { showSelection } from "./overlay";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
+import { saveUndo, updateEditUi } from "./keys";
 
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v4] 노트 길이 편집 — Dur −/+ (grid 단위 증감) / ⟶Next (다음 노트까지 연장)
@@ -12,6 +13,7 @@ import { renderInspector } from "./inspector";
    tie 엔진이 마디/박자 경계에서 자동으로 붙임줄을 생성하고 쉼표가 사라집니다.
    ═══════════════════════════════════════════════════════════════════════════ */
 export function adjustDuration(mode) {
+  if (!state.curTrack || !state.curTrack.edit) return;
   if (!state.curTrack || state.selectedNoteIndices.length === 0) {
     log("Dur: 먼저 노트를 선택하세요 (TAB 번호 클릭 = 단일 선택)");
     status("Select a note first"); return;
@@ -19,6 +21,7 @@ export function adjustDuration(mode) {
   var unit  = 4 / (state.uiQuantize === "auto" ? 16 : state.uiQuantize);  // grid 1단위(박)
   var notes = state.curTrack.notes;
   var changed = 0;
+  var before = notes.map(function(n) { return Object.assign({}, n); });
 
   for (var i = 0; i < state.selectedNoteIndices.length; i++) {
     var n = notes[state.selectedNoteIndices[i]];
@@ -43,6 +46,11 @@ export function adjustDuration(mode) {
   }
 
   if (changed > 0) {
+    saveUndo(before);
+    for (var di = 0; di < state.selectedNoteIndices.length; di++) {
+      var dn = notes[state.selectedNoteIndices[di]]; if (dn && dn.oid !== undefined) dn.dirty = true;
+    }
+    updateEditUi();
     log("Duration " + (mode === "next" || mode === "Auto" ?"⟶ next note" : mode) +
         " (" + changed + " note(s))");
     rebuildScore();
@@ -64,6 +72,7 @@ export function adjustDuration(mode) {
    검증: 줄 범위, fret 0~24, 같은 박자 같은 줄 충돌
    ═══════════════════════════════════════════════════════════════════════════ */
 export function moveString(dir) {
+  if (!state.curTrack || !state.curTrack.edit) return;
   if (!state.curTrack || state.selectedNoteIndices.length === 0) {
     log("Move: 먼저 악보에서 노트를 클릭해 선택하세요");
     status("Select a note first"); return;
@@ -74,6 +83,7 @@ export function moveString(dir) {
   }
   var OPEN = getOpenStrings(), nS = getStringCount();
   var moved = 0;
+  var before = state.curTrack.notes.map(function(n) { return Object.assign({}, n); });
 
   for (var i = 0; i < state.selectedNoteIndices.length; i++) {
     var idx = state.selectedNoteIndices[i];
@@ -97,6 +107,8 @@ export function moveString(dir) {
   }
 
   if (moved > 0) {
+    saveUndo(before);
+    updateEditUi();
     log("Moved " + moved + " note(s) " + (dir < 0 ? "▲ thinner" : "▼ thicker"));
     rebuildScore();
     renderInspector(state.curTrack);

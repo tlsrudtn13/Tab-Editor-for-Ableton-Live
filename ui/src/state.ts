@@ -15,6 +15,10 @@ export const state: {
   rebuildTimer: ReturnType<typeof setTimeout> | null;
   logEl: HTMLElement | null;
   listEl: HTMLElement | null;
+  deletedOids: number[];
+  editHistory: any[];
+  digitBuffer: string;
+  digitTimer: ReturnType<typeof setTimeout> | null;
 } = {
   api: null,
   curTrack: null,
@@ -33,4 +37,8 @@ export const state: {
   rebuildTimer: null,
   logEl: null,
   listEl: null,
+  deletedOids: [],
+  editHistory: [],
+  digitBuffer: "",
+  digitTimer: null,
 };

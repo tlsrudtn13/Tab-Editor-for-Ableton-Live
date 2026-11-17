@@ -20,6 +20,7 @@ import modalInterface from "../dist-ui/index.html";
 import type { Note, TrackPayload } from "./notation/index.js";
 import { collectNotes, notesFromClip, clipRegion } from "./notation/collectNotes.js";
 import { buildPayload } from "./notation/payload.js";
+import { mergeClipEdits } from "./notation/clipEdits.js";
 import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
 import fs   from "node:fs";
@@ -34,10 +35,10 @@ async function showEditor(
     context: ReturnType<typeof initialize>,
     payloads: TrackPayload[],
     message?: string
-): Promise<void> {
+): Promise<string | undefined> {
     if (payloads.length === 0 && !message) {
         console.warn("[TAB] no MIDI notes found — editor not opened.");
-        return;
+        return undefined;
     }
 
     const safePayloads = payloads ?? [];
@@ -59,7 +60,7 @@ async function showEditor(
         ?? context.environment.storageDirectory;
     if (!tmpDir) {
         console.error("[TAB] no writable directory available (temp/storage both undefined).");
-        return;
+        return undefined;
     }
     const htmlPath = path.join(tmpDir, `ableton-tab-editor-ui-${Date.now()}.html`);
     // ※ Step 1: 폰트 복사 제거 (process.cwd()/node_modules 접근이 권한 차단 유발).
@@ -76,7 +77,7 @@ async function showEditor(
     
     // dev build: load through the harness server so the editor can report back
     const url = (__TAB_DEV__ && devEditorUrl(htmlPath)) || fileUrl;
-    await context.ui.showModalDialog(url, 1400, 900);
+    return await context.ui.showModalDialog(url, 1400, 900) as string | undefined;
 }
 
 // ============================================================
@@ -265,13 +266,34 @@ export function activate(activation: ActivationContext) {
         });
         const live = liveContext(context);
         delete live.cues;   // clip mode passes no cues
+        const regionStart = clip.looping ? clip.loopStart : clip.startMarker;
         const p = buildPayload("clip_0", clipName, regioned, tempo, live);
 
         if (!p) {
             await showEditor(context, [], "This clip has no notes in its loop region.");
             return;
         }
-        await showEditor(context, [p]);
+        p.edit = { mode: "clip", regionStart, noteCount: clip.notes.length };
+        const result = await showEditor(context, [p]);
+        if (!result) return;
+        try {
+            const message = JSON.parse(result);
+            if (message?.action !== "apply" || !message.edits) return;
+            const current = clip.notes;
+            if (!Array.isArray(current) || current.length !== p.edit.noteCount) {
+                console.warn(`[TAB] Apply skipped: clip note count changed (${Array.isArray(current) ? current.length : "invalid"} vs ${p.edit.noteCount}).`);
+                return;
+            }
+            const merged = mergeClipEdits(current, message.edits, regionStart);
+            if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) {
+                console.log(`[TAB] Apply has no valid changes: ${JSON.stringify(merged.stats)}`);
+                return;
+            }
+            context.withinTransaction(() => { clip.notes = merged.notes as any; });
+            console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
+        } catch (e) {
+            console.warn("[TAB] Apply message ignored:", e);
+        }
     });
 
     // ──────────────────────────────────────────────────────

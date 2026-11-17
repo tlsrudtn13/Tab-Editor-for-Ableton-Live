@@ -96,10 +96,17 @@ export function colorizeOutOfRange(score) {
           (bar.voices || []).forEach(function(v) {
             (v.beats || []).forEach(function(bt) {
               (bt.notes || []).forEach(function(n) {
-                if (!n.isGhost) return;
+                var dirty = false;
+                if (state.curTrack && Array.isArray(state.curTrack.notes)) {
+                  var bp = null; try { bp = (bar.masterBar.start + bt.playbackStart) / 960; } catch(e) {}
+                  var pitch = n.realValue !== undefined ? n.realValue : n.displayValue;
+                  dirty = state.curTrack.notes.some(function(tn) { return tn.dirty && (bp === null || Math.abs(tn.b-bp)<0.03) && tn.p === pitch; });
+                }
+                if (!n.isGhost && !dirty) return;
                 var style = new alphaTab.model.NoteStyle();
-                style.colors.set(NS.StandardNotationNoteHead, col);
-                style.colors.set(NS.GuitarTabFretNumber, col);
+                var useColor = dirty ? alphaTab.model.Color.fromJson("#ff764d") : col;
+                style.colors.set(NS.StandardNotationNoteHead, useColor);
+                style.colors.set(NS.GuitarTabFretNumber, useColor);
                 n.style = style;
               });
             });
@@ -270,6 +277,7 @@ export function createApi() {
 
         // 단일 선택으로 교체
         state.selectedNoteIndices = [idx];
+        if (window.__editKeys) window.__editKeys.selectIndex(idx);
         clearFretboard();
         clearNoteOverlays();
         overlayOneNote(note);                       // ★ v5: 이 노트만 주황 박스

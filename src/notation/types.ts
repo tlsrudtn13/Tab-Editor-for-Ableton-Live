@@ -22,6 +22,8 @@ export type Note = {
     bend?:     number; // 반음 단위 (2 = 온음 벤드)
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
     lock?: boolean;
+    oid?: number;
+    dirty?: boolean;
 };
 
 /** extension.ts → interface.html 으로 전달되는 트랙 페이로드 */
@@ -47,6 +49,7 @@ export type TrackPayload = {
         grid?: { quantization: number; triplet: boolean };
         message?: string;
     };
+    edit?: { mode: "clip"; regionStart: number; noteCount: number };
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */

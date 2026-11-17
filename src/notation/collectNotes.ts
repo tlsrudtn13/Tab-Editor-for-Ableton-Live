@@ -65,7 +65,8 @@ export function notesFromClip(
     const raw: unknown[] = Array.isArray((clip as any)?.notes) ? (clip as any).notes : [];
     const out: Note[] = [];
 
-    for (const n of raw) {
+    for (let oid = 0; oid < raw.length; oid++) {
+        const n = raw[oid];
         if (!n) continue;
         const localStart = safeNum((n as any).startTime ?? (n as any).time, 0);
         const dur        = Math.max(safeNum((n as any).duration ?? (n as any).length, 0.25), 0.0625);
@@ -82,6 +83,7 @@ export function notesFromClip(
             s,
             src,
             clip: clipName,
+            oid,
         });
     }
 

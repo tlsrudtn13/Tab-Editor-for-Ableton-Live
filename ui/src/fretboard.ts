@@ -102,4 +102,9 @@ export function bindScaleControls() {
   });
 }
 
-export function fretClick(s, f) { log("Fret: String " + s + " / Fret " + f); }
+export function fretClick(s, f) {
+  if (!state.curTrack || !state.curTrack.edit || !state.selectedNoteIndices.length) { log("Fret: String " + s + " / Fret " + f); return; }
+  var n = state.curTrack.notes[state.selectedNoteIndices[0]], open = getOpenStrings()[s];
+  if (!n || typeof open !== "number") return;
+  var keys = window.__editKeys; if (keys) keys.setSelectedStringFret(s, f);
+}

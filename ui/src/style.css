@@ -1,3 +1,9 @@
+/* Clip editing actions */
+#edit-count { color:#ff764d; font-weight:700; white-space:nowrap; margin-left:auto; }
+.edit-cancel { color:#999; background:transparent; border:1px solid #3a3a3a; }
+.edit-apply { background:#ff764d; color:#1e1e1e; border:1px solid #ff764d; font-weight:700; }
+.edit-apply:disabled,.edit-cancel:disabled { opacity:.45; cursor:default; }
+
 /* ── Ableton SDK official CSS variables ── */
 :root {
   --p-live-ui-bg:          #1e1e1e;

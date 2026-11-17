@@ -25,6 +25,8 @@ import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggl
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
 import { startDevReporter } from "./devReporter";
+import { bindKeys } from "./keys";
+import { bindApply } from "./apply";
 import "./style.css";
 
 // Dev builds only: report to the test harness, expose state for its UI commands.
@@ -48,6 +50,8 @@ bindScaleControls();
 renderTrackList();
 bindInstrument();
 bindControls();
+bindKeys();
+bindApply();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
@@ -65,6 +69,13 @@ export function loadTrack(id) {
   if (!trk) { log("track \"" + id + "\" not found"); return; }
 
   state.curTrack = trk;
+  // Remember each note's values as opened, so Apply sends only what changed
+  // (a pitch-only edit must not move the note's original, unquantized timing).
+  if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {
+    if (n.b0 === undefined) { n.b0 = n.b; n.d0 = n.d; }
+  });
+  state.deletedOids = []; state.editHistory = [];
+  if (window.__editKeys) window.__editKeys.updateEditUi();
   state.selectedNoteIndices = [];
   clearNoteOverlays();
   // 악기 드롭다운을 현재 트랙의 악기와 동기화
