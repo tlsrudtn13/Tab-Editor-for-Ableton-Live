@@ -1,6 +1,6 @@
 {
   "name": "tab-editor-for-ableton-live",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "type": "module",
   "main": "dist/extension.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "package": "npm run build && extensions-cli package -i dist-ui/index.html",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "typecheck:ui": "tsc -p ui",
     "build:dev": "vite build --mode dev && tsx build.ts --dev",
     "dev": "npm run build:dev && extensions-cli run --storage-directory .devstore"
   },

@@ -41,7 +41,8 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    node scripts/dev-cmd.mjs report                    # editor state: log, errors, TAB numbers drawn
    node scripts/dev-cmd.mjs ui "setMode('tab'); return __tabState.dispMode"
    node scripts/dev-cmd.mjs close
-   node scripts/dev-cmd.mjs cleanup                   # deletes tracks "TAB-TEST" and "TAB-TEST-BASS"
+   node scripts/dev-cmd.mjs bigFixture 2000           # track "TAB-TEST-BIG" with a 2000-note clip (performance)
+   node scripts/dev-cmd.mjs cleanup                   # deletes the TAB-TEST, TAB-TEST-BASS and TAB-TEST-BIG tracks
    ```
    Files land in `.devstore/**/dev/`. `ui-score-latest.html` holds the rendered score SVG
    and can be opened in a browser to look at it.

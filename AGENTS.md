@@ -20,7 +20,9 @@ local orchestrator) working in this repo.
 | Local orchestrator (`run-orchestrator.ps1`, Haiku API) | fallback Claude-class worker when OpenCode and Codex are blocked | push |
 
 Escalation for a failed order: OpenCode free → OpenCode paid → Codex `-Work` → local
-orchestrator → Claude subagent (owner OK). Work orders live in `.orchestration/` (git-ignored).
+orchestrator → Claude subagent (owner OK).
+**Paused (owner, 2026-11-17):** no Codex work or advice until the owner lifts it; skip that step.
+Designer final review: Argon; when Argon's quota is out, `gemini-4-hydrogen-medium` instead of Flash. Work orders live in `.orchestration/` (git-ignored).
 
 ## Layout
 - `src/notation/` — pure engine (no SDK, no DOM): quantize, fingering/voicing, MusicXML, AlphaTex.

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { clearFretboard, lightFret } from "./fretboard";
 import { showSelection, overlaySelectedNotes } from "./overlay";
@@ -18,10 +17,10 @@ export function renderInspector(track) {
     var src = nf(notes[i], "src", "source", "arr");
     if (src === "arr" || src === "arrangement") arrN++; else sesN++;
   }
-  document.getElementById("insp-stats").textContent =
+  document.getElementById("insp-stats")!.textContent =
     arrN + " arr  " + sesN + " ses  total " + notes.length;
 
-  var velEl = document.getElementById("vel-lane");
+  var velEl = document.getElementById("vel-lane")!;
   var vH = "";
   for (var i = 0; i < notes.length; i++) {
     var vel = nf(notes[i], "v", "velocity", 100);
@@ -31,7 +30,7 @@ export function renderInspector(track) {
   }
   velEl.innerHTML = vH;
 
-  var tbody = document.getElementById("note-tbody");
+  var tbody = document.getElementById("note-tbody")!;
   var rows  = "";
   for (var i = 0; i < notes.length; i++) {
     var n    = notes[i];
@@ -61,14 +60,14 @@ export function renderInspector(track) {
 
 export function inspectorRowClick(str, fret, idx, pitch) {
   clearFretboard();
-  lightFret(str, fret);
+  lightFret(str, fret, undefined);
   state.selectedNoteIndices = [idx];           // 행 클릭으로도 줄옮김 선택 가능
   showSelection([{ f: fret, s: str, p: pitch }]);
   var prev = document.querySelector(".sel");
   if (prev) prev.classList.remove("sel");
   var row = document.getElementById("nr-" + idx);
   if (row) row.classList.add("sel");
-  try { overlaySelectedNotes(); } catch(e) {}
+  try { overlaySelectedNotes(); } catch(e: any) {}
 }
 
 /* ── 패널 토글 (Data / Log / Sidebar) ───────────────────────────────────────────────── */
@@ -88,7 +87,7 @@ export function toggleSidebar() {
 export function renderTrackList() {
   state.listEl = document.getElementById("track-list");
   if (!state.tracks || state.tracks.length === 0) {
-    state.listEl.innerHTML = '<div class="no-tracks">No MIDI tracks found.</div>';
+    state.listEl!.innerHTML = '<div class="no-tracks">No MIDI tracks found.</div>';
   } else {
     var h = "";
     for (var i = 0; i < state.tracks.length; i++) {
@@ -99,6 +98,6 @@ export function renderTrackList() {
          + '<span class="tc">' + t.noteCount + "</span>"
          + "</div>";
     }
-    state.listEl.innerHTML = h;
+    state.listEl!.innerHTML = h;
   }
 }

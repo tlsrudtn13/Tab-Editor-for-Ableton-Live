@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as alphaTab from "@coderline/alphatab";
 import { jsPDF } from "jspdf";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
@@ -16,13 +15,13 @@ export function exportPDF() {
   log("PDF: rendering at A4 width...");
   status("PDF...");
 
-  var pc = document.getElementById("pdf-render");
+  var pc: HTMLElement | null = document.getElementById("pdf-render");
   if (!pc) {
     pc = document.createElement("div");
     pc.id = "pdf-render";
     document.body.appendChild(pc);
   }
-  pc.innerHTML = "";
+  pc!.innerHTML = "";
 
   var printApi = new alphaTab.AlphaTabApi(pc, {
      core: {
@@ -59,15 +58,15 @@ export function exportPDF() {
     if (fired) return;
     fired = true;
     setTimeout(function() {
-      try { buildPdf(pc); }
-      catch(e) { log("PDF build error: " + (e.message || e)); }
+      try { buildPdf(pc!); }
+      catch(e: any) { log("PDF build error: " + (e.message || e)); }
       cleanup();
     }, 200);
   });
 
   function cleanup() {
     try { printApi.destroy(); } catch(e) {}
-    pc.innerHTML = "";
+    pc!.innerHTML = "";
     state.pdfBusy = false;
     status("Ready");
   }
@@ -76,7 +75,7 @@ export function exportPDF() {
   if (!loadXmlIntoApi(printApi, xml)) cleanup();
 }
 
-export function buildPdf(pc) {
+export function buildPdf(pc: HTMLElement) {
   var canvases = Array.prototype.slice.call(pc.querySelectorAll("canvas"))
     .filter(function(c) { return c.width > 4 && c.height > 4; });
   canvases.sort(function(a, b) {

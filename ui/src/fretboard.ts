@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { log } from "./log";
 import { NOTE_NAMES, SCALES, pitchToName } from "./musicUi";
@@ -47,20 +46,20 @@ export function buildFretboard() {
     }
     html += "</div>";
   }
-  grid.innerHTML = html;
+  grid!.innerHTML = html;
 }
 
 export function clearFretboard() {
   var lit = document.querySelectorAll(".fc.lit");
   for (var i = 0; i < lit.length; i++) lit[i].classList.remove("lit");
-  document.getElementById("fb-note-label").textContent = "";
+  document.getElementById("fb-note-label")!.textContent = "";
 }
 
-export function lightFret(s, f, label) {
+export function lightFret(s: any, f: any, label?: any) {
   var cell = document.getElementById("fc-" + s + "-" + f);
   if (cell) {
     cell.classList.add("lit");
-    if (label) document.getElementById("fb-note-label").textContent = label;
+    if (label) document.getElementById("fb-note-label")!.textContent = label;
   }
 }
 
@@ -70,8 +69,8 @@ export function updateScaleOverlay() {
   var cells = document.querySelectorAll("#fretboard-grid .fc");
   for (var i = 0; i < cells.length; i++) {
     var c  = cells[i];
-    var s  = parseInt(c.getAttribute("data-s"), 10);
-    var f  = parseInt(c.getAttribute("data-f"), 10);
+    var s  = parseInt(c.getAttribute("data-s") || "0", 10);
+    var f  = parseInt(c.getAttribute("data-f") || "0", 10);
     var nd = c.querySelector(".nd");
     c.classList.remove("scale", "scale-root");
     var pitch = (OPEN[s] || 40) + f;
@@ -93,11 +92,11 @@ export function bindScaleControls() {
   var r = document.getElementById("ui-scale-root");
   var k = document.getElementById("ui-scale");
   if (r) r.addEventListener("change", function() {
-    state.uiScaleRoot = parseInt(r.value, 10) || 0;
+    state.uiScaleRoot = parseInt((r as HTMLSelectElement).value, 10) || 0;
     updateScaleOverlay();
   });
   if (k) k.addEventListener("change", function() {
-    state.uiScaleKey = k.value;
+    state.uiScaleKey = (k as HTMLSelectElement).value;
     updateScaleOverlay();
   });
 }

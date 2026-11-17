@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { clearFretboard } from "./fretboard";
 import { detectChord, pitchToName } from "./musicUi";
@@ -12,7 +11,7 @@ export function clearNoteOverlays() {
   document.querySelectorAll(".note-sel-overlay").forEach(function(el) { el.remove(); });
 }
 
-export function drawNoteOverlay(b, isSingle) {
+export function drawNoteOverlay(b: any, isSingle?: boolean) {
   if (!b) return;
   var host = document.getElementById("alphaTab");
   if (!host) return;
@@ -28,8 +27,8 @@ export function drawNoteOverlay(b, isSingle) {
 
 // ── ★ FIX: beat 의 NoteBounds 를 모든 staff(오선+TAB)에서 수집 ──
 // findBeat() 는 한 staff 만 반환 → staffSystems 전체 순회로 양쪽 박스 표시
-export function collectNoteBounds(beat) {
-  var out = [];
+export function collectNoteBounds(beat: any): any[] {
+  var out: any[] = [];
   try {
     var bl = (state.api && state.api.renderer) ? state.api.renderer.boundsLookup : null;
     if (!bl || !beat || !bl.staffSystems) return out;
@@ -48,16 +47,16 @@ export function collectNoteBounds(beat) {
         }
       }
     }
-  } catch(e) {}
+  } catch(e: any) {}
   return out;
 }
 
-export function overlayBeatNotes(beat) {
+export function overlayBeatNotes(beat: any) {
   var nbs = collectNoteBounds(beat);
   for (var i = 0; i < nbs.length; i++) drawNoteOverlay(nbs[i].noteHeadBounds, false);
 }
 
-export function overlayOneNote(alphaTabNote) {
+export function overlayOneNote(alphaTabNote: any) {
   if (!alphaTabNote) return;
   var nbs = collectNoteBounds(alphaTabNote.beat);
   for (var i = 0; i < nbs.length; i++) {
@@ -88,7 +87,7 @@ export function overlaySelectedNotes() {
         var beats = bar.beats || [];
         for (var ti = 0; ti < beats.length; ti++) {
           var beat = beats[ti];
-          var bp = null;
+          var bp: number | null = null;
           try { if (bar.masterBar && beat.playbackStart !== undefined) bp = (bar.masterBar.start + beat.playbackStart) / 960; } catch(e) {}
           var nbs = beat.notes || [];
           for (var ni = 0; ni < nbs.length; ni++) {
@@ -121,7 +120,7 @@ export function overlaySelectedNotes() {
    ★ [v5] 트랙 노트 매칭 — f/s 우선, 실패 시 피치 매칭(quantize 병합으로
    resolveStringCollisions 가 줄을 재배치한 노트 대응), bp 로 가장 가까운 노트 선택
    ═══════════════════════════════════════════════════════════════════════════ */
-export function matchTrackNote(realF, ourStr, pitch, bp, excludeSet) {
+export function matchTrackNote(realF: any, ourStr: any, pitch: any, bp: any, excludeSet: any) {
   var notes = (state.curTrack && Array.isArray(state.curTrack.notes)) ? state.curTrack.notes : [];
   function best(pred) {
     var bi = -1, bd = Infinity;
@@ -147,7 +146,7 @@ export function matchTrackNote(realF, ourStr, pitch, bp, excludeSet) {
 }
 
 /* ── 선택 정보 일괄 표시 ──────────────────────────────────────────────────── */
-export function showSelection(noteList, isSingle) {
+export function showSelection(noteList: any, isSingle?: boolean) {
   var noteDisp  = document.getElementById("inspector-note-display");
   var chordDisp = document.getElementById("inspector-chord-display");
   var has = !!(noteList && noteList.length);
@@ -163,7 +162,7 @@ export function showSelection(noteList, isSingle) {
 }).join("  \u00b7  ");
   if (isSingle) txt = "▶ " + txt + "  (selected)";   // ★ v4: 단일 선택 표시
   if (noteDisp) noteDisp.textContent = txt;
-  document.getElementById("fb-note-label").textContent = txt;
+  document.getElementById("fb-note-label")!.textContent = txt;
   var chordName = noteList.length >= 2
     ? detectChord(noteList.map(function(h) { return h.p; })) : "";
   if (chordDisp) chordDisp.textContent = chordName ? "♪  " + chordName : "";

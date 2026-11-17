@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { log } from "./log";
 import { clearFretboard } from "./fretboard";
@@ -16,7 +15,7 @@ export function togglePlay() {
   try {
     if (state.playing) { if (state.api.pause) state.api.pause(); }
     else         { if (state.api.play)  state.api.play();  }
-  } catch(e) { log("player: " + e.message); }
+  } catch(e: any) { log("player: " + e.message); }
 }
 
 export function stopPlay() {

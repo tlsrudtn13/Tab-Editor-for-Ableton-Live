@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as alphaTab from "@coderline/alphatab";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { toMusicXml } from "../../src/notation/toMusicXml.js";
@@ -73,9 +72,9 @@ export function setInstrument(key) {
 }
 
 export function bindInstrument() {
-  var sel = document.getElementById("ui-instrument");
+  var sel = document.getElementById("ui-instrument") as HTMLSelectElement | null;
   if (sel) sel.addEventListener("change", function() {
-    setInstrument(sel.value);
+    setInstrument((sel as HTMLSelectElement).value);
   });
 }
 
@@ -106,7 +105,7 @@ export function colorizeOutOfRange(score) {
               (bt.notes || []).forEach(function(n) {
                 var dirty = false;
                 if (state.curTrack && Array.isArray(state.curTrack.notes)) {
-                  var bp = null; try { bp = (bar.masterBar.start + bt.playbackStart) / 960; } catch(e) {}
+                  var bp: number | null = null; try { bp = (bar.masterBar.start + bt.playbackStart) / 960; } catch(e) {}
                   var pitch = n.realValue !== undefined ? n.realValue : n.displayValue;
                   dirty = state.curTrack.notes.some(function(tn) { return tn.dirty && (bp === null || Math.abs(tn.b-bp)<0.03) && tn.p === pitch; });
                 }
@@ -122,12 +121,12 @@ export function colorizeOutOfRange(score) {
         });
       });
     });
-  } catch(e) { log("colorize: " + (e.message || e)); }
+  } catch(e: any) { log("colorize: " + (e.message || e)); }
 }
 
 /* ── createApi ────────────────────────────────────────────────────────────── */
 export function createApi() {
-  var el = document.getElementById("alphaTab");
+  var el = document.getElementById("alphaTab")!;
   if (state.api) {
     try { if (state.api.destroy) state.api.destroy(); } catch(e) {}
     state.api = null;
@@ -174,7 +173,7 @@ export function createApi() {
   });
 
   api.postRenderFinished.on(function() {
-    log("Render complete");
+    log("Render complete (" + Math.round(performance.now()) + " ms after page start)");
     // Keep selection box after re-render
     try { overlaySelectedNotes(); } catch(e) {}
   });
@@ -194,12 +193,12 @@ export function createApi() {
     overlayBeatNotes(beat);          // ★ v5: 화음 전체 주황 박스
     state.selectedNoteIndices = [];
 
-    var highlightedNotes = [];
+    var highlightedNotes: any[] = [];
     var nStrings = getStringCount();
     var OPEN     = getOpenStrings();
 
     // 클릭한 beat 의 절대 박자 위치 (가능하면 — 줄옮김의 정확한 노트 식별용)
-    var beatPos = null;
+    var beatPos: number | null = null;
   try {
     if (beat.playbackStart !== undefined && beat.voice && beat.voice.bar && beat.voice.bar.masterBar) {
       beatPos = (beat.voice.bar.masterBar.start + beat.playbackStart) / 960;
@@ -244,7 +243,7 @@ export function createApi() {
         r.classList.remove("sel");
       });
       var used = {};
-      var firstRow = null;
+      var firstRow: any = null;
       for (var hi = 0; hi < highlightedNotes.length; hi++) {
         var hN = highlightedNotes[hi];
         var found = matchTrackNote(hN.f, hN.s, hN.p, beatPos, used);  // ★ v5
@@ -283,7 +282,7 @@ export function createApi() {
 
       // beat 절대 위치 (정확한 노트 식별용)
       // ✅ 교체
-      var bp = null;
+      var bp: number | null = null;
       try {
       var bt = note.beat;
       if (bt && bt.playbackStart !== undefined && bt.voice && bt.voice.bar && bt.voice.bar.masterBar) {
@@ -312,7 +311,7 @@ export function createApi() {
         if (row) { row.classList.add("sel"); row.scrollIntoView({ block: "nearest" }); }
 
         log("Note selected: " + ourStr + ":" + pitchToName(pitch) + " (f" + f + ") @b" +
-        (bp === null ? "?" : bp.toFixed(2)));
+        (bp === null ? "?" : (bp as number).toFixed(2)));
       }, 20);
     });
   }
@@ -325,7 +324,7 @@ export function loadXmlIntoApi(targetApi, xmlStr) {
     var encoded = new TextEncoder().encode(xmlStr);
     targetApi.load(encoded.buffer);
     return true;
-  } catch(e) {
+  } catch(e: any) {
     log("XML load error: " + (e.message || e));
     return false;
   }
@@ -365,7 +364,7 @@ export function rebuildScore() {
       capo:        state.uiCapo,
       cues:        state.curTrack.live && state.curTrack.live.cues,
       timeSig:     state.uiTimeSig || state.curTrack.timeSig,
-      quantize:    state.uiQuantize === "auto" ? undefined : state.uiQuantize,  // ★ v3
+      quantize:    state.uiQuantize === "auto" ? undefined : (state.uiQuantize as any),  // ★ v3
       key:         (state.curTrack.live && state.curTrack.live.scale && state.curTrack.live.scale.enabled)
                     ? (keyFromLiveScale(state.curTrack.live.scale.root, state.curTrack.live.scale.name) || undefined)
                     : undefined
@@ -391,28 +390,28 @@ export function rebuildScore() {
         status("\u26a0 " + (hi + lo) + " out of range");
       }
     }
-  } catch(e) {
+  } catch(e: any) {
     log("Rebuild error: " + (e.message || e));
   }
 }
 
 /* ── 컨트롤 바인딩: Transpose / Capo / Quantize ──────────────────────────── */
 export function bindControls() {
-  var t = document.getElementById("ui-transpose");
-  var c = document.getElementById("ui-capo");
-  var q = document.getElementById("ui-quantize");
-  var ts = document.getElementById("ui-timesig");
-  if (ts) ts.addEventListener("change", function() { var a=ts.value.split("/"); state.uiTimeSig={beats:Number(a[0]),type:Number(a[1])}; rebuildScore(); });
+  var t = document.getElementById("ui-transpose") as HTMLInputElement | null;
+  var c = document.getElementById("ui-capo") as HTMLInputElement | null;
+  var q = document.getElementById("ui-quantize") as HTMLSelectElement | null;
+  var ts = document.getElementById("ui-timesig") as HTMLSelectElement | null;
+  if (ts) ts.addEventListener("change", function() { var a=ts!.value.split("/"); state.uiTimeSig={beats:Number(a[0]),type:Number(a[1])}; rebuildScore(); });
   function onPitchChange() {
     state.uiTranspose = parseInt((t && t.value) || "0", 10) || 0;
     state.uiCapo      = Math.max(0, parseInt((c && c.value) || "0", 10) || 0);
-    clearTimeout(state.rebuildTimer);
+    if (state.rebuildTimer) clearTimeout(state.rebuildTimer);
     state.rebuildTimer = setTimeout(rebuildScore, 350);
   }
   if (t) t.addEventListener("input", onPitchChange);
   if (c) c.addEventListener("input", onPitchChange);
   if (q) q.addEventListener("change", function() {
-    state.uiQuantize = q.value === "auto" ? "auto" : (parseInt(q.value, 10) || 16);
+    state.uiQuantize = q!.value === "auto" ? "auto" : (parseInt(q!.value, 10) || 16);
     rebuildScore();
   });
 }

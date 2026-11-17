@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as alphaTab from "@coderline/alphatab";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { state } from "./state";

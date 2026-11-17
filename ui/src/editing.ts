@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { log, status } from "./log";
 import { clearFretboard, getOpenStrings, getStringCount, lightFret } from "./fretboard";
@@ -57,7 +56,7 @@ export function adjustDuration(mode) {
     renderInspector(state.curTrack);
     // 선택 유지 점등
     clearFretboard();
-    var sel = [];
+    var sel: any[] = [];
     for (var i = 0; i < state.selectedNoteIndices.length; i++) {
       var n = state.curTrack.notes[state.selectedNoteIndices[i]];
       if (n) { lightFret(n.s, n.f); sel.push({ f: n.f, s: n.s, p: n.p }); }
@@ -114,7 +113,7 @@ export function moveString(dir) {
     renderInspector(state.curTrack);
     // 새 위치 다시 점등
     clearFretboard();
-    var sel = [];
+    var sel: any[] = [];
     for (var i = 0; i < state.selectedNoteIndices.length; i++) {
       var n = state.curTrack.notes[state.selectedNoteIndices[i]];
       if (n) { lightFret(n.s, n.f); sel.push({ f: n.f, s: n.s, p: n.p }); }

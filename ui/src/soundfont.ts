@@ -1,4 +1,3 @@
-// @ts-nocheck
 import soundfontUrl from "../../node_modules/@coderline/alphatab/dist/soundfont/sonivox.sf3?url";
 
 export const soundFontUrl: string = (typeof soundfontUrl === "string") ? soundfontUrl : "";

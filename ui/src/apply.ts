@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { layerFromNotes } from "../../src/notation/tabLayer.js";
 import { instrumentKeyOf } from "./score";

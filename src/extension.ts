@@ -20,6 +20,7 @@ import modalInterface from "../dist-ui/index.html";
 import type { Note, TrackPayload } from "./notation/index.js";
 import { collectNotes, notesFromClip, clipRegion } from "./notation/collectNotes.js";
 import { buildPayload } from "./notation/payload.js";
+import { injectableJson } from "./inject.js";
 import { mergeClipEdits } from "./notation/clipEdits.js";
 import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
@@ -72,6 +73,29 @@ function instrumentForLayer(layer?: TabLayer) { return layer ? INSTRUMENT_BY_KEY
 
 // ============================================================
 // 공용 헬퍼 2: 페이로드 배열 → 모달 에디터 열기
+/** Short message shown in Live after the modal closes (the SDK has no toast; a progress dialog is the closest). */
+async function notify(context: ReturnType<typeof initialize>, text: string, ms = 1800): Promise<void> {
+    try {
+        await context.ui.withinProgressDialog(text, { progress: 100 },
+            (_update, signal) => new Promise<void>((resolve) => {
+                const timer = setTimeout(resolve, ms);
+                signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); });
+            }));
+    } catch (e) {
+        console.warn("[TAB] notify failed:", e);
+    }
+}
+
+function applySummary(stats: { changed: number; added: number; deleted: number; dropped: number }): string {
+    const parts: string[] = [];
+    if (stats.changed) parts.push(`${stats.changed} changed`);
+    if (stats.added) parts.push(`${stats.added} added`);
+    if (stats.deleted) parts.push(`${stats.deleted} deleted`);
+    let text = "Applied to clip: " + parts.join(", ") + ". Use Undo in Live to revert.";
+    if (stats.dropped) text += ` ${stats.dropped} invalid edit(s) skipped.`;
+    return text;
+}
+
 // ============================================================
 async function showEditor(
     context: ReturnType<typeof initialize>,
@@ -85,11 +109,11 @@ async function showEditor(
 
     const safePayloads = payloads ?? [];
     // </script 문자열이 HTML을 깨지 않도록 이스케이프
-    const safeJson = JSON.stringify(safePayloads)
-        .replace(/<\/script/gi, "<\\/script");
+    // Injected as JSON.parse("…"): large payloads parse faster from a string than from an object literal.
+    const safeJson = injectableJson(safePayloads);
 
     // tracks 데이터를 <head> 안에 주입 (DOCTYPE 앞은 WebView2 오동작)
-    let headInject = `<head><script>window.tracks=${safeJson};</script>`;
+    let headInject = `<head><script>window.tracks=JSON.parse(${safeJson});</script>`;
     if (message) {
         headInject += `<script>window.tabMessage=${JSON.stringify(message)};</script>`;
     }
@@ -203,7 +227,16 @@ export function activate(activation: ActivationContext) {
         try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     }
 
-    context.commands.registerCommand("tabeditor.open", async (...args: unknown[]) => {
+    // Every command goes through this: an exception inside one must never take down the extension host.
+    const register = (id: string, fn: (...args: any[]) => Promise<void>) =>
+        context.commands.registerCommand(id, (...args: unknown[]) => {
+            fn(...args).catch(async (e: unknown) => {
+                console.error(`[TAB] ${id} failed:`, e);
+                await notify(context, "Tab Editor could not open this: " + (e instanceof Error ? e.message : String(e)), 4000);
+            });
+        });
+
+    register("tabeditor.open", async (...args: unknown[]) => {
         let track: any = null;
         if (args[0] != null) {
             try {
@@ -228,13 +261,13 @@ export function activate(activation: ActivationContext) {
         try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     });
 
-    context.commands.registerCommand("tabeditor.openAll", async () => { await openAllTracks(); });
+    register("tabeditor.openAll", async () => { await openAllTracks(); });
 
     // ──────────────────────────────────────────────────────
     // ② 선택영역 모드 (어레인지: 클립 우클릭 or 드래그 범위)
     //    선택 시작점을 0박자로 재배치(rebase) → 악보가 1마디부터
     // ──────────────────────────────────────────────────────
-    context.commands.registerCommand("tabeditor.openSelection", async (arg: unknown) => {
+    register("tabeditor.openSelection", async (arg: unknown) => {
         const sel   = arg as ArrangementSelection;
         const tempo = getTempo(context);
         const start = sel.time_selection_start;
@@ -281,7 +314,7 @@ export function activate(activation: ActivationContext) {
     // ③ 단일 클립 모드 (세션/어레인지 공통: MidiClip 우클릭)
     //    클립 핸들 → MidiClip 복원 → 그 클립 노트만, 0박부터
     // ──────────────────────────────────────────────────────
-    context.commands.registerCommand("tabeditor.openClip", async (...args: unknown[]) => {
+    register("tabeditor.openClip", async (...args: unknown[]) => {
         const tempo = getTempo(context);
         let clip: any;
         try {
@@ -340,24 +373,29 @@ export function activate(activation: ActivationContext) {
         const openedNotes = JSON.stringify(clip.notes);
         const result = await showEditor(context, [p]);
         if (!result) return;
+        let message: any;
+        try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         try {
-            const message = JSON.parse(result);
             if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
             if (message?.action !== "apply" || !message.edits) return;
             const current = clip.notes;
             if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {
                 console.warn("[TAB] Apply skipped: the clip's notes changed while the editor was open.");
+                await notify(context, "Not applied: the clip changed while the editor was open. Reopen it and try again.", 4000);
                 return;
             }
             const merged = mergeClipEdits(current, message.edits, regionStart);
             if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) {
                 console.log(`[TAB] Apply has no valid changes: ${JSON.stringify(merged.stats)}`);
+                await notify(context, "Nothing to apply: no valid note changes.");
                 return;
             }
             context.withinTransaction(() => { clip.notes = merged.notes as any; });
             console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
+            await notify(context, applySummary(merged.stats));
         } catch (e) {
             console.warn("[TAB] Apply message ignored:", e);
+            await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
         }
     });
 

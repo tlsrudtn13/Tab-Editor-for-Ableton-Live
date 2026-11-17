@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { state } from "./state";
 import { getOpenStrings, getStringCount, clearFretboard, lightFret } from "./fretboard";
 import { rebuildScore } from "./score";
@@ -7,7 +6,7 @@ import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overla
 import { adjustDuration, moveString } from "./editing";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
-export function saveUndo(before, deletedBefore) {
+export function saveUndo(before?: any, deletedBefore?: any) {
   state.editHistory.push({ notes: before || state.curTrack.notes.map(n => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
   if (state.editHistory.length > 50) state.editHistory.shift();
 }
@@ -28,15 +27,15 @@ function highlightSelection() {
 export function selectIndex(index) {
   if (!state.curTrack || index < 0 || index >= state.curTrack.notes.length) return;
   state.selectedNoteIndices = [index]; highlightSelection();
-  try { overlaySelectedNotes(); } catch(e) {}
+  try { overlaySelectedNotes(); } catch(e: any) {}
 }
 export function updateEditUi() {
   const edits = state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
   const count = document.getElementById("edit-count"), apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (count) { count.textContent = "* " + edits + " edits"; count.classList.toggle("hidden", edits === 0); }
   const enabled = active();
-  if (apply) { apply.disabled = !enabled; apply.title = enabled ? "" : "Apply works in Open (Clip)"; }
-  if (cancel) { cancel.disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }
+  if (apply) { (apply as HTMLButtonElement).disabled = !enabled; apply.title = enabled ? "" : "Apply works in Open (Clip)"; }
+  if (cancel) { (cancel as HTMLButtonElement).disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }
 }
 function pitchChange(delta) {
   const notes=state.curTrack.notes, before=notes.map(n=>({...n})), open=getOpenStrings(), count=getStringCount(); let touched=false;
@@ -59,12 +58,12 @@ function onKey(e) {
   if(k==="Escape"){state.selectedNoteIndices=[];highlightSelection();return;}
   if(!state.curTrack)return;
   const sorted=state.curTrack.notes.map((n,i)=>({n,i})).sort((a,b)=>a.n.b-b.n.b||b.n.p-a.n.p).map(x=>x.i);
-  if(k==="ArrowLeft"||k==="ArrowRight"){e.preventDefault();let pos=sorted.indexOf(selected[0]);if(pos<0)pos=k==="ArrowLeft"?sorted.length: -1;selectIndex(sorted[Math.max(0,Math.min(sorted.length-1,pos+(k==="ArrowLeft"?-1:1)))]);return;}
+  if(k==="ArrowLeft"||k==="ArrowRight"){e.preventDefault();let pos=sorted.indexOf(selected[0]);if(pos<0)pos=k==="ArrowLeft"?sorted.length: -1;selectIndex(sorted[Math.max(0,Math.min(sorted.length-1,pos+(k==="ArrowLeft"?-1:1)))] as number);return;}
   if(!active())return;
   if((k==="ArrowUp"||k==="ArrowDown")&&selected.length){e.preventDefault();if(e.altKey)moveString(k==="ArrowUp"?-1:1);else pitchChange((k==="ArrowUp"?1:-1)*(e.shiftKey?12:1));return;}
   if((k==="["||k==="]")&&selected.length){adjustDuration(k==="]"?"+1":"-1");return;}
   if(k.toLowerCase()==="d"&&selected.length){adjustDuration("Auto");return;}
   if((k==="Delete"||k==="Backspace")&&selected.length){e.preventDefault();const before=state.curTrack.notes.map(n=>({...n})), deletedBefore=state.deletedOids.slice();const removed=selected.slice().sort((a,b)=>b-a);removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});state.selectedNoteIndices=[];saveUndo(before,deletedBefore);render();return;}
-  if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]];if(!n)return;const open=getOpenStrings()[n.s];if(open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
+  if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]];if(!n)return;const open=getOpenStrings()[n.s];if(open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
 }
 export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi};updateEditUi();}

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ============================================================
 // ui/src/main.ts — TAB Editor WebView 메인 (v3)
 //
@@ -60,7 +59,7 @@ export function loadTrack(id) {
   var el = document.getElementById("ti-" + id);
   if (el) el.classList.add("active");
 
-  var trk = null;
+  var trk: any = null;
   if (state.tracks) {
     for (var i = 0; i < state.tracks.length; i++) {
       if (String(state.tracks[i].id) === String(id)) { trk = state.tracks[i]; break; }
@@ -70,10 +69,10 @@ export function loadTrack(id) {
 
   state.curTrack = trk;
   state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
-  var tsSel = document.getElementById("ui-timesig");
-  if (tsSel) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;
+  var tsSel = document.getElementById("ui-timesig") as HTMLSelectElement | null;
+  if (tsSel && state.uiTimeSig) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;
   state.uiCapo = trk.capo || 0;
-  var capoSel = document.getElementById("ui-capo");
+  var capoSel = document.getElementById("ui-capo") as HTMLSelectElement | null;
   if (capoSel) capoSel.value = String(state.uiCapo);
   // Remember each note's values as opened, so Apply sends only what changed
   // (a pitch-only edit must not move the note's original, unquantized timing).
@@ -85,7 +84,7 @@ export function loadTrack(id) {
   state.selectedNoteIndices = [];
   clearNoteOverlays();
   // 악기 드롭다운을 현재 트랙의 악기와 동기화
-  var instSel = document.getElementById("ui-instrument");
+  var instSel = document.getElementById("ui-instrument") as HTMLSelectElement | null;
   if (instSel) instSel.value = instrumentKeyOf(trk.instrument);
   buildFretboard();          // 트랙별 악기(줄 수) 반영
   log("Loading: \"" + trk.name + "\" (" + trk.noteCount + " notes)");
@@ -107,8 +106,8 @@ export function loadTrack(id) {
     };
     var _mapped = _scaleMap[trk.live.scale.name];
     if (_mapped) {
-      var _rootSel = document.getElementById("ui-scale-root");
-      var _keySel = document.getElementById("ui-scale");
+      var _rootSel = document.getElementById("ui-scale-root") as HTMLSelectElement | null;
+      var _keySel = document.getElementById("ui-scale") as HTMLSelectElement | null;
       if (_rootSel) _rootSel.value = String(trk.live.scale.root);
       if (_keySel) _keySel.value = _mapped;
       state.uiScaleRoot = trk.live.scale.root;
@@ -140,7 +139,7 @@ window.loadTrack = loadTrack;
 
 /* ── 초기 실행 ────────────────────────────────────────────────────────────── */
 if (state.tracks && state.tracks.length > 0) {
-  setTimeout(function() { window.loadTrack(state.tracks[0].id); }, 100);
+  setTimeout(function() { window.loadTrack!(state.tracks![0].id); }, 100);
 } else {
   if (window.tabMessage) {
     status(window.tabMessage);

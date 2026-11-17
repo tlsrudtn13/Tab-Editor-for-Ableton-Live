@@ -1,109 +1,163 @@
 # Tab Editor for Ableton Live
 
-A built-in guitar/bass tablature & standard-notation editor for Ableton Live 12.
-Converts MIDI clips into Guitar Pro–quality scores. (Powered by [alphaTab](https://alphatab.net))
+A guitar/bass tablature and standard-notation editor that runs inside Ableton Live 12.
+Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
+Score rendering by [alphaTab](https://alphatab.net).
 
-> ⚠️ Beta (v0.9.0) — Runs in the Ableton Live 12 Extensions (beta) environment.
+> Beta (v0.10.0). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
-- MIDI clip → guitar/bass TAB + standard notation (toggle views)
-- Three entry points: right-click a clip / arrangement selection / whole track
-- Transpose · Capo · Instrument switching (6/7/8/12-string guitar, 4/5/6-string bass)
-- Chord detection · Fretboard scale overlay · Inspector
-- MusicXML 4.0–based engine · PDF export · AlphaTex export
-- Dark / Light theme
+**Viewer**
+- Staff + TAB, TAB only or staff only. Dark and light themes.
+- Fingering that follows the hand position across a phrase, so runs and solos stay in one position.
+- Bass clips open as 4-string bass automatically. Other instruments: 7/8/12-string guitar, 5/6-string bass.
+- Tunings: Standard, Drop D, Eb, D Standard, Drop C, DADGAD, Open G, Open D; bass Drop D and Eb. Capo.
+- Rhythm: automatic grid (1/8, 1/16, 1/32) including 8th and 16th triplets.
+- Key signature from Live's Scale Mode; no guessed sharps on short riffs.
+- Time signatures 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (Session clips use their scene's signature).
+- Shows only the clip's loop region. Live locators appear as rehearsal marks.
+- Fretboard with scale overlay, chord names, note table, playback, PDF and AlphaTex export.
 
-## Installation
+**Editing (Open (Clip) only)**
 
-1. Download the latest `.ablx` file from [Releases](../../releases)
-2. Drag and drop the `.ablx` onto the Extensions page in Ableton Live's settings
-
-## Usage
-
-| Entry point | Action |
+| Key | Action |
 |---|---|
-| Right-click a MIDI clip → Open (Clip) | Edit that clip only |
-| Select an arrangement range, right-click → Open (Selection) | Edit the selected range only |
-| Right-click a track name → Open (Track) | Edit the whole track |
+| ← / → | Select previous / next note |
+| ↑ / ↓ | Pitch up / down a semitone (Shift: an octave) |
+| Alt + ↑ / ↓ | Move the note to another string (kept the next time you open the clip) |
+| 0–9 | Type a fret on the current string (two digits within 0.4 s) |
+| `[` / `]` | Shorter / longer by one grid step; `D` extends to the next note |
+| Delete | Delete the note |
+| Ctrl + D | Duplicate the note |
+| Ctrl + Z | Undo the last edit in the editor |
+| Ctrl + Enter | Apply to Clip |
+| Esc | Clear the selection |
+
+Clicking a fret on the fretboard moves the selected note there.
+**Apply to Clip** writes only the notes you changed. Notes whose pitch you changed keep their original
+(unquantized) timing. The whole apply is one step in Live's Undo. If the clip changed in Live while the
+editor was open, nothing is written and Live shows a message.
+
+String choices, tuning, capo and time signature are saved per clip and restored when you open it again.
+
+## Install
+
+1. Download the `.ablx` file from [Releases](../../releases).
+2. In Live, open Settings → Extensions and drop the `.ablx` file on the page.
+
+## Use
+
+| Right-click | Menu item | Opens |
+|---|---|---|
+| A MIDI clip | Open (Clip) | That clip's loop region, editable |
+| An arrangement selection on a MIDI track | Open (Selection) | The selected range (view only) |
+| A MIDI track | Open (Track) | All clips on that track (view only) |
+| An audio track or a scene | Open (All Tracks) | Every MIDI track (view only) |
+
+Click inside the editor once before pressing Play: the browser engine starts audio only after a click.
+
+## Known limitations (beta)
+
+- Overlapping notes (let ring) are written as one voice.
+- No technique marks yet (hammer-on, pull-off, slide, bend, palm mute).
+- You cannot add a note in an empty spot yet; duplicate an existing note and move it.
+- Track and selection views cannot write back.
+- Very long tracks (thousands of notes) take a few seconds to render.
 
 ## Development
 
 ```bash
 # Put the Ableton Extensions SDK 1.0.0-beta.1 .tgz files (sdk, cli) in vendor/ first
 npm install
-npm run build     # Production build
-npm run start     # Launch Live Extension Host (development)
-npm run package   # Create the .ablx package
+npm test           # unit tests
+npm run build      # production build
+npm run dev        # build with the dev harness and attach to Live (see docs/TESTING.md)
+npm run package    # create the .ablx package
 ```
 
-## Known Limitations (Beta)
-
-- Triplets/tuplets are approximated (precise notation is planned as a future editing feature)
-- Overlapping notes (arpeggio let-ring) are written as a single voice
-- No playback yet (score display only)
+How the work is split between people and agents is in [AGENTS.md](AGENTS.md).
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
 
 ## Credits
 
-- Score rendering: [alphaTab](https://alphatab.net) (MPL-2.0)
+- Score rendering and playback: [alphaTab](https://alphatab.net) (MPL-2.0)
+- Sound: Sonivox soundfont bundled with alphaTab, Copyright (c) 2004-2006 Sonic Network Inc. (Apache-2.0)
 - PDF: [jsPDF](https://github.com/parallax/jsPDF) (MIT)
 
 ---
 
 # Tab Editor for Ableton Live (한국어)
 
-Ableton Live 12 내장형 기타/베이스 타브 & 표준 기보 편집기.
-MIDI 클립을 Guitar Pro 수준의 악보로 변환합니다. ([alphaTab](https://alphatab.net) 기반)
+Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
+MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> ⚠️ 베타 (v0.9.0) — Ableton Live 12 Extensions(베타) 환경에서 동작합니다.
+> 베타 (v0.10.0). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
-## 주요 기능
+## 기능
 
-- MIDI 클립 → 기타/베이스 TAB + 표준 오선보 (뷰 전환 지원)
-- 3가지 진입점: 클립 우클릭 / 어레인지 선택영역 / 트랙 전체
-- 트랜스포즈 · 카포 · 악기 전환 (6/7/8/12현 기타, 4/5/6현 베이스)
-- 코드 감지 · 프렛보드 스케일 오버레이 · Inspector
-- MusicXML 4.0 기반 엔진 · PDF 내보내기 · AlphaTex 내보내기
-- 다크 / 라이트 테마
+**보기**
+- 오선보+TAB, TAB만, 오선보만. 다크/라이트 테마.
+- 손 위치를 따라가는 운지 계산. 런과 솔로가 한 포지션 안에 머뭅니다.
+- 베이스 클립은 자동으로 4현 베이스로 열립니다. 7/8/12현 기타, 5/6현 베이스도 고를 수 있습니다.
+- 튜닝: 스탠더드, Drop D, Eb, D 스탠더드, Drop C, DADGAD, Open G, Open D, 베이스 Drop D·Eb. 카포.
+- 리듬: 자동 그리드(1/8, 1/16, 1/32), 8분·16분 셋잇단 포함.
+- 조표는 Live의 Scale Mode를 따릅니다. 짧은 리프에 엉뚱한 샵을 붙이지 않습니다.
+- 박자표 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (세션 클립은 씬의 박자를 따름).
+- 클립의 루프 구간만 보여 주고, Live 로케이터는 리허설 마크로 표시합니다.
+- 프렛보드 스케일 표시, 코드 이름, 노트 표, 재생, PDF·AlphaTex 내보내기.
+
+**편집 (Open (Clip)에서만)**
+
+| 키 | 동작 |
+|---|---|
+| ← / → | 이전/다음 노트 선택 |
+| ↑ / ↓ | 반음 올림/내림 (Shift: 한 옥타브) |
+| Alt + ↑ / ↓ | 다른 줄로 이동 (다음에 열 때도 유지) |
+| 0–9 | 현재 줄의 프렛 입력 (0.4초 안에 두 자리) |
+| `[` / `]` | 그리드 한 칸 짧게/길게, `D`는 다음 노트까지 늘림 |
+| Delete | 노트 삭제 |
+| Ctrl + D | 노트 복제 |
+| Ctrl + Z | 에디터 안에서 마지막 편집 되돌리기 |
+| Ctrl + Enter | 클립에 반영 (Apply to Clip) |
+| Esc | 선택 해제 |
+
+프렛보드의 칸을 누르면 선택한 노트가 그 자리로 옮겨집니다.
+**Apply to Clip**은 바꾼 노트만 클립에 씁니다. 음높이만 바꾼 노트는 원래(퀀타이즈 전) 타이밍을 유지합니다.
+한 번의 반영은 Live 실행 취소 한 단계입니다. 에디터가 열려 있는 동안 Live에서 클립이 바뀌었다면
+아무것도 쓰지 않고 안내 메시지를 띄웁니다.
+
+고른 줄, 튜닝, 카포, 박자표는 클립마다 저장되어 다시 열 때 복원됩니다.
 
 ## 설치
 
-1. [Releases](../../releases)에서 최신 `.ablx` 파일을 다운로드
-2. Ableton Live 설정 → Extensions 페이지에 `.ablx`를 드래그 앤 드롭
+1. [Releases](../../releases)에서 `.ablx` 파일을 받습니다.
+2. Live 설정 → Extensions 페이지에 `.ablx` 파일을 끌어다 놓습니다.
 
-## 사용법
+## 사용
 
-| 진입점 | 동작 |
-|---|---|
-| MIDI 클립 우클릭 → Open (Clip) | 해당 클립만 편집 |
-| 어레인지 범위 선택 후 우클릭 → Open (Selection) | 선택 구간만 편집 |
-| 트랙 이름 우클릭 → Open (Track) | 트랙 전체 편집 |
+| 우클릭 위치 | 메뉴 | 열리는 범위 |
+|---|---|---|
+| MIDI 클립 | Open (Clip) | 그 클립의 루프 구간, 편집 가능 |
+| MIDI 트랙의 어레인지 선택 구간 | Open (Selection) | 선택 구간 (보기 전용) |
+| MIDI 트랙 | Open (Track) | 그 트랙의 모든 클립 (보기 전용) |
+| 오디오 트랙 또는 씬 | Open (All Tracks) | 모든 MIDI 트랙 (보기 전용) |
 
-## 개발
-
-```bash
-# Ableton Extensions SDK 1.0.0-beta.1 .tgz(sdk, cli)를 vendor/에 넣은 후
-npm install
-npm run build     # 프로덕션 빌드
-npm run start     # Live Extension Host 실행 (개발)
-npm run package   # .ablx 패키지 생성
-```
+재생하기 전에 에디터 안을 한 번 클릭하세요. 브라우저 엔진은 클릭이 있어야 소리를 냅니다.
 
 ## 알려진 제한 (베타)
 
-- 셋잇단/잇단음표는 근사 표기 (정밀 표기는 추후 편집 기능으로 예정)
-- 겹치는 음(아르페지오 let-ring)은 단일 성부로 표기
-- 플레이백 없음 (악보 표시 전용)
-
-## 라이선스
-
-MIT License — [LICENSE](LICENSE) 참고.
+- 겹쳐 울리는 음(let ring)은 한 성부로 표기됩니다.
+- 해머링·풀링, 슬라이드, 벤드, 브리지 뮤트 같은 기법 표기는 아직 없습니다.
+- 빈 자리에 새 노트를 넣을 수 없습니다. 기존 노트를 복제해서 옮기세요.
+- 트랙·선택 구간 보기에서는 클립에 반영할 수 없습니다.
+- 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
 
 ## 크레딧
 
-- 악보 렌더링: [alphaTab](https://alphatab.net) (MPL-2.0)
+- 악보 렌더링·재생: [alphaTab](https://alphatab.net) (MPL-2.0)
+- 소리: alphaTab에 포함된 Sonivox 사운드폰트, Copyright (c) 2004-2006 Sonic Network Inc. (Apache-2.0)
 - PDF: [jsPDF](https://github.com/parallax/jsPDF) (MIT)

@@ -29,7 +29,8 @@ export const DEV_PORT = 5179;
 const TEST_TRACK = "TAB-TEST";
 /** Second track with one arrangement clip, to tell "this track" from "all tracks". */
 const TEST_TRACK_2 = "TAB-TEST-BASS";
-const isTestTrack = (t: any) => t?.name === TEST_TRACK || t?.name === TEST_TRACK_2;
+const TEST_TRACK_BIG = "TAB-TEST-BIG";
+const isTestTrack = (t: any) => t?.name === TEST_TRACK || t?.name === TEST_TRACK_2 || t?.name === TEST_TRACK_BIG;
 
 let devDir = "";
 let tempDir = "";
@@ -92,7 +93,7 @@ function summarize(ctx: Ctx) {
 
 async function createFixtures(ctx: Ctx) {
     const song: any = ctx.application.song;
-    for (const t of [...song.tracks]) if (isTestTrack(t)) await song.deleteTrack(t);
+    for (const t of [...song.tracks]) if (t?.name === TEST_TRACK || t?.name === TEST_TRACK_2) await song.deleteTrack(t);
 
     const track: any = await song.createMidiTrack();
     track.name = TEST_TRACK;
@@ -122,6 +123,29 @@ async function createFixtures(ctx: Ctx) {
     bClip.notes = bassFx.notes;
     created.push(`${TEST_TRACK_2} arrangement @0: ${bClip.name}`);
     return { track: TEST_TRACK, created };
+}
+
+/** Large arrangement clip for performance checks: 16th-note line plus a chord every 2 beats. */
+async function createBigFixture(ctx: Ctx, count: number) {
+    const song: any = ctx.application.song;
+    for (const t of [...song.tracks]) if (t?.name === TEST_TRACK_BIG) await song.deleteTrack(t);
+    const n = Math.max(16, Math.min(20000, Math.floor(count) || 2000));
+    const notes: { pitch: number; startTime: number; duration: number; velocity: number }[] = [];
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const scale = [40, 42, 43, 45, 47, 48, 50, 52, 54, 55, 57, 59, 60, 62, 64, 66, 67, 69, 71, 72];
+    let k = 8;
+    for (let i = 0; i < n; i++) {
+        k = Math.max(0, Math.min(scale.length - 1, k + Math.round((rnd() - 0.5) * 4)));
+        notes.push({ pitch: scale[k]!, startTime: i * 0.25, duration: 0.25, velocity: 90 + Math.floor(rnd() * 30) });
+        if (i % 8 === 0) for (const p of [40, 47, 52]) notes.push({ pitch: p, startTime: i * 0.25, duration: 2, velocity: 80 });
+    }
+    const length = Math.ceil(n / 16) * 4;
+    const track: any = await song.createMidiTrack();
+    track.name = TEST_TRACK_BIG;
+    const clip: any = await track.createMidiClip(0, length);
+    clip.name = `TT big ${notes.length}`;
+    clip.notes = notes;
+    return { track: TEST_TRACK_BIG, clip: clip.name, notes: clip.notes.length, bars: length / 4 };
 }
 
 async function cleanup(ctx: Ctx) {
@@ -180,6 +204,7 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
         case "list":     return summarize(ctx);
         case "fixtures": return createFixtures(ctx);
         case "cleanup":  return cleanup(ctx);
+        case "bigFixture": return createBigFixture(ctx, Number(cmd.clip ?? 2000));
         case "payload":  return payloadFor(ctx, cmd.clip ?? "", !!cmd.full);
         case "open": {
             const f = findClip(ctx, cmd.clip ?? "");
