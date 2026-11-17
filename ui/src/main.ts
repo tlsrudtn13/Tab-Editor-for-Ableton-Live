@@ -27,6 +27,7 @@ import { startDevReporter } from "./devReporter";
 import { bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
+import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
 
 // Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
 function adjustDuration(mode: string) {
@@ -108,6 +109,7 @@ bindRb("rb-tie", () => ek()?.tieAtCursor?.());
 bindRb("rb-rest", () => ek()?.restAtCursor?.());
 bindRb("rb-ins", () => ek()?.insertBeatAtCursor?.());
 bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
+bindDrums();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
@@ -125,6 +127,7 @@ export function loadTrack(id) {
   if (!trk) { log("track \"" + id + "\" not found"); return; }
 
   state.curTrack = trk;
+  if (isDrumTrack(trk)) enterDrumMode(trk); else leaveDrumMode();
   state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
   var tsSel = document.getElementById("ui-timesig") as HTMLSelectElement | null;
   if (tsSel && state.uiTimeSig) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;

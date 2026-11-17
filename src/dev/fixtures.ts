@@ -43,3 +43,29 @@ export const FIXTURES: Fixture[] = [
     { name: "TT out of range", length: 4, purpose: "very high and very low notes",
       notes: [note(96, 0, 1), note(33, 1, 1), note(91, 2, 1), note(24, 3, 1)] },
 ];
+
+// ── Drum fixtures (GM pitches, Drum Rack default pads from C1 = 36) ─────────
+const drumRock: FixtureNote[] = [];
+for (let bar = 0; bar < 2; bar++) {
+    const o = bar * 4;
+    for (let i = 0; i < 8; i++) drumRock.push(note(i === 7 && bar === 0 ? 46 : 42, o + i * 0.5, 0.25, i % 2 ? 70 : 100));
+    drumRock.push(note(38, o + 1, 0.25, 110), note(38, o + 3, 0.25, 110), note(38, o + 2.75, 0.25, 35));  // ghost before 4
+    drumRock.push(note(36, o, 0.25, 110), note(36, o + 2.5, 0.25, 100), note(36, o + 2.75, 0.25, 100));
+    drumRock.push(note(44, o + 1, 0.25, 80), note(44, o + 3, 0.25, 80));
+}
+drumRock.splice(0, 1, note(49, 0, 0.25, 120), note(42, 0, 0.25, 100));                  // crash on 1
+// tom fill on beat 4 of bar 2: 16ths high -> mid -> low -> floor
+[50, 48, 45, 43].forEach((p, i) => drumRock.push(note(p, 7 + i * 0.25, 0.25, 105)));
+const drumRockClean = drumRock.filter(x => !(x.startTime >= 7 && (x.pitch === 42 || x.pitch === 38)));
+
+const drumShuffle: FixtureNote[] = [];
+for (let beat = 0; beat < 8; beat++) {
+    drumShuffle.push(note(51, beat, 0.33, 95), note(51, beat + 2 / 3, 0.33, 70));       // ride shuffle
+    if (beat % 2 === 1) drumShuffle.push(note(38, beat, 0.33, 110));
+    if (beat % 2 === 0) drumShuffle.push(note(36, beat, 0.33, 110));
+}
+
+export const DRUM_FIXTURES: Fixture[] = [
+    { name: "TT drums rock", length: 8, purpose: "rock beat: hats, snare + ghost, kick, pedal hat, crash, tom fill", notes: drumRockClean },
+    { name: "TT drums shuffle", length: 8, purpose: "triplet ride shuffle, two voices", notes: drumShuffle },
+];

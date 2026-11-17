@@ -1,0 +1,31 @@
+/* Drum notation mode (ui/src/drums.ts): guitar-only controls hidden, pad legend shown. */
+body.drum-mode #fretboard-panel,
+body.drum-mode #selection-bar,
+body.drum-mode #ui-instrument,
+body.drum-mode #toolbar .seg,
+body.drum-mode #toolbar .numlab,
+body.drum-mode #btn-apply,
+body.drum-mode #tech-palette { display:none !important; }
+
+#drum-legend {
+  flex-shrink:0; max-height:132px; overflow-y:auto;
+  background:var(--p-live-control-bg); border-top:1px solid var(--p-live-control-border);
+  padding:4px 10px 6px;
+}
+#drum-legend .dl-head {
+  display:flex; gap:12px; align-items:baseline; padding:2px 0 4px;
+  font-weight:700; color:var(--p-live-text-primary);
+}
+#drum-legend .dl-note { font-weight:400; color:var(--p-live-text-secondary); }
+#drum-legend .dl-list { display:flex; flex-wrap:wrap; gap:4px 14px; }
+#drum-legend .dl-row { display:flex; gap:6px; align-items:center; white-space:nowrap; }
+#drum-legend .dl-key {
+  min-width:46px; font-variant-numeric:tabular-nums; color:var(--p-live-text-secondary);
+}
+#drum-legend .dl-pad {
+  max-width:120px; overflow:hidden; text-overflow:ellipsis;
+  color:var(--p-live-text-secondary); font-style:italic;
+}
+#drum-legend .dl-row.custom .dl-key { color:var(--p-live-accent-primary); }
+#drum-legend .dl-row.unmapped .dl-key { color:#e5c07b; }
+#drum-legend .dl-row.unmapped .dl-key::after { content:" ?"; }

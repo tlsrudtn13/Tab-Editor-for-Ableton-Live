@@ -31,6 +31,9 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { BASS_4, BASS_4_DROPD, BASS_4_EB, BASS_5, BASS_6, DEFAULT_INSTRUMENT, GUITAR_6, GUITAR_6_D, GUITAR_6_DROPC, GUITAR_6_DROPD, GUITAR_6_DADGAD, GUITAR_6_EB, GUITAR_6_OPEND, GUITAR_6_OPENG, GUITAR_7, GUITAR_8, GUITAR_12 } from "./notation/instruments.js";
 import { applyLayerV2, clipNoteHash, layerKey, matchClipLayer, type TabLayer, type TabLayerV2 } from "./notation/tabLayer.js";
+import { buildDrumPayload, looksLikeDrums } from "./notation/drumPayload.js";
+import { parseDrumLayer, type DrumLayer } from "./notation/drumMap.js";
+import { drumRackInfo } from "./drumDetect.js";
 
 const INSTRUMENT_BY_KEY: Record<string, any> = { guitar6:GUITAR_6, guitar7:GUITAR_7, guitar8:GUITAR_8, guitar12:GUITAR_12, bass4:BASS_4, bass5:BASS_5, bass6:BASS_6, "guitar6-dropd":GUITAR_6_DROPD, "guitar6-eb":GUITAR_6_EB, "guitar6-d":GUITAR_6_D, "guitar6-dropc":GUITAR_6_DROPC, "guitar6-dadgad":GUITAR_6_DADGAD, "guitar6-openg":GUITAR_6_OPENG, "guitar6-opend":GUITAR_6_OPEND, "bass4-dropd":BASS_4_DROPD, "bass4-eb":BASS_4_EB };
 function layerFile(context: any, key: string): string | undefined {
@@ -114,14 +117,45 @@ function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 |
         return useId;
     } catch (e) { console.warn("[TAB] v2 TAB layer save failed:", e); return id; }
 }
+// ── Drum tracks (docs/DRUMS.md): per-track kit map, stored next to the TAB layers ──
+const drumKey = (key: string) => "drum\u0000" + key;
+function readDrumLayer(context: any, key: string): DrumLayer | undefined {
+    try {
+        const file = layerFile(context, drumKey(key));
+        if (file && fs.existsSync(file)) {
+            const layer = parseDrumLayer(JSON.parse(fs.readFileSync(file, "utf8")));
+            if (layer) return layer;
+            console.warn("[TAB] invalid saved drum map ignored:", file);
+        }
+    } catch (e) { console.warn("[TAB] saved drum map ignored:", e); }
+    return undefined;
+}
+function saveDrumLayer(context: any, key: string | undefined, raw: unknown) {
+    const layer = parseDrumLayer(raw);
+    if (!layer || !key) return;
+    try { const file = layerFile(context, drumKey(key)); if (!file) return; fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify(layer), "utf8"); }
+    catch (e) { console.warn("[TAB] drum map save failed:", e); }
+}
+/** Drum payload when the track holds a Drum Rack (or, narrowly, looks like drums); else null. */
+function drumPayloadFor(context: any, track: any, id: string, name: string, notes: Note[], tempo: number, live: any, storageKey: string, timeSig?: any) {
+    const rack = track ? drumRackInfo(track) : null;
+    const trackName = String(track?.name ?? "");
+    if (!rack && !looksLikeDrums(trackName, notes)) return null;
+    const layer = readDrumLayer(context, storageKey);
+    const p = buildDrumPayload(id, name, notes, tempo, live, { timeSig, override: layer?.map, hints: rack?.hints, source: rack ? "drum-rack" : "heuristic" });
+    if (p) (p as any).layerStorageKey = storageKey;
+    console.log(`[TAB] drum track "${trackName}" (${rack ? `Drum Rack, ${rack.pads.length} pads` : "name heuristic"})`);
+    return p;
+}
+
 /** Find which track (and Session slot) a clip lives in. The SDK caches objects by handle, so identity works. */
-function locateClip(context: any, clip: any): { trackName: string; slotIndex?: number } | undefined {
+function locateClip(context: any, clip: any): { trackName: string; slotIndex?: number; track?: any } | undefined {
     try {
         for (const t of context.application.song.tracks as any[]) {
             const slots: any[] = Array.isArray(t?.clipSlots) ? t.clipSlots : [];
-            for (let i = 0; i < slots.length; i++) if (slots[i]?.clip === clip) return { trackName: String(t.name ?? "Track"), slotIndex: i };
+            for (let i = 0; i < slots.length; i++) if (slots[i]?.clip === clip) return { trackName: String(t.name ?? "Track"), slotIndex: i, track: t };
             const arr: any[] = Array.isArray(t?.arrangementClips) ? t.arrangementClips : [];
-            if (arr.includes(clip)) return { trackName: String(t.name ?? "Track") };
+            if (arr.includes(clip)) return { trackName: String(t.name ?? "Track"), track: t };
         }
     } catch (e) { console.warn("[TAB] clip location lookup failed:", e); }
     return undefined;
@@ -284,6 +318,9 @@ export function activate(activation: ActivationContext) {
             allNotes = allNotes.map((n, gid) => ({ ...n, oid: gid }));
         }
         const storageKey = layerKey(trackName, "");
+        // Drum tracks are view only: no fingering, no TAB layer, no write-back.
+        const drum = drumPayloadFor(context, rawTrack, trackId, trackName, allNotes, tempo, live, storageKey);
+        if (drum) return drum;
         const layer = readLayer(context, storageKey);
         const p = buildPayload(trackId, trackName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
         if (p) {
@@ -357,7 +394,7 @@ export function activate(activation: ActivationContext) {
             if (p) payloads.push(p);
         }
         const result = await showEditor(context, payloads);
-        try { const message=JSON.parse(result || "null"); if(message?.layer && message.layer.v === 1) saveLayer(context, message.layerKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
+        try { const message=JSON.parse(result || "null"); if(message?.layer && message.layer.v === 1) saveLayer(context, message.layerKey, message.layer); if(message?.drumLayer) saveDrumLayer(context, message.layerKey, message.drumLayer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     }
 
     // Every command goes through this: an exception inside one must never take down the extension host.
@@ -395,6 +432,7 @@ export function activate(activation: ActivationContext) {
         if (!result) return;
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
+        if (message?.drumLayer) saveDrumLayer(context, message.layerKey || (p as any).layerStorageKey, message.drumLayer);
         if (message?.action === "apply" && message.edits) {
             try {
                 const ok = await applyTrackEdits(track, editCtx, message.edits);
@@ -447,7 +485,8 @@ export function activate(activation: ActivationContext) {
                 .map(n => ({ ...n, b: n.b - start })); // 선택 시작 = 0박자
 
             const name = `${safeStr(track.name, `Lane${laneIdx}`)} [sel]`;
-            const p = buildPayload(`sel_${laneIdx}`, name, inRange as Note[], tempo, live);
+            const p = drumPayloadFor(context, track, `sel_${laneIdx}`, name, inRange as Note[], tempo, live, layerKey(safeStr(track.name, ""), ""))
+                ?? buildPayload(`sel_${laneIdx}`, name, inRange as Note[], tempo, live);
             if (p) payloads.push(p);
         }
 
@@ -512,6 +551,14 @@ export function activate(activation: ActivationContext) {
             const beats = Number(scene?.signatureNumerator), type = Number(scene?.signatureDenominator);
             if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
         } catch { /* default to 4/4 */ }
+        const drum = drumPayloadFor(context, where?.track, "clip_0", clipName, regioned, tempo, live, storageKey, timeSig);
+        if (drum) {
+            // Drum clips are view only (editing is a later round): no edit field, only the kit map comes back.
+            const result = await showEditor(context, [drum]);
+            try { const message = JSON.parse(result || "null"); if (message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer); }
+            catch (e) { console.warn("[TAB] drum message ignored:", e); }
+            return;
+        }
         let p: TrackPayload | null;
         if (foundV2.layer) {
             const inst = INSTRUMENT_BY_KEY[foundV2.layer.instrument] || DEFAULT_INSTRUMENT;

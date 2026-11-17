@@ -20,6 +20,7 @@ import { bindDragSelection, consumeRecentDrag, isDragSelecting } from "./dragSel
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
+import { isDrumTrack, rebuildDrumScore } from "./drums";
 
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v5] 악기 변환 — instruments.ts 프리셋 기반
@@ -287,6 +288,7 @@ export function getXmlForMode(track) {
 
 /* ── 웹뷰 내 XML 재생성 (Quantize / Transpose / Capo / 줄옮김 반영) ───────── */
 export function rebuildScore() {
+  if (isDrumTrack(state.curTrack)) { rebuildDrumScore(); return; }   // drum mode: ui/src/drums.ts
   if (!state.curTrack || !Array.isArray(state.curTrack.notes) || state.curTrack.notes.length === 0) {
     renderScore(); return;
   }
