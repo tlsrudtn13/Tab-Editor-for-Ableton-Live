@@ -232,9 +232,9 @@ function adjustDur(deltaSteps: number) {
 }
 
 function adjustDurationHalveOrDouble(shorter: boolean) {
-  if (!active() || !state.selectedNoteIndices.length) return;
+  if (!active()) return;
   const notes = state.curTrack.notes;
-  const selected = state.selectedNoteIndices.slice().map(i => notes[i]).filter(Boolean);
+  const selected = targetNoteIndices().map(i => notes[i]).filter(Boolean);
   if (!selected.length) return;
   const before = notes.map((n:any)=>({...n}));
   const durName = (b:number) => {
@@ -283,11 +283,18 @@ function selectAllNotesAtSlot(b: number) {
   try { overlaySelectedNotes(); } catch {}
 }
 
+/** Rhythm targets: every note of the selected beats (duration is per beat, as in Guitar Pro). */
 function targetNoteIndices(): number[] {
-  if (state.selectedNoteIndices.length) return state.selectedNoteIndices.slice();
-  const c = ensureCursor(); if (!c) return [];
+  const notes = state.curTrack.notes;
+  const beats: number[] = [];
+  if (state.selectedNoteIndices.length) {
+    for (const i of state.selectedNoteIndices) { const n = notes[i]; if (n) beats.push(n.b); }
+  } else {
+    const c = ensureCursor(); if (!c) return [];
+    beats.push(c.b);
+  }
   const idxs: number[] = [];
-  state.curTrack.notes.forEach((n:any,i:number)=>{ if (Math.abs(n.b-c.b) < 1e-6) idxs.push(i); });
+  notes.forEach((n:any,i:number)=>{ if (beats.some(b => Math.abs(n.b-b) < 1e-6)) idxs.push(i); });
   return idxs;
 }
 
