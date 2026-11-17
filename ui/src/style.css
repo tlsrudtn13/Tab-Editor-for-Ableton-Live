@@ -154,11 +154,31 @@ body { display:flex; flex-direction:row; }
 .note-sel-overlay.single {
   background:rgba(0,200,255,0.22);
 }
-/* Insert cursor on a rest: a new note goes here */
-.note-sel-overlay.rest-cursor {
+/* Edit cursor box on TAB staff */
+.cursor-overlay {
+  position:absolute; z-index:11; pointer-events:none;
+  border:2px solid #00c8ff;
+  border-radius:3px;
+  background:rgba(0,200,255,0.22);
+}
+.cursor-overlay.empty {
   border:2px dashed #00c8ff;
   background:rgba(0,200,255,0.08);
 }
+
+/* Keys help popover */
+#keys-popover {
+  position:absolute; right:10px; bottom:36px; z-index:50;
+  background:var(--p-live-control-bg); color:var(--p-live-text-primary);
+  border:1px solid var(--p-live-control-border); border-radius:4px;
+  padding:8px 10px; font-size:10px; max-width:420px;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);
+}
+#keys-popover.hidden { display:none; }
+.kp-title { font-weight:700; margin-bottom:4px; }
+.kp-table { border-collapse:collapse; }
+.kp-table td { padding:2px 6px; vertical-align:top; border-bottom:1px solid var(--p-live-control-border); }
+.kp-table td:first-child { white-space:nowrap; color:#00c8ff; font-weight:600; }
 
 /* ★ v3: SVG 색 강제(!important) 블록 제거됨.
    음표/오선 색은 main.ts 의 display.resources 가 결정:

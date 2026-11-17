@@ -59,9 +59,13 @@ export function renderInspector(track) {
 }
 
 export function inspectorRowClick(str, fret, idx, pitch) {
+  if (window.__editKeys && (window.__editKeys as any).selectIndex) {
+    (window.__editKeys as any).selectIndex(idx);
+    return;
+  }
   clearFretboard();
   lightFret(str, fret, undefined);
-  state.selectedNoteIndices = [idx];           // 행 클릭으로도 줄옮김 선택 가능
+  state.selectedNoteIndices = [idx];
   showSelection([{ f: fret, s: str, p: pitch }]);
   var prev = document.querySelector(".sel");
   if (prev) prev.classList.remove("sel");

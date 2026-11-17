@@ -14,7 +14,8 @@ import { log, status } from "./log";
 import { getAtRes } from "./theme";
 import { buildFretboard, clearFretboard, getOpenStrings, getStringCount, lightFret, updateScaleOverlay } from "./fretboard";
 import { applyTechniquesToScore } from "./techUi";
-import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlayRest, overlaySelectedNotes, showSelection } from "./overlay";
+import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection, stringAtY, tabBarBoundsAt } from "./overlay";
+import { ensureCursor, rebuildSlotsFromApi, setCursor, slotAt, noteAtCursor } from "./cursor";
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
@@ -176,8 +177,14 @@ export function createApi() {
 
   api.postRenderFinished.on(function() {
     log("Render complete (" + Math.round(performance.now()) + " ms after page start)");
-    // Keep selection box after re-render
-    try { overlaySelectedNotes(); } catch(e) {}
+    try { rebuildSlotsFromApi(); ensureCursor(); if (window.__editKeys && window.__editKeys.updateEditUi) { /* sync selection */ } } catch(e) {}
+    try { if (window.__editKeys && (window.__editKeys as any).selectIndex === undefined) {} } catch(e) {}
+    try {
+      // sync selection to cursor after render
+      const hit = noteAtCursor();
+      if (hit) state.selectedNoteIndices = [hit.index]; else state.selectedNoteIndices = [];
+      overlaySelectedNotes();
+    } catch(e) {}
   });
   api.soundFontLoaded.on(function() { log("Soundfont loaded"); });
   if (api.playerReady) api.playerReady.on(function() { log("Player ready"); });
@@ -187,143 +194,66 @@ export function createApi() {
   var synth = api.player;
   if (synth && synth.soundFontLoadFailed) synth.soundFontLoadFailed.on(function(e) { log("Soundfont load failed: " + ((e && e.message) || e)); });
 
-  // ── beatMouseDown: 클릭 → 화음 표시 + 코드 분석 + ★줄옮김용 선택 ────────
-  api.beatMouseDown.on(function(beat) {
+  let lastMouse: { x: number; y: number } | null = null;
+  const trackMouse = (ev: Event) => {
+    const r = el.getBoundingClientRect(), m = ev as MouseEvent;
+    lastMouse = { x: m.clientX - r.left, y: m.clientY - r.top };
+  };
+  el.addEventListener("mousemove", trackMouse);
+  el.addEventListener("mousedown", trackMouse, true);
+
+  function beatPosOf(beat: any): number | null {
+    try { return (beat.voice.bar.masterBar.start + beat.playbackStart) / 960; } catch { return null; }
+  }
+  function setCursorAtBeat(beat: any, keepString = true) {
+    const b = beatPosOf(beat); if (b == null) return;
+    const c = ensureCursor();
+    const s = keepString && c ? c.s : 1;
+    setCursor(b, s);
+    state.selectionAnchor = b;
+    if (window.__editKeys) {
+      const hit = noteAtCursor();
+      if (hit) state.selectedNoteIndices = [hit.index]; else state.selectedNoteIndices = [];
+    } else {
+      const hit = noteAtCursor();
+      state.selectedNoteIndices = hit ? [hit.index] : [];
+    }
+    overlaySelectedNotes();
+  }
+
+  api.beatMouseDown.on(function(beat: any) {
     if (!beat) return;
-    clearFretboard();
-    clearNoteOverlays();
-    state.restCursor = null;
-    // A rest in an editable clip: put the insert cursor there (a note is added by fret click / digits)
-    if (beat.isRest && state.curTrack && state.curTrack.edit && window.__editKeys) {
-      try {
-        var restPos = (beat.voice.bar.masterBar.start + beat.playbackStart) / 960;
-        window.__editKeys.setRestCursor(restPos, (beat.playbackDuration || 240) / 960);
-        overlayRest(beat);
-      } catch(e: any) { log("rest cursor: " + (e.message || e)); }
-      return;
-    }
-    overlayBeatNotes(beat);          // ★ v5: 화음 전체 주황 박스
-    state.selectedNoteIndices = [];
-
-    var highlightedNotes: any[] = [];
-    var nStrings = getStringCount();
-    var OPEN     = getOpenStrings();
-
-    // 클릭한 beat 의 절대 박자 위치 (가능하면 — 줄옮김의 정확한 노트 식별용)
-    var beatPos: number | null = null;
-  try {
-    if (beat.playbackStart !== undefined && beat.voice && beat.voice.bar && beat.voice.bar.masterBar) {
-      beatPos = (beat.voice.bar.masterBar.start + beat.playbackStart) / 960;
-    }
-  } catch(e) {}
-
-    if (Array.isArray(beat.notes)) {
-      for (var bi = 0; bi < beat.notes.length; bi++) {
-        var sn = beat.notes[bi];
-        if (!sn) continue;
-
-        if (sn.fret !== undefined && sn.string !== undefined && sn.string > 0) {
-          var ourStr = (nStrings + 1) - sn.string;
-          var realF  = sn.fret + state.uiCapo;            // 악보 표기 fret + capo = 실제 fret
-          var pitch  = (OPEN[ourStr] || 40) + realF;
-          lightFret(ourStr, realF);
-          highlightedNotes.push({ f: realF, s: ourStr, p: pitch });
-        } else {
-          var midiPitch = (sn.realValue !== undefined) ? sn.realValue
-                        : (sn.displayValue !== undefined) ? sn.displayValue : -1;
-          if (midiPitch < 0) continue;
-          if (state.curTrack && Array.isArray(state.curTrack.notes)) {
-            for (var k = 0; k < state.curTrack.notes.length; k++) {
-              var tn = state.curTrack.notes[k];
-              if ((tn.p !== undefined ? tn.p : -1) === midiPitch) {
-                lightFret(tn.s, tn.f);
-                highlightedNotes.push({ f: tn.f, s: tn.s, p: midiPitch });
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    showSelection(highlightedNotes);
-
-    // ── curTrack.notes 인덱스 매칭 (행 하이라이트 + 줄옮김 대상) ──────────
-    if (highlightedNotes.length > 0 && state.curTrack) {
-      var notes = Array.isArray(state.curTrack.notes) ? state.curTrack.notes : [];
-      document.querySelectorAll("#note-tbody tr.sel").forEach(function(r) {
-        r.classList.remove("sel");
-      });
-      var used = {};
-      var firstRow: any = null;
-      for (var hi = 0; hi < highlightedNotes.length; hi++) {
-        var hN = highlightedNotes[hi];
-        var found = matchTrackNote(hN.f, hN.s, hN.p, beatPos, used);  // ★ v5
-        if (found >= 0) {
-          used[found] = true;
-          state.selectedNoteIndices.push(found);
-          var row = document.getElementById("nr-" + found);
-          if (row) { row.classList.add("sel"); if (!firstRow) firstRow = row; }
-        }
-      }
-      if (firstRow) firstRow.scrollIntoView({ block: "nearest" });
-    }
-
-    if (highlightedNotes.length > 0) {
-      log("Click: " + highlightedNotes.map(function(h) {
-        return h.s + ":" + pitchToName(h.p) + "(f" + h.f + ")";
-      }).join(" "));
-    }
+    const b = beatPosOf(beat); if (b == null) return;
+    // try to detect string from last mouse y on tab staff
+    let sPick: number | null = null;
+    try {
+      // only when the TAB line is shown; the mouse y is taken relative to the score element
+      if (lastMouse && state.dispMode !== "staff") sPick = stringAtY(tabBarBoundsAt(b), lastMouse.y);
+    } catch {}
+    if (sPick != null) { setCursor(b, sPick); state.selectionAnchor = b; state.selectedNoteIndices = noteAtCursor() ? [noteAtCursor()!.index] : []; }
+    else { setCursorAtBeat(beat, true); }
+    try { overlaySelectedNotes(); } catch {}
   });
 
-  // ── ★ v4: noteMouseDown — TAB 번호(단일 노트) 직접 클릭 → 그 노트만 선택 ──
-  // includeNoteBounds:true 필요. beatMouseDown(화음 전체)이 먼저 처리된 후
-  // 20ms 뒤에 단일 선택으로 좁힙니다 (이벤트 순서와 무관하게 안전).
   if (api.noteMouseDown) {
-    api.noteMouseDown.on(function(note) {
+    api.noteMouseDown.on(function(note: any) {
       if (!note) return;
-      var f    = note.fret;
-      var sRaw = note.string;
+      const f = note.fret, sRaw = note.string;
       if (f === undefined || sRaw === undefined || sRaw <= 0) return;
-
-      var nStrings = getStringCount();
-      var OPEN     = getOpenStrings();
-      var ourStr   = (nStrings + 1) - sRaw;
-      var realF    = f + state.uiCapo;                    // capo 보정
-      var pitch    = (OPEN[ourStr] || 40) + realF;
-
-      // beat 절대 위치 (정확한 노트 식별용)
-      // ✅ 교체
-      var bp: number | null = null;
-      try {
-      var bt = note.beat;
-      if (bt && bt.playbackStart !== undefined && bt.voice && bt.voice.bar && bt.voice.bar.masterBar) {
-        bp = (bt.voice.bar.masterBar.start + bt.playbackStart) / 960;
-      }
-      } catch(e) {}
-
+      const nStrings = getStringCount();
+      const ourStr = (nStrings + 1) - sRaw;
+      let bp: number | null = null;
+      try { const bt = note.beat; if (bt && bt.playbackStart !== undefined && bt.voice && bt.voice.bar && bt.voice.bar.masterBar) bp = (bt.voice.bar.masterBar.start + bt.playbackStart) / 960; } catch {}
       setTimeout(function() {
-        // ★ v5: 통합 매칭 (f+s 우선 → 피치 fallback, 가장 가까운 박자)
-        var idx = matchTrackNote(realF, ourStr, pitch, bp, null);
-        if (idx < 0) return;
-
-        // 단일 선택으로 교체
-        state.selectedNoteIndices = [idx];
-        if (window.__editKeys) window.__editKeys.selectIndex(idx);
-        clearFretboard();
-        clearNoteOverlays();
-        overlayOneNote(note);                       // ★ v5: 이 노트만 주황 박스
-        lightFret(ourStr, realF);
-        showSelection([{ f: realF, s: ourStr, p: pitch }], true);
-
-        document.querySelectorAll("#note-tbody tr.sel").forEach(function(r) {
-          r.classList.remove("sel");
-        });
-        var row = document.getElementById("nr-" + idx);
-        if (row) { row.classList.add("sel"); row.scrollIntoView({ block: "nearest" }); }
-
-        log("Note selected: " + ourStr + ":" + pitchToName(pitch) + " (f" + f + ") @b" +
-        (bp === null ? "?" : (bp as number).toFixed(2)));
+        if (bp == null) return;
+        // prefer exact note index match
+        const nStrings2 = getStringCount();
+        const realF = f + state.uiCapo;
+        const pitch = (getOpenStrings()[ourStr] || 40) + realF;
+        const idx = matchTrackNote(realF, ourStr, pitch, bp, null);
+        if (idx >= 0 && window.__editKeys) (window.__editKeys as any).selectIndex(idx);
+        else { setCursor(bp, ourStr); state.selectionAnchor = bp; state.selectedNoteIndices = noteAtCursor() ? [noteAtCursor()!.index] : []; }
+        try { overlaySelectedNotes(); } catch {}
       }, 20);
     });
   }

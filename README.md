@@ -23,24 +23,33 @@ Score rendering by [alphaTab](https://alphatab.net).
 
 | Key | Action |
 |---|---|
-| ← / → | Select previous / next note |
-| Shift + ← / → | Move the note one grid step earlier / later (Ctrl + Shift: one beat) |
-| ↑ / ↓ | Pitch up / down a semitone (Shift: an octave) |
-| Alt + ↑ / ↓ | Move the note to another string (kept the next time you open the clip) |
-| 0–9 | Type a fret on the current string (two digits within 0.4 s) |
-| `[` / `]` | Shorter / longer by one grid step; `D` extends to the next note |
-| Delete | Delete the note |
+| ← / → | Previous / next beat slot |
+| Ctrl + ← / → | First slot of previous / next bar |
+| Home / End | First / last slot of the bar |
+| Ctrl + Home / End | First / last slot of the score |
+| ↑ / ↓ | String up / down |
+| 0–9 | Set fret on the note at cursor, or insert a note at the slot (two digits within 0.4 s) |
+| Alt + ↑ / ↓ | Move the note to the adjacent string with the same pitch |
+| Alt + Shift + ↑ / ↓ | Pitch ±1 semitone on the same string (if the fret stays 0–24) |
+| Shift + ← / → | Extend selection by beat (all strings in range) |
+| Shift + ↑ / ↓ | Select all notes of the cursor slot |
+| Ctrl + A | Select all notes |
+| `+` / `-` | Shorter / longer duration (halve / double) |
+| Alt + ← / → | Move note one grid step earlier / later |
+| Ctrl + Alt + ← / → | Move note one beat earlier / later |
+| Delete / Backspace | Delete the selected notes or the note at the cursor |
 | Ctrl + D | Duplicate the note |
-| Ctrl + Z | Undo the last edit in the editor |
-| Ctrl + Enter | Apply to Clip |
-| L / P / H / S / X / V | Let ring, palm mute, hammer-on/pull-off, slide, dead note, vibrato (toggle) |
+| Ctrl + Z | Undo |
+| Ctrl + Y / Ctrl + Shift + Z | Redo |
+| I / P / H / S / X / V | Let ring, palm mute, hammer-on/pull-off, slide, dead note, vibrato (toggle) |
 | B | Bend: ½ → full → 1½ → off |
+| Ctrl + Enter | Apply to Clip |
 | Esc | Clear the selection |
 
-Clicking a fret on the fretboard moves the selected note there.
-**Adding notes:** click a rest in the score (a dashed box marks the spot), then click a fret on the
-fretboard or type a fret number; Alt + ↑ / ↓ picks the string first. Shift + click a fret adds a chord
-tone to the selected note.
+A cyan cursor box shows the current beat slot and string on the TAB. Click a note, rest or string
+position to place the cursor. Clicking a fret on the fretboard sets or inserts the note at the
+cursor's slot on that string; Shift + click adds a chord tone. Use the **Keys** button for a quick
+reference.
 **Techniques** are shown on the score, saved with the clip's TAB layout, and do not change the MIDI.
 Overlapping arpeggio notes are marked let ring automatically.
 **Apply to Clip** writes only the notes you changed. Notes whose pitch you changed keep their original
@@ -125,24 +134,32 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 
 | 키 | 동작 |
 |---|---|
-| ← / → | 이전/다음 노트 선택 |
-| Shift + ← / → | 노트를 그리드 한 칸 앞/뒤로 이동 (Ctrl + Shift: 한 박) |
-| ↑ / ↓ | 반음 올림/내림 (Shift: 한 옥타브) |
-| Alt + ↑ / ↓ | 다른 줄로 이동 (다음에 열 때도 유지) |
-| 0–9 | 현재 줄의 프렛 입력 (0.4초 안에 두 자리) |
-| `[` / `]` | 그리드 한 칸 짧게/길게, `D`는 다음 노트까지 늘림 |
-| Delete | 노트 삭제 |
+| ← / → | 이전 / 다음 비트 슬롯 |
+| Ctrl + ← / → | 이전 / 다음 마디의 첫 슬롯 |
+| Home / End | 마디의 첫 / 마지막 슬롯 |
+| Ctrl + Home / End | 악보의 첫 / 마지막 슬롯 |
+| ↑ / ↓ | 줄 위 / 아래로 이동 |
+| 0–9 | 커서 위치 노트의 프렛 설정 또는 슬롯에 노트 입력 (0.4초 안에 두 자리) |
+| Alt + ↑ / ↓ | 같은 음높이로 인접 줄로 이동 |
+| Alt + Shift + ↑ / ↓ | 같은 줄에서 반음 ±1 (프렛 0–24 범위 내) |
+| Shift + ← / → | 비트 범위 선택 확장 (범위 내 모든 줄) |
+| Shift + ↑ / ↓ | 커서 슬롯의 모든 노트 선택 |
+| Ctrl + A | 모든 노트 선택 |
+| `+` / `-` | 길이 절반 / 두 배 |
+| Alt + ← / → | 노트를 그리드 한 칸 이동 |
+| Ctrl + Alt + ← / → | 노트를 한 박 이동 |
+| Delete / Backspace | 선택 또는 커서 위치 노트 삭제 |
 | Ctrl + D | 노트 복제 |
-| Ctrl + Z | 에디터 안에서 마지막 편집 되돌리기 |
-| Ctrl + Enter | 클립에 반영 (Apply to Clip) |
-| L / P / H / S / X / V | let ring, 브리지 뮤트, 해머링·풀링, 슬라이드, 데드 노트, 비브라토 (켜고 끄기) |
+| Ctrl + Z | 실행 취소 |
+| Ctrl + Y / Ctrl + Shift + Z | 다시 실행 |
+| I / P / H / S / X / V | let ring, 브리지 뮤트, 해머링·풀링, 슬라이드, 데드 노트, 비브라토 (켜고 끄기) |
 | B | 벤드: ½ → 온음 → 1½ → 끄기 |
+| Ctrl + Enter | 클립에 반영 (Apply to Clip) |
 | Esc | 선택 해제 |
 
-프렛보드의 칸을 누르면 선택한 노트가 그 자리로 옮겨집니다.
-**노트 추가:** 악보의 쉼표를 누르면 점선 상자로 자리가 표시됩니다. 프렛보드의 칸을 누르거나 프렛 번호를
-치면 그 자리에 노트가 들어갑니다. 줄은 Alt + ↑ / ↓로 먼저 고릅니다. 노트를 고른 상태에서 Shift를 누른 채
-프렛을 누르면 같은 박에 화음 음이 추가됩니다.
+TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍니다. 노트, 쉼표, 줄 위치를 클릭해 커서를
+놓을 수 있습니다. 프렛보드 칸을 누르면 커서 슬롯의 해당 줄에 노트를 넣거나 바꾸고, Shift를 누른 채
+누르면 화음 음을 추가합니다. **Keys** 버튼으로 단축키를 빠르게 볼 수 있습니다.
 **기법 표기**는 악보에 그려지고 클립의 TAB 설정과 함께 저장되며, MIDI는 바꾸지 않습니다.
 겹쳐 울리는 아르페지오에는 let ring이 자동으로 붙습니다.
 **Apply to Clip**은 바꾼 노트만 클립에 씁니다. 음높이만 바꾼 노트는 원래(퀀타이즈 전) 타이밍을 유지합니다.

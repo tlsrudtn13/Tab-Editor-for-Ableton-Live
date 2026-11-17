@@ -9,7 +9,7 @@ import { BEND_AMOUNTS, type BendAmount, type Tech } from "../../src/notation/typ
 export const TECH_LABEL: Record<Tech, string> = {
   lr: "Let ring", pm: "Palm mute", hp: "Hammer-on / pull-off", sl: "Slide", x: "Dead note", vb: "Vibrato",
 };
-export const TECH_KEY: Record<string, Tech> = { l: "lr", p: "pm", h: "hp", s: "sl", x: "x", v: "vb" };
+export const TECH_KEY: Record<string, Tech> = { i: "lr", p: "pm", h: "hp", s: "sl", x: "x", v: "vb" };
 
 /** Indices of notes that show let ring without being set by the user (cached per notes array). */
 let autoCache: { notes: any[] | null; len: number; set: Set<number> } = { notes: null, len: -1, set: new Set() };

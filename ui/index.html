@@ -77,24 +77,48 @@
     <span id="inspector-chord-display" class="ca"></span>
     <span class="sb-spacer"></span>
     <span class="tl">Duration</span>
-    <button class="btn" onclick="adjustDuration('-1')"   title="Shorten by one grid unit">&#8722;</button>
-    <button class="btn" onclick="adjustDuration('+1')"   title="Lengthen by one grid unit">+</button>
-    <button class="btn" onclick="adjustDuration('Auto')"        title="Extend to next note &mdash; cleans up humanized gaps (auto-creates ties across barlines)">Auto</button>
+    <button class="btn" onclick="adjustDuration('-1')"   title="Shorter (+ key)">&#8722;</button>
+    <button class="btn" onclick="adjustDuration('+1')"   title="Longer (- key)">+</button>
+    <button class="btn" id="btn-keys" title="Show key bindings">Keys</button>
     <div class="sp"></div>
     <span class="tl">Move</span>
-    <button class="btn" onclick="moveString(-1)" title="Move selected note to a thinner string">&#9650; Str</button>
-    <button class="btn" onclick="moveString(1)"  title="Move selected note to a thicker string">&#9660; Str</button>
+    <button class="btn" onclick="moveString(-1)" title="Move selected note to a thinner string (Alt+↑)">&#9650; Str</button>
+    <button class="btn" onclick="moveString(1)"  title="Move selected note to a thicker string (Alt+↓)">&#9660; Str</button>
     <div class="sp"></div>
     <span class="tl">Tech</span>
     <span id="tech-palette">
-      <button class="btn" data-tech="lr" onclick="toggleTech('lr')" title="Let ring (L)">LR</button>
+      <button class="btn" data-tech="lr" onclick="toggleTech('lr')" title="Let ring (I)">LR</button>
       <button class="btn" data-tech="pm" onclick="toggleTech('pm')" title="Palm mute (P)">PM</button>
-      <button class="btn" data-tech="hp" onclick="toggleTech('hp')" title="Hammer-on / pull-off to the next note on this string (H)">H/P</button>
-      <button class="btn" data-tech="sl" onclick="toggleTech('sl')" title="Slide to the next note on this string (S)">SL</button>
+      <button class="btn" data-tech="hp" onclick="toggleTech('hp')" title="Hammer-on / pull-off (H)">H/P</button>
+      <button class="btn" data-tech="sl" onclick="toggleTech('sl')" title="Slide (S)">SL</button>
       <button class="btn" data-tech="x"  onclick="toggleTech('x')"  title="Dead note (X)">X</button>
       <button class="btn" data-tech="vb" onclick="toggleTech('vb')" title="Vibrato (V)">~</button>
       <button class="btn" data-bend onclick="toggleTech('bend')" title="Bend: ½ → full → 1½ → off (B)">B</button>
     </span>
+    <div id="keys-popover" class="hidden">
+      <div class="kp-title">Keys</div>
+      <table class="kp-table">
+        <tr><td>← / →</td><td>Previous / next beat slot</td></tr>
+        <tr><td>Ctrl+← / →</td><td>Previous / next bar</td></tr>
+        <tr><td>Home / End</td><td>First / last slot of bar</td></tr>
+        <tr><td>Ctrl+Home / End</td><td>First / last slot of score</td></tr>
+        <tr><td>↑ / ↓</td><td>String up / down</td></tr>
+        <tr><td>0–9</td><td>Set fret / insert note at cursor</td></tr>
+        <tr><td>Alt+↑ / ↓</td><td>Move note to adjacent string (same pitch)</td></tr>
+        <tr><td>Alt+Shift+↑ / ↓</td><td>Pitch ±1 semitone on same string</td></tr>
+        <tr><td>Shift+← / →</td><td>Extend range selection by beat</td></tr>
+        <tr><td>Shift+↑ / ↓</td><td>Select all notes of cursor slot</td></tr>
+        <tr><td>Ctrl+A</td><td>Select all notes</td></tr>
+        <tr><td>+ / -</td><td>Shorter / longer duration</td></tr>
+        <tr><td>Alt+← / →</td><td>Move note one grid step</td></tr>
+        <tr><td>Ctrl+Alt+← / →</td><td>Move note one beat</td></tr>
+        <tr><td>Delete / Backspace</td><td>Delete selection or note at cursor</td></tr>
+        <tr><td>I / P / H / S / X / V / B</td><td>Let ring / palm mute / H-P / slide / dead / vibrato / bend</td></tr>
+        <tr><td>Ctrl+Z</td><td>Undo</td></tr>
+        <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
+        <tr><td>Ctrl+Enter</td><td>Apply</td></tr>
+      </table>
+    </div>
   </div>
 
   <div id="fretboard-panel">

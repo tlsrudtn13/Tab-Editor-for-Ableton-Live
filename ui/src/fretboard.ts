@@ -119,16 +119,22 @@ export function bindScaleControls() {
 }
 
 export function fretClick(s, f, ev?: MouseEvent) {
-  var keys = window.__editKeys;
+  var keys = window.__editKeys as any;
   if (state.curTrack && state.curTrack.edit && keys) {
-    if (state.restCursor && !state.selectedNoteIndices.length) { keys.insertNote(s, f); return; }
-    if (ev && ev.shiftKey && state.selectedNoteIndices.length) {
+    // move cursor to clicked string at same slot
+    const c = state.cursor;
+    if (c && keys.setCursor) keys.setCursor(c.b, s);
+    if (ev && ev.shiftKey) {
       if (!keys.insertNote(s, f, true)) log("String " + s + " is already used at this beat");
       return;
     }
+    // if note exists at cursor slot on this string, change it; else insert
+    const notes = state.curTrack.notes || [];
+    const b = c ? c.b : 0;
+    const has = notes.some((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
+    if (has) { keys.setSelectedStringFret(s, f); }
+    else { keys.insertNote(s, f, false); }
+    return;
   }
-  if (!state.curTrack || !state.curTrack.edit || !state.selectedNoteIndices.length) { log("Fret: String " + s + " / Fret " + f); return; }
-  var n = state.curTrack.notes[state.selectedNoteIndices[0]], open = getOpenStrings()[s];
-  if (!n || typeof open !== "number") return;
-  if (keys) keys.setSelectedStringFret(s, f);
+  log("Fret: String " + s + " / Fret " + f);
 }

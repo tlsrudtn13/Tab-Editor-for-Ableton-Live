@@ -2,14 +2,14 @@ import { state } from "./state";
 import { clearFretboard } from "./fretboard";
 import { detectChord, pitchToName } from "./musicUi";
 import { updateTechPalette } from "./techUi";
+import { getStringCount } from "./fretboard";
+import { slotAt } from "./cursor";
 
 /* ════════════════════════════════════════════════════════════════════════════
-   ★ [v5] 악보 위 선택 노트 강조 오버레이
-   boundsLookup(includeNoteBounds:true)으로 노트 머리 좌표를 얻어
-   #alphaTab 위에 주황 박스를 그립니다. 화음 전체/단일 노트를 시각 구분.
+   악보 위 선택 노트 / 커서 강조 오버레이
    ═══════════════════════════════════════════════════════════════════════════ */
 export function clearNoteOverlays() {
-  document.querySelectorAll(".note-sel-overlay").forEach(function(el) { el.remove(); });
+  document.querySelectorAll(".note-sel-overlay, .cursor-overlay").forEach(function(el) { el.remove(); });
 }
 
 export function drawNoteOverlay(b: any, isSingle?: boolean) {
@@ -52,33 +52,135 @@ export function collectNoteBounds(beat: any): any[] {
   return out;
 }
 
-/** Dashed box over a rest beat: the insert cursor. */
-export function overlayRest(beat: any) {
+function findBeatBoundsAt(bTarget: number): { beat: any; bounds: any; barBounds: any } | null {
   try {
-    var bl = (state.api && state.api.renderer) ? state.api.renderer.boundsLookup : null;
-    if (!bl || !beat || !bl.staffSystems) return;
-    var host = document.getElementById("alphaTab");
-    if (!host) return;
-    for (var si = 0; si < bl.staffSystems.length; si++) {
-      var mbs = bl.staffSystems[si].bars || [];
-      for (var mi = 0; mi < mbs.length; mi++) {
-        var bars = mbs[mi].bars || [];
-        for (var bi = 0; bi < bars.length; bi++) {
-          var beats = bars[bi].beats || [];
-          for (var ti = 0; ti < beats.length; ti++) {
-            if (beats[ti].beat !== beat) continue;
-            var b = beats[ti].visualBounds;
-            if (!b) continue;
-            var d = document.createElement("div");
-            d.className = "note-sel-overlay rest-cursor";
-            d.style.left = (b.x - 3) + "px"; d.style.top = (b.y - 3) + "px";
-            d.style.width = (b.w + 6) + "px"; d.style.height = (b.h + 6) + "px";
-            host.appendChild(d);
+    const bl = state.api && state.api.renderer ? state.api.renderer.boundsLookup : null;
+    if (!bl || !bl.staffSystems) return null;
+    for (let si = 0; si < bl.staffSystems.length; si++) {
+      const mbs = bl.staffSystems[si].bars || [];
+      for (let mi = 0; mi < mbs.length; mi++) {
+        const bars = mbs[mi].bars || [];
+        for (let bi = 0; bi < bars.length; bi++) {
+          const bar = bars[bi];
+          const beats = bar.beats || [];
+          for (let ti = 0; ti < beats.length; ti++) {
+            const bb = beats[ti];
+            let bp: number | null = null;
+            try {
+              const mBar = bar.bar ? bar.bar.masterBar : bar.masterBar;
+              const mBeat = bb.beat || bb;
+              if (mBar && mBeat.playbackStart !== undefined) bp = (mBar.start + mBeat.playbackStart) / 960;
+            } catch {}
+            if (bp !== null && Math.abs(bp - bTarget) < 0.03) return { beat: bb.beat || bb, bounds: bb, barBounds: bar };
           }
         }
       }
     }
-  } catch(e: any) {}
+  } catch {}
+  return null;
+}
+
+function findTabStaffBarForBeat(bTarget: number): any | null {
+  try {
+    const bl = state.api && state.api.renderer ? state.api.renderer.boundsLookup : null;
+    if (!bl || !bl.staffSystems) return null;
+    for (let si = 0; si < bl.staffSystems.length; si++) {
+      const mbs = bl.staffSystems[si].bars || [];
+      for (let mi = 0; mi < mbs.length; mi++) {
+        const bars = mbs[mi].bars || [];
+        for (let bi = 0; bi < bars.length; bi++) {
+          const bar = bars[bi];
+          const beats = bar.beats || [];
+          for (let ti = 0; ti < beats.length; ti++) {
+            const bb = beats[ti];
+            let bp: number | null = null;
+            try {
+              const mBar = bar.bar ? bar.bar.masterBar : bar.masterBar;
+              const mBeat = bb.beat || bb;
+              if (mBar && mBeat.playbackStart !== undefined) bp = (mBar.start + mBeat.playbackStart) / 960;
+            } catch {}
+            if (bp !== null && Math.abs(bp - bTarget) < 0.03) {
+              // Prefer a bar/staff that shows tablature (tab staff)
+              const st = bar.bar && bar.bar.staff ? bar.bar.staff : null;
+              if (st && st.showTablature) return bar;
+              if (!findTabStaffBarForBeat_any) return bar;
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+let findTabStaffBarForBeat_any = false;
+
+function stringYFor(barBounds: any, s: number): { y: number; h: number } | null {
+  try {
+    const nS = getStringCount();
+    const vb = barBounds && barBounds.visualBounds ? barBounds.visualBounds : null;
+    if (!vb) return null;
+    const top = vb.y, height = vb.h;
+    const spacing = nS > 1 ? height / (nS - 1) : height;
+    const y = top + (s - 1) * spacing;
+    return { y, h: Math.max(10, spacing * 0.8) };
+  } catch {}
+  return null;
+}
+
+/** Bar bounds of the TAB line for the beat at b (Staff+TAB: the lower of the staff's bar bounds). */
+export function tabBarBoundsAt(b: number): any {
+  let tabBar: any = null;
+  try {
+    const bl = state.api && state.api.renderer ? state.api.renderer.boundsLookup : null;
+    if (!bl || !bl.staffSystems) return null;
+    for (const sys of bl.staffSystems) for (const mb of (sys.bars || [])) for (const bar of (mb.bars || [])) {
+      const mBar = bar.bar ? bar.bar.masterBar : bar.masterBar;
+      if (!mBar) continue;
+      const hit = (bar.beats || []).some((bb: any) => {
+        const beat = bb.beat || bb;
+        return beat.playbackStart !== undefined && Math.abs((mBar.start + beat.playbackStart) / 960 - b) < 0.03;
+      });
+      if (!hit) continue;
+      const y = bar.visualBounds ? bar.visualBounds.y : -Infinity;
+      if (!tabBar || y > (tabBar.visualBounds ? tabBar.visualBounds.y : -Infinity)) tabBar = bar;
+    }
+  } catch {}
+  return tabBar;
+}
+
+/** String (1 = highest) at a y position inside the TAB bar bounds, or null when y is off the TAB lines. */
+export function stringAtY(bar: any, y: number): number | null {
+  const vb = bar && bar.visualBounds; if (!vb) return null;
+  const nS = getStringCount();
+  const spacing = nS > 1 ? vb.h / (nS - 1) : vb.h;
+  const rel = y - vb.y;
+  if (rel < -spacing / 2 || rel > vb.h + spacing / 2) return null;
+  return Math.max(1, Math.min(nS, Math.round(rel / spacing) + 1));
+}
+
+/** Draw the edit cursor box on the TAB staff at cursor beat/string. */
+export function overlayCursor() {
+  try {
+    const c = state.cursor; if (!c) return;
+    const host = document.getElementById("alphaTab"); if (!host) return;
+    const fb = findBeatBoundsAt(c.b);
+    if (!fb) return;
+    const tabBar = tabBarBoundsAt(c.b);
+    const barForY = tabBar || fb.barBounds;
+    const sy = stringYFor(barForY, c.s);
+    const bb = fb.bounds;
+    const vb = bb.visualBounds || bb.realBounds;
+    if (!vb || !sy) return;
+    const hasNote = !!(state.curTrack && Array.isArray(state.curTrack.notes) && state.curTrack.notes.some((n:any)=> n.s===c.s && Math.abs((n.b||0)-c.b)<1e-6));
+    const d = document.createElement("div");
+    d.className = "cursor-overlay" + (hasNote ? "" : " empty");
+    const w = Math.max(12, (vb.w || 14));
+    d.style.left = (vb.x - 2) + "px";
+    d.style.top = (sy.y - sy.h/2) + "px";
+    d.style.width = (w + 4) + "px";
+    d.style.height = sy.h + "px";
+    host.appendChild(d);
+  } catch {}
 }
 
 export function overlayBeatNotes(beat: any) {
@@ -97,7 +199,7 @@ export function overlayOneNote(alphaTabNote: any) {
 // Draw cyan boxes over the currently selected track notes (staff + TAB).
 export function overlaySelectedNotes() {
   clearNoteOverlays();
-  if (!state.selectedNoteIndices || state.selectedNoteIndices.length === 0) return;
+  if (!state.selectedNoteIndices || state.selectedNoteIndices.length === 0) { try { overlayCursor(); } catch {} return; }
   if (!state.curTrack || !state.api) return;
   var notes = state.curTrack.notes || [];
   var sel = state.selectedNoteIndices.map(function(i) { return notes[i]; }).filter(Boolean);
@@ -149,6 +251,7 @@ export function overlaySelectedNotes() {
       }
     }
   }
+  try { overlayCursor(); } catch {}
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

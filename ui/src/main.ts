@@ -19,7 +19,7 @@ import { getAtRes, initTheme, syncThemeBtn, toggleTheme } from "./theme";
 import { bindScaleControls, buildFretboard, clearFretboard, fretClick, updateScaleOverlay } from "./fretboard";
 import { clearNoteOverlays, showSelection } from "./overlay";
 import { bindControls, bindInstrument, instrumentKeyOf, rebuildScore, refingerNotes, renderScore, setInstrument, setMode } from "./score";
-import { adjustDuration, moveString } from "./editing";
+import { moveString } from "./editing";
 import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggleSidebar } from "./inspector";
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
@@ -27,6 +27,40 @@ import { startDevReporter } from "./devReporter";
 import { bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
+
+// Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
+function adjustDuration(mode: string) {
+  if (!state.curTrack || !state.curTrack.edit || !state.selectedNoteIndices.length) return;
+  const shorter = mode === "-1" || mode === "+";
+  const notes = state.curTrack.notes;
+  const selected = state.selectedNoteIndices.slice().map(i => notes[i]).filter(Boolean);
+  if (!selected.length) return;
+  const before = notes.map((n:any)=>({...n}));
+  const durName = (b:number) => {
+    if (Math.abs(b-4)<1e-6) return "1/1"; if (Math.abs(b-2)<1e-6) return "1/2"; if (Math.abs(b-1)<1e-6) return "1/4";
+    if (Math.abs(b-0.5)<1e-6) return "1/8"; if (Math.abs(b-0.25)<1e-6) return "1/16"; if (Math.abs(b-0.125)<1e-6) return "1/32"; return b.toFixed(3);
+  };
+  let changed = false, from = "", to = "";
+  const editSpans = () => {
+    const e = state.curTrack && state.curTrack.edit; if (!e) return null;
+    if (e.mode === "track") return e.spans || [];
+    return typeof e.regionLength === "number" ? [{ start: 0, end: e.regionLength }] : null;
+  };
+  const spanIndex = (b:number) => { const sp = editSpans(); if (!sp) return 0; return sp.findIndex((s:any)=> b>=s.start-1e-6 && b<s.end-1e-6); };
+  for (const n of selected) {
+    const old = n.d || 0.25;
+    let nd = shorter ? Math.max(0.125, old / 2) : old * 2;
+    const sp = editSpans(); const si = spanIndex(n.b);
+    if (!shorter && sp && sp[si]) nd = Math.min(nd, Math.max(0.125, sp[si].end - n.b));
+    if (Math.abs(nd - old) > 1e-6) { from = durName(old); to = durName(nd); n.d = nd; n.de = true; if (n.oid !== undefined) n.dirty = true; changed = true; }
+  }
+  if (changed) {
+    state.sessionChanged = true; state.redoHistory = [];
+    state.editHistory.push({ notes: before, deletedOids: state.deletedOids.slice() });
+    log("Duration " + from + " → " + to);
+    rebuildScore(); renderInspector(state.curTrack); (window.__editKeys as any)?.updateEditUi?.();
+  }
+}
 
 // Dev builds only: report to the test harness, expose state for its UI commands.
 if (__TAB_DEV__) { window.__tabState = state; startDevReporter(); }
@@ -53,6 +87,13 @@ bindKeys();
 bindApply();
 var ref = document.getElementById("btn-refinger");
 if (ref) ref.addEventListener("click", refingerNotes);
+var keysBtn = document.getElementById("btn-keys");
+var keysPop = document.getElementById("keys-popover");
+if (keysBtn && keysPop) {
+  const pop = keysPop;
+  keysBtn.addEventListener("click", (e) => { e.stopPropagation(); pop.classList.toggle("hidden"); });
+  document.addEventListener("click", (e) => { if (!pop.classList.contains("hidden") && !(e.target as Element)?.closest("#keys-popover") && e.target !== keysBtn) pop.classList.add("hidden"); });
+}
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
@@ -81,7 +122,8 @@ export function loadTrack(id) {
   if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {
     if (n.b0 === undefined) { n.b0 = n.b; n.d0 = n.d; }
   });
-  state.deletedOids = []; state.editHistory = []; state.sessionChanged = false;
+  state.deletedOids = []; state.editHistory = []; state.redoHistory = []; state.sessionChanged = false;
+  state.cursor = null; state.slots = []; state.selectionAnchor = null;
   if (window.__editKeys) window.__editKeys.updateEditUi();
   state.selectedNoteIndices = [];
   clearNoteOverlays();

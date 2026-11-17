@@ -18,10 +18,15 @@ export const state: {
   listEl: HTMLElement | null;
   deletedOids: number[];
   editHistory: any[];
+  redoHistory: any[];
   digitBuffer: string;
   digitTimer: ReturnType<typeof setTimeout> | null;
-  /** Insert cursor on a rest: where a new note goes (beats from the score start, string). */
-  restCursor: { b: number; d: number; s: number } | null;
+  /** Edit cursor on the TAB: beat slot and string. */
+  cursor: { b: number; s: number } | null;
+  /** Beat slots of the shown track's first staff, first voice. */
+  slots: { b: number; d: number; bar: number; isRest: boolean }[];
+  /** Range-selection anchor slot beat. */
+  selectionAnchor: number | null;
   /** Any note/fingering change in this editor session (drives v2 snapshot save). */
   sessionChanged: boolean;
 } = {
@@ -45,8 +50,11 @@ export const state: {
   listEl: null,
   deletedOids: [],
   editHistory: [],
+  redoHistory: [],
   digitBuffer: "",
   digitTimer: null,
-  restCursor: null,
+  cursor: null,
+  slots: [],
+  selectionAnchor: null,
   sessionChanged: false,
 };

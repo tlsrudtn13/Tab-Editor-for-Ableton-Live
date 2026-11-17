@@ -3,10 +3,11 @@ import { getOpenStrings, getStringCount, clearFretboard, lightFret } from "./fre
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
 import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overlay";
-import { adjustDuration, moveString } from "./editing";
+import { moveString } from "./editing";
 import { detectQuantizeGrid } from "../../src/notation/music.js";
 import { log } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
+import { barEndSlot, barStartSlot, ensureCursor, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
 /** Editable ranges in score beats: the clip's region, or each arrangement clip in track view. */
@@ -16,22 +17,50 @@ function editSpans(): { start: number; end: number }[] | null {
   if (e.mode === "track") return e.spans || [];
   return typeof e.regionLength === "number" ? [{ start: 0, end: e.regionLength }] : null;
 }
-/** Index of the span containing beat b (-1 = outside every clip; 0 when spans are unknown). */
 function spanIndex(b: number): number {
   const sp = editSpans();
   if (!sp) return 0;
   return sp.findIndex(s => b >= s.start - 1e-6 && b < s.end - 1e-6);
 }
+
 export function saveUndo(before?: any, deletedBefore?: any) {
   state.sessionChanged = true;
-  state.editHistory.push({ notes: before || state.curTrack.notes.map(n => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
+  state.redoHistory = [];
+  state.editHistory.push({ notes: before || state.curTrack.notes.map((n: any) => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
   if (state.editHistory.length > 50) state.editHistory.shift();
 }
+
 function render() {
   if (!state.curTrack) return;
-  rebuildScore(); renderInspector(state.curTrack); highlightSelection(); updateEditUi();
+  rebuildScore(); renderInspector(state.curTrack); syncFromCursor();
+  updateEditUi();
 }
-function highlightSelection() {
+
+function keyId(e: KeyboardEvent): string {
+  const k = e.key;
+  if (k && k !== "Process" && k !== "Unidentified" && !/^[\u3131-\u318E\uAC00-\uD7A3]$/.test(k)) return k;
+  const c = e.code || "";
+  if (/^Digit[0-9]$/.test(c)) return c.slice(5);
+  if (/^Numpad[0-9]$/.test(c)) return c.slice(6);
+  if (c === "NumpadAdd") return "+";
+  if (c === "NumpadSubtract") return "-";
+  if (c === "Minus") return "-";
+  if (c === "Equal") return "=";
+  if (/^Key[A-Z]$/.test(c)) return String(c.slice(3)).toLowerCase();
+  return k || "";
+}
+
+export function syncFromCursor() {
+  ensureCursor();
+  // preserve multi-selection only when explicitly managed? spec: "Selection follows the cursor: the note at (cursor.b, cursor.s) is the selection..."
+  const hit = noteAtCursor();
+  if (hit) state.selectedNoteIndices = [hit.index];
+  else state.selectedNoteIndices = [];
+  highlightSelection();
+  try { overlaySelectedNotes(); } catch {}
+}
+
+export function highlightSelection() {
   clearFretboard();
   const ns = state.selectedNoteIndices.map(i => state.curTrack.notes[i]).filter(Boolean);
   if (ns.length === 1 && state.curTrack && Array.isArray(state.curTrack.notes)) {
@@ -47,15 +76,19 @@ function highlightSelection() {
   document.querySelectorAll("#note-tbody tr.sel").forEach(r => r.classList.remove("sel"));
   state.selectedNoteIndices.forEach(i => { const r=document.getElementById("nr-"+i); if(r) r.classList.add("sel"); });
   if (state.selectedNoteIndices.length === 0) clearNoteOverlays();
-  else { try { overlaySelectedNotes(); } catch(e) {} }
+  else { try { overlaySelectedNotes(); } catch {} }
 }
-export function selectIndex(index) {
+
+export function selectIndex(index: number) {
   if (!state.curTrack || index < 0 || index >= state.curTrack.notes.length) return;
-  state.selectedNoteIndices = [index]; highlightSelection();
-  try { overlaySelectedNotes(); } catch(e: any) {}
+  const n = state.curTrack.notes[index];
+  setCursor(n.b, n.s);
+  state.selectionAnchor = n.b;
+  syncFromCursor();
 }
+
 export function updateEditUi() {
-  const edits = state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
+  const edits = state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter((n: any) => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
   const count = document.getElementById("edit-count"), apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (count) { count.textContent = "* " + edits + " edits"; count.classList.toggle("hidden", edits === 0); }
   const enabled = active();
@@ -66,38 +99,26 @@ export function updateEditUi() {
   }
   if (cancel) { (cancel as HTMLButtonElement).disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }
 }
-function pitchChange(delta) {
-  const notes=state.curTrack.notes, before=notes.map(n=>({...n})), open=getOpenStrings(), count=getStringCount(); let touched=false;
-  state.selectedNoteIndices.forEach(i=>{ const n=notes[i]; if(!n)return; const p=n.p+delta; if(p<0||p>127)return;
-    let f=p-(open[n.s]||40), s=n.s;
-    if(f<0||f>24){ f=Infinity; for(let st=1;st<=count;st++){const x=p-(open[st]||40);if(x>=0&&x<=24&&x<f){f=x;s=st;}} if(!Number.isFinite(f))return; }
-    n.p=p;n.s=s;n.f=f;n.lock=true;if(n.oid!==undefined)n.dirty=true;touched=true;
-  }); if(touched){saveUndo(before);render();}
+
+function currentSlot() {
+  const c = ensureCursor(); if (!c) return null;
+  return slotAt(c.b);
 }
-/** Put the insert cursor on a rest (b, d in beats from the score start). */
-export function setRestCursor(b: number, d: number) {
-  if (!active()) return;
-  const prev = state.restCursor;
-  state.restCursor = { b, d: d > 0 ? d : 0.25, s: prev ? prev.s : 1 };
-  state.selectedNoteIndices = [];
-  showRestCursor();
-}
-function showRestCursor() {
-  const rc = state.restCursor; if (!rc) return;
-  clearFretboard(); lightFret(rc.s, 0, "Empty beat " + (rc.b + 1).toFixed(2) + " · string " + rc.s + ": click a fret or type a number (Alt+↑/↓ string)");
-}
-/** Add a note at the insert cursor, or as a chord tone at the selected note's time (chord=true). */
+
 export function insertNote(s: number, f: number, chord = false) {
   if (!active()) return false;
   const open = getOpenStrings()[s]; if (typeof open !== "number" || f < 0 || f > 24) return false;
-  let b: number, d: number;
+  const c = ensureCursor(); if (!c) return false;
+  let b = c.b, d = 0.25;
   if (chord) {
-    const ref = state.curTrack.notes[state.selectedNoteIndices[0]]; if (!ref) return false;
-    if (state.curTrack.notes.some((n: any) => Math.abs(n.b - ref.b) < 1e-6 && n.s === s)) return false; // string taken
-    b = ref.b; d = ref.d;
+    const hit = noteAtCursor();
+    if (!hit) return false;
+    if (state.curTrack.notes.some((n: any) => Math.abs(n.b - hit.note.b) < 1e-6 && n.s === s)) return false;
+    b = hit.note.b; d = hit.note.d;
   } else {
-    const rc = state.restCursor; if (!rc) return false;
-    b = rc.b; d = rc.d;
+    const sl = currentSlot();
+    if (!sl) return false;
+    b = sl.b; d = sl.d;
     const si = spanIndex(b), sp = editSpans();
     if (si < 0) { log("Insert: that rest is outside every clip"); return false; }
     if (sp && sp[si]) d = Math.min(d, sp[si].end - b);
@@ -105,20 +126,21 @@ export function insertNote(s: number, f: number, chord = false) {
   const tmpl = state.curTrack.notes[0] || {};
   const before = state.curTrack.notes.map((n: any) => ({ ...n }));
   state.curTrack.notes.push({ b, d, p: open + f, v: 100, s, f, src: tmpl.src || "ses", clip: tmpl.clip || "", lock: true });
-  state.restCursor = null;
   saveUndo(before);
-  state.selectedNoteIndices = [state.curTrack.notes.length - 1];
+  setCursor(b, s);
+  state.selectionAnchor = b;
   render();
   return true;
 }
-/** Move the selected notes in time by `steps` grid steps (or whole beats). Refuses a move onto a string already used there. */
+
 export function moveTime(steps: number, wholeBeats = false) {
   if (!active() || !state.selectedNoteIndices.length) return;
   const notes = state.curTrack.notes;
   const grid = state.uiQuantize === "auto" ? detectQuantizeGrid(notes) : state.uiQuantize;
-  const unit = wholeBeats ? 1 : 4 / grid, delta = steps * unit;
-  const sel = new Set(state.selectedNoteIndices);
-  const moved = state.selectedNoteIndices.map(i => notes[i]).filter(Boolean);
+  const unit = wholeBeats ? 1 : 4 / (grid as number), delta = steps * unit;
+  const selIdx = state.selectedNoteIndices.slice();
+  const sel = new Set(selIdx);
+  const moved = selIdx.map(i => notes[i]).filter(Boolean);
   if (moved.some((n: any) => n.b + delta < -1e-6)) { log("Move: already at the start"); return; }
   if (moved.some((n: any) => { const from = spanIndex(n.b), to = spanIndex(n.b + delta); return to < 0 || to !== from; })) {
     log("Move: notes cannot leave their clip"); return;
@@ -128,38 +150,240 @@ export function moveTime(steps: number, wholeBeats = false) {
   const before = notes.map((n: any) => ({ ...n }));
   moved.forEach((n: any) => { n.b = Math.max(0, n.b + delta); if (n.oid !== undefined) n.dirty = true; });
   saveUndo(before);
+  const c = ensureCursor(); if (c) c.b = Math.max(0, c.b + delta);
+  state.selectionAnchor = c ? c.b : state.selectionAnchor;
   render();
 }
-export function setSelectedStringFret(s,f) {
-  if(!active())return; const n=state.curTrack.notes[state.selectedNoteIndices[0]], open=getOpenStrings()[s]; if(!n||typeof open!=="number")return;
-  const before=state.curTrack.notes.map(n=>({...n})); n.s=s;n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();
-}
-function onKey(e) {
-  if(state.restCursor&&(e.key==="ArrowLeft"||e.key==="ArrowRight"))state.restCursor=null;
-  if (e.target instanceof Element && (e.target.matches("input,select,textarea") || e.target.isContentEditable)) return;
-  const k=e.key, selected=state.selectedNoteIndices;
-  if(e.ctrlKey&&k.toLowerCase()==="enter"){e.preventDefault();window.applyClipEdits&&window.applyClipEdits();return;}
-  if(e.ctrlKey&&k.toLowerCase()==="d"&&active()&&selected.length){e.preventDefault();const i=selected[0],n=state.curTrack.notes[i],before=state.curTrack.notes.map(x=>({...x}));if(n){state.curTrack.notes.push({...n,b:n.b+n.d,oid:undefined,dirty:undefined});selectIndex(state.curTrack.notes.length-1);saveUndo(before);render();}return;}
-  if(e.ctrlKey&&k.toLowerCase()==="z"&&active()){e.preventDefault();const h=state.editHistory.pop();if(h){state.curTrack.notes=h.notes.map(n=>({...n}));state.deletedOids=h.deletedOids.slice();state.selectedNoteIndices=[];render();}return;}
-  if(k==="Escape"){state.selectedNoteIndices=[];state.restCursor=null;clearNoteOverlays();highlightSelection();return;}
-  // Insert cursor on a rest: Alt+arrows pick the string, digits add a note there
-  if(state.restCursor&&!selected.length&&active()){
-    if((k==="ArrowUp"||k==="ArrowDown")&&e.altKey){e.preventDefault();const rc=state.restCursor;rc.s=Math.max(1,Math.min(getStringCount(),rc.s+(k==="ArrowUp"?-1:1)));showRestCursor();return;}
-    if(/^[0-9]$/.test(k)){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const go=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f<=24&&state.restCursor)insertNote(state.restCursor.s,f);};state.digitTimer=setTimeout(go,400);if(state.digitBuffer.length>=2)go();return;}
-  }
-  if(!state.curTrack)return;
-  const sorted=state.curTrack.notes.map((n,i)=>({n,i})).sort((a,b)=>a.n.b-b.n.b||b.n.p-a.n.p).map(x=>x.i);
-  if((k==="ArrowLeft"||k==="ArrowRight")&&e.shiftKey&&active()&&selected.length){e.preventDefault();moveTime(k==="ArrowLeft"?-1:1,e.ctrlKey);return;}
-  if(k==="ArrowLeft"||k==="ArrowRight"){e.preventDefault();let pos=sorted.indexOf(selected[0]);if(pos<0)pos=k==="ArrowLeft"?sorted.length: -1;selectIndex(sorted[Math.max(0,Math.min(sorted.length-1,pos+(k==="ArrowLeft"?-1:1)))] as number);return;}
+
+export function setSelectedStringFret(s: number, f: number) {
   if(!active())return;
-  if((k==="ArrowUp"||k==="ArrowDown")&&selected.length){e.preventDefault();if(e.altKey)moveString(k==="ArrowUp"?-1:1);else pitchChange((k==="ArrowUp"?1:-1)*(e.shiftKey?12:1));return;}
-  if((k==="["||k==="]")&&selected.length){adjustDuration(k==="]"?"+1":"-1");return;}
-  if(k.toLowerCase()==="d"&&selected.length){adjustDuration("Auto");return;}
-  if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&selected.length&&k.toLowerCase()==="b"){e.preventDefault();cycleSelectedBend(saveUndo,render);return;}
-  if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&selected.length&&TECH_KEY[k.toLowerCase()]){e.preventDefault();toggleSelectedTech(TECH_KEY[k.toLowerCase()],saveUndo,render);return;}
-  if((k==="Delete"||k==="Backspace")&&selected.length){e.preventDefault();const before=state.curTrack.notes.map(n=>({...n})), deletedBefore=state.deletedOids.slice();const removed=selected.slice().sort((a,b)=>b-a);removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});state.selectedNoteIndices=[];saveUndo(before,deletedBefore);render();return;}
-  if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]];if(!n)return;const open=getOpenStrings()[n.s];if(open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
+  const hit = noteAtCursor(); const n = hit ? hit.note : state.curTrack.notes[state.selectedNoteIndices[0]];
+  const open=getOpenStrings()[s]; if(!n||typeof open!=="number")return;
+  const before=state.curTrack.notes.map((x:any)=>({...x}));
+  n.s=s;n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;
+  saveUndo(before);
+  setCursor(n.b, s);
+  state.selectionAnchor = n.b;
+  render();
 }
-/** Palette button / window handler. */
-export function toggleTech(t){ if (t === "bend") cycleSelectedBend(saveUndo, render); else toggleSelectedTech(t, saveUndo, render); }
-export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi,insertNote,setRestCursor};updateEditUi();}
+
+function setFretAtCursor(f: number) {
+  if (!active()) return;
+  const c = ensureCursor(); if (!c) return;
+  const hit = noteAtCursor();
+  if (hit) {
+    const open = getOpenStrings()[c.s]; if (open === undefined) return;
+    const before = state.curTrack.notes.map((x:any)=>({...x}));
+    hit.note.f = f; hit.note.p = open + f; hit.note.lock = true; if (hit.note.oid !== undefined) hit.note.dirty = true;
+    saveUndo(before); render();
+  } else {
+    insertNote(c.s, f, false);
+  }
+}
+
+function semitoneAtCursor(delta: number) {
+  if (!active()) return;
+  const hit = noteAtCursor(); if (!hit) return;
+  const n = hit.note, open = getOpenStrings()[n.s]; if (open === undefined) return;
+  const p = n.p + delta, f = p - open;
+  if (f < 0 || f > 24) { log("Semitone: fret would be out of range on this string"); return; }
+  const before = state.curTrack.notes.map((x:any)=>({...x}));
+  n.p = p; n.f = f; n.lock = true; if (n.oid !== undefined) n.dirty = true;
+  saveUndo(before); render();
+}
+
+function adjustDur(deltaSteps: number) {
+  if (!active() || !state.selectedNoteIndices.length) return;
+  const notes = state.curTrack.notes;
+  const selected = state.selectedNoteIndices.slice().map(i => notes[i]).filter(Boolean);
+  if (!selected.length) return;
+  const before = notes.map((n:any)=>({...n}));
+  let changed = 0;
+  for (const n of selected) {
+    const nd = deltaSteps < 0 ? Math.max(0.125, (n.d || 0.25) / 2) : (n.d || 0.25) * 2;
+    const sp = editSpans();
+    const si = spanIndex(n.b);
+    let clamped = nd;
+    if (sp && sp[si]) clamped = Math.min(clamped, Math.max(0.125, sp[si].end - n.b));
+    if (Math.abs(clamped - n.d) > 1e-6) { n.d = clamped; n.de = true; if (n.oid !== undefined) n.dirty = true; changed++; }
+  }
+  if (changed) {
+    saveUndo(before);
+    const d0 = selected[0].d; // after change roughly representative
+    log("Duration 1/8 → 1/16"); // generic; overridden below
+    render();
+  }
+}
+
+function adjustDurationHalveOrDouble(shorter: boolean) {
+  if (!active() || !state.selectedNoteIndices.length) return;
+  const notes = state.curTrack.notes;
+  const selected = state.selectedNoteIndices.slice().map(i => notes[i]).filter(Boolean);
+  if (!selected.length) return;
+  const before = notes.map((n:any)=>({...n}));
+  const durName = (b:number) => {
+    if (Math.abs(b-4)<1e-6) return "1/1"; if (Math.abs(b-2)<1e-6) return "1/2"; if (Math.abs(b-1)<1e-6) return "1/4";
+    if (Math.abs(b-0.5)<1e-6) return "1/8"; if (Math.abs(b-0.25)<1e-6) return "1/16"; if (Math.abs(b-0.125)<1e-6) return "1/32"; return b.toFixed(3);
+  };
+  let changed = false; let from = "", to = "";
+  for (const n of selected) {
+    const old = n.d || 0.25;
+    let nd = shorter ? Math.max(0.125, old / 2) : old * 2;
+    const sp = editSpans();
+    const si = spanIndex(n.b);
+    if (!shorter && sp && sp[si]) nd = Math.min(nd, Math.max(0.125, sp[si].end - n.b));
+    if (Math.abs(nd - old) > 1e-6) { from = durName(old); to = durName(nd); n.d = nd; n.de = true; if (n.oid !== undefined) n.dirty = true; changed = true; }
+  }
+  if (changed) { saveUndo(before); log("Duration " + from + " → " + to); render(); }
+}
+
+function deleteSelectionOrCursor() {
+  if (!active()) return;
+  let sel = state.selectedNoteIndices.slice();
+  if (!sel.length) { const hit = noteAtCursor(); if (hit) sel = [hit.index]; }
+  if (!sel.length) return;
+  const before = state.curTrack.notes.map((n:any)=>({...n})), deletedBefore=state.deletedOids.slice();
+  const removed = sel.slice().sort((a,b)=>b-a);
+  removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});
+  state.selectedNoteIndices=[];
+  saveUndo(before, deletedBefore);
+  render();
+}
+
+function selectNotesInRange(a: number, b: number) {
+  const lo = Math.min(a,b)-1e-6, hi = Math.max(a,b)+1e-6;
+  const idxs: number[] = [];
+  state.curTrack.notes.forEach((n:any,i:number)=>{ if (n.b >= lo && n.b <= hi) idxs.push(i); });
+  state.selectedNoteIndices = idxs;
+  highlightSelection();
+  try { overlaySelectedNotes(); } catch {}
+}
+
+function selectAllNotesAtSlot(b: number) {
+  const idxs: number[] = [];
+  state.curTrack.notes.forEach((n:any,i:number)=>{ if (Math.abs(n.b-b) < 1e-6) idxs.push(i); });
+  state.selectedNoteIndices = idxs;
+  highlightSelection();
+  try { overlaySelectedNotes(); } catch {}
+}
+
+function undo() {
+  const h = state.editHistory.pop(); if (!h) return;
+  state.redoHistory.push({ notes: state.curTrack.notes.map((n:any)=>({...n})), deletedOids: state.deletedOids.slice() });
+  state.curTrack.notes = h.notes.map((n:any)=>({...n}));
+  state.deletedOids = h.deletedOids.slice();
+  syncFromCursor();
+  rebuildScore(); renderInspector(state.curTrack); updateEditUi();
+}
+function redo() {
+  const h = state.redoHistory.pop(); if (!h) return;
+  state.editHistory.push({ notes: state.curTrack.notes.map((n:any)=>({...n})), deletedOids: state.deletedOids.slice() });
+  state.curTrack.notes = h.notes.map((n:any)=>({...n}));
+  state.deletedOids = h.deletedOids.slice();
+  syncFromCursor();
+  rebuildScore(); renderInspector(state.curTrack); updateEditUi();
+}
+
+function moveCursorTo(slot: any, keepAnchor = false) {
+  if (!slot) return;
+  const c = ensureCursor(); if (!c) return;
+  setCursor(slot.b, c.s);
+  if (!keepAnchor) state.selectionAnchor = slot.b;
+  syncFromCursor();
+  // scroll into view best-effort
+  try { window.requestAnimationFrame(()=>{ /* overlay redraw handled */ }); } catch {}
+}
+
+function onKey(e: KeyboardEvent) {
+  if (e.target instanceof Element && (e.target.matches("input,select,textarea") || (e.target as HTMLElement).isContentEditable)) return;
+  const k = keyId(e);
+  const kl = String(k).toLowerCase();
+  if(e.ctrlKey && kl === "enter"){e.preventDefault();window.applyClipEdits&&window.applyClipEdits();return;}
+  if(e.ctrlKey && kl === "d" && active() && state.selectedNoteIndices.length){
+    e.preventDefault();
+    const i=state.selectedNoteIndices[0], n=state.curTrack.notes[i], before=state.curTrack.notes.map((x:any)=>({...x}));
+    if(n){state.curTrack.notes.push({...n,b:n.b+n.d,oid:undefined,dirty:undefined});selectIndex(state.curTrack.notes.length-1);saveUndo(before);render();}
+    return;
+  }
+  if(e.ctrlKey && kl === "z" && !e.shiftKey && active()){e.preventDefault();undo();return;}
+  if((e.ctrlKey && kl === "y") || (e.ctrlKey && e.shiftKey && kl === "z")){ if(active()){e.preventDefault();redo();} return; }
+  if(k === "Escape"){state.selectedNoteIndices=[];state.selectionAnchor=null;clearNoteOverlays();highlightSelection();return;}
+  if(!state.curTrack) return;
+  const c = ensureCursor();
+  const slots = state.slots || [];
+
+  // Digits (two-digit buffer)
+  if (/^[0-9]$/.test(k as string) && active()) {
+    e.preventDefault();
+    state.digitBuffer += k;
+    if (state.digitTimer) clearTimeout(state.digitTimer);
+    const go = () => {
+      const f = Number(state.digitBuffer); state.digitBuffer = "";
+      if (f <= 24) setFretAtCursor(f);
+    };
+    state.digitTimer = setTimeout(go, 400);
+    if (state.digitBuffer.length >= 2) go();
+    return;
+  }
+
+  // Movement / selection
+  if (k === "ArrowLeft" || k === "ArrowRight") {
+    e.preventDefault();
+    if (e.shiftKey && active()) {
+      if (state.selectionAnchor == null) state.selectionAnchor = c!.b;
+      const slot = e.ctrlKey ? (k==="ArrowLeft"?prevBarSlot(slots,c!.b):nextBarSlot(slots,c!.b)) : (k==="ArrowLeft"?prevSlot(slots,c!.b):nextSlot(slots,c!.b));
+      if (slot) { setCursor(slot.b, c!.s); selectNotesInRange(state.selectionAnchor, slot.b); }
+      return;
+    }
+    if (e.ctrlKey && e.altKey && active()) { moveTime(k==="ArrowLeft"?-1:1, true); return; }
+    if (e.altKey && active()) { moveTime(k==="ArrowLeft"?-1:1, false); return; }
+    if (e.ctrlKey) { moveCursorTo(k==="ArrowLeft"?prevBarSlot(slots,c!.b):nextBarSlot(slots,c!.b)); return; }
+    moveCursorTo(k==="ArrowLeft"?prevSlot(slots,c!.b):nextSlot(slots,c!.b));
+    return;
+  }
+  if (k === "ArrowUp" || k === "ArrowDown") {
+    e.preventDefault();
+    if (e.altKey && e.shiftKey && active()) { semitoneAtCursor(k==="ArrowUp"?1:-1); return; }
+    if (e.altKey && active()) {
+      // move note to adjacent string same pitch, cursor follows
+      const hit = noteAtCursor();
+      if (hit) { moveString(k==="ArrowUp"?-1:1); setCursor(hit.note.b, hit.note.s); state.selectionAnchor = hit.note.b; syncFromCursor(); }
+      return;
+    }
+    if (e.shiftKey) { selectAllNotesAtSlot(c!.b); return; }
+    const nS = getStringCount();
+    setCursor(c!.b, Math.max(1, Math.min(nS, c!.s + (k==="ArrowUp"?-1:1))));
+    state.selectionAnchor = c!.b;
+    syncFromCursor();
+    return;
+  }
+  if (k === "Home") { e.preventDefault(); moveCursorTo(e.ctrlKey ? firstBarSlot(slots) : barStartSlot(slots,c!.b)); return; }
+  if (k === "End") { e.preventDefault(); moveCursorTo(e.ctrlKey ? lastBarSlot(slots) : barEndSlot(slots,c!.b)); return; }
+
+  if (!active()) return;
+
+  if (e.ctrlKey && kl === "a") { e.preventDefault(); state.selectedNoteIndices = state.curTrack.notes.map((_:any,i:number)=>i); highlightSelection(); try{overlaySelectedNotes();}catch{} return; }
+
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && (k === "+" || k === "=")) { e.preventDefault(); adjustDurationHalveOrDouble(true); return; }
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && (k === "-" || k === "_")) { e.preventDefault(); adjustDurationHalveOrDouble(false); return; }
+
+  if ((k === "Delete" || k === "Backspace") && !e.ctrlKey) { e.preventDefault(); deleteSelectionOrCursor(); return; }
+
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && kl === "b") { e.preventDefault(); cycleSelectedBend(saveUndo, render); return; }
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && TECH_KEY[kl as string]) { e.preventDefault(); toggleSelectedTech(TECH_KEY[kl as string], saveUndo, render); return; }
+}
+
+export function toggleTech(t: string){ if (t === "bend") cycleSelectedBend(saveUndo, render); else toggleSelectedTech(t as any, saveUndo, render); }
+
+export function bindKeys(){
+  document.addEventListener("keydown", onKey);
+  window.__editKeys = {
+    selectIndex,
+    setSelectedStringFret,
+    updateEditUi,
+    insertNote,
+    setCursor: (b:number,s:number)=>{ setCursor(b,s); state.selectionAnchor=b; syncFromCursor(); try{overlaySelectedNotes();}catch{} },
+    cursor: ()=> state.cursor ? { b: state.cursor.b, s: state.cursor.s } : null,
+  };
+  updateEditUi();
+}
