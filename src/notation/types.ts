@@ -27,6 +27,8 @@ export type Note = {
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
     lock?: boolean;
     oid?: number;
+    /** Track view: index of the arrangement clip the note comes from (see TrackClipSpan). */
+    cref?: number;
     dirty?: boolean;
 };
 
@@ -58,7 +60,8 @@ export type TrackPayload = {
         message?: string;
     };
     /** regionLength: beats shown (loop or start/end markers); edits must stay inside it. */
-    edit?: { mode: "clip"; regionStart: number; regionLength?: number; noteCount: number };
+    edit?: { mode: "clip"; regionStart: number; regionLength?: number; noteCount: number }
+         | { mode: "track"; spans: { start: number; end: number }[]; noteCount: number };
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */

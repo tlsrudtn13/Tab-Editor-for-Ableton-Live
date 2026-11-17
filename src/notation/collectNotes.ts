@@ -96,12 +96,16 @@ export function notesFromClip(
  * @param track         에이블톤 MidiTrack 객체 (any)
  * @param isMidiClip    `(clip) => boolean` — SDK 없이 타입 체크 가능하게 주입
  */
+/** Where an arrangement clip sits: shown span [start, end) and absolute = offset + clip-local time. */
+export type TrackClipSpan = { index: number; start: number; end: number; offset: number };
+
 export function collectNotes(
     track: unknown,
     isMidiClip: (clip: unknown) => boolean = () => true
-): { arr: Note[]; ses: Note[] } {
+): { arr: Note[]; ses: Note[]; arrClips: TrackClipSpan[] } {
     const arr: Note[] = [];
     const ses: Note[] = [];
+    const spans: TrackClipSpan[] = [];
 
     // ── 어레인지먼트 클립 ─────────────────────────────────
     const arrClips: unknown[] = Array.isArray((track as any)?.arrangementClips)
@@ -113,12 +117,24 @@ export function collectNotes(
         if (!clip) continue;
         if (!isMidiClip(clip) && !Array.isArray((clip as any)?.notes)) continue;
 
-        const offset   = safeNum(
+        const start    = safeNum(
             (clip as any).startTime ?? (clip as any).clipStartTime ?? (clip as any).position ?? (clip as any).time,
             0
         );
+        // The clip plays its content from the start marker; a looping clip shows its first pass only.
+        const marker   = safeNum((clip as any).startMarker, 0);
+        const offset   = start - marker;
+        const endTime  = safeNum((clip as any).endTime, NaN);
+        let end        = Number.isFinite(endTime) && endTime > start ? endTime : Infinity;
+        if ((clip as any).looping === true) {
+            const loopEnd = safeNum((clip as any).loopEnd, NaN);
+            if (Number.isFinite(loopEnd) && loopEnd > marker) end = Math.min(end, offset + loopEnd);
+        }
         const clipName = safeStr((clip as any).name, `Clip${ci + 1}`);
-        const notes    = notesFromClip(clip, offset, "arr", clipName);
+        const notes    = notesFromClip(clip, offset, "arr", clipName)
+            .filter(n => n.b >= start - 1e-9 && n.b < end - 1e-9)
+            .map(n => ({ ...n, cref: ci }));
+        spans.push({ index: ci, start, end, offset });
 
         arr.push(...notes);
     }
@@ -139,5 +155,5 @@ export function collectNotes(
         ses.push(...notes);
     }
 
-    return { arr, ses };
+    return { arr, ses, arrClips: spans };
 }

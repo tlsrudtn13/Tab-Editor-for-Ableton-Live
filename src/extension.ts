@@ -22,6 +22,8 @@ import { collectNotes, notesFromClip, clipRegion } from "./notation/collectNotes
 import { buildPayload } from "./notation/payload.js";
 import { injectableJson } from "./inject.js";
 import { mergeClipEdits } from "./notation/clipEdits.js";
+import { splitTrackEdits, type TrackNoteRef } from "./notation/trackEdits.js";
+import type { TrackClipSpan } from "./notation/collectNotes.js";
 import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
 import fs   from "node:fs";
@@ -197,18 +199,56 @@ export function activate(activation: ActivationContext) {
     //    tabeditor.openAll : 모든 트랙 (씬·오디오 트랙 메뉴, 인자 무시)
     //    arrangement 클립만 사용 → session 클립 끼어듦 방지
     // ──────────────────────────────────────────────────────
-    function trackPayload(rawTrack: any, idx: number, tempo: number, live: any): TrackPayload | null {
+    /** For write-back in track view: track-wide id -> clip/index, clip spans, and the clips' notes as opened. */
+    type TrackEditContext = { refs: TrackNoteRef[]; spans: TrackClipSpan[]; snapshots: Map<number, string> };
+
+    function trackPayload(rawTrack: any, idx: number, tempo: number, live: any, editCtx?: TrackEditContext): TrackPayload | null {
         const collected = collectNotes(rawTrack);
         if (!collected) return null;
         // arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
-        const allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
+        let allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
+        if (editCtx) {
+            // the editor's oid becomes a track-wide id; refs map it back to (clip, index in that clip)
+            editCtx.refs = allNotes.map(n => ({ cref: n.cref ?? -1, oid: n.oid ?? -1 }));
+            editCtx.spans = collected.arrClips;
+            const clips: any[] = rawTrack.arrangementClips ?? [];
+            for (const span of collected.arrClips) editCtx.snapshots.set(span.index, JSON.stringify(clips[span.index]?.notes ?? []));
+            allNotes = allNotes.map((n, gid) => ({ ...n, oid: gid }));
+        }
         const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
         const trackName = rawTrack.name ?? "Unknown";
         const storageKey = layerKey(trackName, "");
         const layer = readLayer(context, storageKey);
         const p = buildPayload(trackId, trackName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
         if (p) (p as any).layerStorageKey = storageKey;
+        if (p && editCtx) p.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end })), noteCount: allNotes.length };
         return p;
+    }
+
+    /** Apply editor edits to every arrangement clip they touch, in one undo step. */
+    async function applyTrackEdits(rawTrack: any, editCtx: TrackEditContext, edits: any): Promise<void> {
+        const { perClip, dropped } = splitTrackEdits(edits, editCtx.refs, editCtx.spans);
+        if (!perClip.length) { await notify(context, "Nothing to apply: no valid note changes."); return; }
+        const clips: any[] = rawTrack.arrangementClips ?? [];
+        for (const part of perClip) {
+            const clip = clips[part.cref];
+            if (!clip || JSON.stringify(clip.notes ?? []) !== editCtx.snapshots.get(part.cref)) {
+                console.warn(`[TAB] Track apply skipped: clip ${part.cref} changed while the editor was open.`);
+                await notify(context, "Not applied: a clip on this track changed while the editor was open. Reopen it and try again.", 4000);
+                return;
+            }
+        }
+        const total = { changed: 0, added: 0, deleted: 0, dropped };
+        const results = perClip.map(part => {
+            const merged = mergeClipEdits(clips[part.cref].notes, part.edits, part.regionStart);
+            total.changed += merged.stats.changed; total.added += merged.stats.added;
+            total.deleted += merged.stats.deleted; total.dropped += merged.stats.dropped;
+            return { clip: clips[part.cref], notes: merged.notes };
+        });
+        if (total.changed + total.added + total.deleted === 0) { await notify(context, "Nothing to apply: no valid note changes."); return; }
+        context.withinTransaction(() => { for (const r of results) r.clip.notes = r.notes as any; });
+        console.log(`[TAB] Track apply complete (${results.length} clip(s)): ${JSON.stringify(total)}`);
+        await notify(context, applySummary(total).replace("Applied to clip:", `Applied to ${results.length} clip(s):`));
     }
 
     async function openAllTracks(): Promise<void> {
@@ -250,7 +290,8 @@ export function activate(activation: ActivationContext) {
         const tempo = getTempo(context);
         const live = liveContext(context);
         const name = safeStr(track.name, "Track");
-        const p = trackPayload(track, 1, tempo, live);
+        const editCtx: TrackEditContext = { refs: [], spans: [], snapshots: new Map() };
+        const p = trackPayload(track, 1, tempo, live, editCtx);
         if (!p) {
             console.warn(`[TAB] track "${name}" has no notes in Arrangement clips — editor not opened.`);
             await showEditor(context, [], `No notes in Arrangement clips of "${name}". Open a clip instead (right-click the clip → Open (Clip)).`);
@@ -258,7 +299,17 @@ export function activate(activation: ActivationContext) {
         }
         console.log(`[TAB] track mode: "${name}"`);
         const result = await showEditor(context, [p]);
-        try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
+        if (!result) return;
+        let message: any;
+        try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
+        if (message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
+        if (message?.action !== "apply" || !message.edits) return;
+        try {
+            await applyTrackEdits(track, editCtx, message.edits);
+        } catch (e) {
+            console.warn("[TAB] Track apply failed:", e);
+            await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
+        }
     });
 
     register("tabeditor.openAll", async () => { await openAllTracks(); });

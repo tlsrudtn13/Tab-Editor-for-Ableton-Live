@@ -9,6 +9,19 @@ import { log } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
+/** Editable ranges in score beats: the clip's region, or each arrangement clip in track view. */
+function editSpans(): { start: number; end: number }[] | null {
+  const e = state.curTrack && state.curTrack.edit;
+  if (!e) return null;
+  if (e.mode === "track") return e.spans || [];
+  return typeof e.regionLength === "number" ? [{ start: 0, end: e.regionLength }] : null;
+}
+/** Index of the span containing beat b (-1 = outside every clip; 0 when spans are unknown). */
+function spanIndex(b: number): number {
+  const sp = editSpans();
+  if (!sp) return 0;
+  return sp.findIndex(s => b >= s.start - 1e-6 && b < s.end - 1e-6);
+}
 export function saveUndo(before?: any, deletedBefore?: any) {
   state.editHistory.push({ notes: before || state.curTrack.notes.map(n => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
   if (state.editHistory.length > 50) state.editHistory.shift();
@@ -37,7 +50,11 @@ export function updateEditUi() {
   const count = document.getElementById("edit-count"), apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (count) { count.textContent = "* " + edits + " edits"; count.classList.toggle("hidden", edits === 0); }
   const enabled = active();
-  if (apply) { (apply as HTMLButtonElement).disabled = !enabled; apply.title = enabled ? "" : "Apply works in Open (Clip)"; }
+  if (apply) {
+    (apply as HTMLButtonElement).disabled = !enabled;
+    apply.title = enabled ? "" : "Apply works in Open (Clip) and Open (Track)";
+    apply.textContent = enabled && state.curTrack.edit.mode === "track" ? "Apply to Clips" : "Apply to Clip";
+  }
   if (cancel) { (cancel as HTMLButtonElement).disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }
 }
 function pitchChange(delta) {
@@ -72,11 +89,9 @@ export function insertNote(s: number, f: number, chord = false) {
   } else {
     const rc = state.restCursor; if (!rc) return false;
     b = rc.b; d = rc.d;
-    const len = state.curTrack.edit.regionLength;
-    if (typeof len === "number") {
-      if (b >= len - 1e-6) { log("Insert: that rest is past the end of the clip"); return false; }
-      d = Math.min(d, len - b);
-    }
+    const si = spanIndex(b), sp = editSpans();
+    if (si < 0) { log("Insert: that rest is outside every clip"); return false; }
+    if (sp && sp[si]) d = Math.min(d, sp[si].end - b);
   }
   const tmpl = state.curTrack.notes[0] || {};
   const before = state.curTrack.notes.map((n: any) => ({ ...n }));
@@ -96,8 +111,9 @@ export function moveTime(steps: number, wholeBeats = false) {
   const sel = new Set(state.selectedNoteIndices);
   const moved = state.selectedNoteIndices.map(i => notes[i]).filter(Boolean);
   if (moved.some((n: any) => n.b + delta < -1e-6)) { log("Move: already at the start"); return; }
-  const len = state.curTrack.edit.regionLength;
-  if (typeof len === "number" && moved.some((n: any) => n.b + delta >= len - 1e-6)) { log("Move: that is past the end of the clip"); return; }
+  if (moved.some((n: any) => { const from = spanIndex(n.b), to = spanIndex(n.b + delta); return to < 0 || to !== from; })) {
+    log("Move: notes cannot leave their clip"); return;
+  }
   const clash = moved.find((n: any) => notes.some((o: any, j: number) => !sel.has(j) && o.s === n.s && Math.abs(o.b - (n.b + delta)) < unit / 2));
   if (clash) { log("Move: string " + clash.s + " is already used there"); return; }
   const before = notes.map((n: any) => ({ ...n }));
