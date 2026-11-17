@@ -145,7 +145,9 @@ export function createApi() {
       resources: getAtRes()
 
     },
-    player: { enablePlayer: true, enableCursor: true, enableUserInteraction: true, soundFont: soundFontUrl }
+    // ScriptProcessor output: the AudioWorklet output needs a separate script file,
+    // which a single-file page in Live's modal cannot provide.
+    player: { playerMode: alphaTab.PlayerMode.EnabledSynthesizer, outputMode: alphaTab.PlayerOutputMode.WebAudioScriptProcessor, enableCursor: true, enableUserInteraction: true }
   });
 
   var api = state.api;
@@ -170,6 +172,9 @@ export function createApi() {
     try { overlaySelectedNotes(); } catch(e) {}
   });
   api.soundFontLoaded.on(function() { log("Soundfont loaded"); });
+  if (api.playerReady) api.playerReady.on(function() { log("Player ready"); });
+  // Feed the inlined soundfont directly (no network / file URL needed in Live's modal).
+  loadSoundFont(api);
   // soundFontLoadFailed lives on the synth (api.player), not on the API itself
   var synth = api.player;
   if (synth && synth.soundFontLoadFailed) synth.soundFontLoadFailed.on(function(e) { log("Soundfont load failed: " + ((e && e.message) || e)); });
