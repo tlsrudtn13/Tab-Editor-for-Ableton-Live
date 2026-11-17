@@ -39,22 +39,24 @@ export const GUITAR_12: InstrumentConfig = {
 };
 
 // ── 베이스 ────────────────────────────────────────────────────
+// Sounding pitch, like the guitar presets (Live MIDI is sounding pitch):
+// 4-string low E = E1 = MIDI 28. Notation adds the octave via the 8vb clef.
 export const BASS_4: InstrumentConfig = {
     name:        "4-String Bass",
     stringCount: 4,
-    open:        [0, 55, 50, 45, 40], // G D A E
+    open:        [0, 43, 38, 33, 28], // G2 D2 A1 E1
 };
 
 export const BASS_5: InstrumentConfig = {
     name:        "5-String Bass",
     stringCount: 5,
-    open:        [0, 55, 50, 45, 40, 35], // G D A E B(low)
+    open:        [0, 43, 38, 33, 28, 23], // G2 D2 A1 E1 B0
 };
 
 export const BASS_6: InstrumentConfig = {
     name:        "6-String Bass",
     stringCount: 6,
-    open:        [0, 60, 55, 50, 45, 40, 35], // C G D A E B(low)
+    open:        [0, 48, 43, 38, 33, 28, 23], // C3 G2 D2 A1 E1 B0
 };
 
 // ── 기본값 ────────────────────────────────────────────────────

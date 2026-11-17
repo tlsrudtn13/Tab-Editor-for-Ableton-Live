@@ -126,9 +126,8 @@ describe("voicing", () => {
         expect(out[0]!.p).toBe(33); // original pitch kept as data
         expect((sounded(out[0]!, GUITAR_6.open) - 33) % 12).toBe(0);
     });
-    it("works on 4-string bass (config octave) and 7-string guitar", () => {
-        // BASS_4.open is [55,50,45,40]: one octave above a real bass.
-        const bass = applyGuitarVoicing([n(0, 40), n(1, 45), n(2, 50), n(3, 55)], BASS_4);
+    it("works on 4-string bass and 7-string guitar", () => {
+        const bass = applyGuitarVoicing([n(0, 28), n(1, 33), n(2, 38), n(3, 43)], BASS_4);
         for (const v of bass) {
             expect(v.s).toBeGreaterThanOrEqual(1);
             expect(v.s).toBeLessThanOrEqual(4);
@@ -137,11 +136,11 @@ describe("voicing", () => {
         const low = applyGuitarVoicing([n(0, 35)], GUITAR_7);
         expect(low[0]).toMatchObject({ s: 7, f: 0 });
     });
-    // KNOWN BUG (fix in P1): a bass line at real pitch (E1 = MIDI 28) is
-    // treated as out of range and folded up an octave (oor=2, yellow parens).
-    it.fails("known bug: real-pitch bass (E1=28) is playable without folding", () => {
+    // Live MIDI is sounding pitch: E1 = 28 is the 4-string bass's open E.
+    it("real-pitch bass (E1=28) is playable without folding", () => {
         const out = applyGuitarVoicing([n(0, 28), n(1, 33), n(2, 38), n(3, 43)], BASS_4);
         for (const v of out) expect(v.oor).toBeUndefined();
+        expect(out[0]).toMatchObject({ s: 4, f: 0 });
     });
     it("current behaviour: chooses frets per chord, ignoring neighbours", () => {
         // A run around the 7th position. A position-aware engine (P1) should
