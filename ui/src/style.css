@@ -164,13 +164,13 @@ body { display:flex; flex-direction:row; }
 /* Edit cursor box on TAB staff */
 .cursor-overlay {
   position:absolute; z-index:11; pointer-events:none;
-  border:2px solid #00c8ff;
-  border-radius:3px;
+  border:1.5px solid #00c8ff;
+  border-radius:2px;
   background:rgba(0,200,255,0.22);
 }
 .cursor-overlay.empty {
-  border:2px dashed #00c8ff;
-  background:rgba(0,200,255,0.08);
+  border:1.5px dashed #00c8ff;
+  background:rgba(0,200,255,0.10);
 }
 /* Drag-box range selection */
 .drag-select-box {
@@ -205,20 +205,24 @@ body { display:flex; flex-direction:row; }
    - 오선·마디선(staffLineColor 등) = 어둡게 → 배경처럼 가독성 향상 */
 #alphaTab .at-cursor-bar   { background:transparent !important; }
 #alphaTab .at-cursor-beat  { width:2px !important; background:#ffae42 !important; }
-#alphaTab .at-selection div{ background:rgba(255,118,77,0.18) !important; }
+#alphaTab .at-selection div{ background:rgba(255,118,77,0.08) !important; }  /* faint: drag-select also sets it */
 #alphaTab .at-watermark, #alphaTab div[style*="text-align"] { display:none !important; }
 
 /* ── Selection bar (Inspector 헤더 + 줄옮김) ── */
 #selection-bar {
-  flex-shrink:0; display:flex; gap:12px; align-items:center;
-  height:26px; padding:3px 10px; background:var(--p-live-input-bg);
+  flex-shrink:0; display:flex; gap:8px; align-items:center; flex-wrap:nowrap; overflow:hidden;
+  min-height:34px; padding:4px 10px; background:var(--p-live-input-bg);
   border-top:1px solid var(--p-live-control-border);
 }
-.idle { opacity:.35; pointer-events:none; }
+.idle { opacity:.6; pointer-events:none; }
 #inspector-note-display {
   color:#00c8ff; font-weight:700; font-size:11px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px; min-width:0;
 }
-#inspector-chord-display { font-size:11px; font-weight:700; }
+#inspector-chord-display { font-size:11px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+#selection-bar > .btn, #selection-bar > .tl { flex-shrink:0; white-space:nowrap; }
+#tech-palette { display:inline-flex; flex-wrap:nowrap; gap:3px; flex-shrink:0; }
+#tech-palette .btn { height:24px; padding:0 6px; font-size:11px; flex-shrink:0; }
 
 /* ── Guitar Fretboard HUD (★ v3 확대: 122px → 188px) ── */
 #fretboard-panel {

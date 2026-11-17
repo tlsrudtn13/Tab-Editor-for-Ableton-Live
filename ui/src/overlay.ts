@@ -174,11 +174,12 @@ export function overlayCursor() {
     const hasNote = !!(state.curTrack && Array.isArray(state.curTrack.notes) && state.curTrack.notes.some((n:any)=> n.s===c.s && Math.abs((n.b||0)-c.b)<1e-6));
     const d = document.createElement("div");
     d.className = "cursor-overlay" + (hasNote ? "" : " empty");
-    const w = Math.max(12, (vb.w || 14));
+    const w = Math.max(16, (vb.w || 14));
     d.style.left = (vb.x - 2) + "px";
     d.style.top = (sy.y - sy.h/2) + "px";
     d.style.width = (w + 4) + "px";
-    d.style.height = sy.h + "px";
+    d.style.height = Math.max(16, sy.h) + "px";
+    d.style.top = (sy.y - Math.max(16, sy.h) / 2) + "px";
     host.appendChild(d);
   } catch {}
 }

@@ -1,4 +1,5 @@
 import { state } from "./state";
+import { onDragSelection } from "./dragSelect";
 import { getOpenStrings, getStringCount, clearFretboard, lightFret } from "./fretboard";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
@@ -640,6 +641,7 @@ function onKey(e: KeyboardEvent) {
 export function toggleTech(t: string){ if (t === "bend") cycleSelectedBend(saveUndo, render); else toggleSelectedTech(t as any, saveUndo, render); }
 
 export function bindKeys(){
+  onDragSelection(highlightSelection);
   document.addEventListener("keydown", onKey);
   window.__editKeys = {
     selectIndex,

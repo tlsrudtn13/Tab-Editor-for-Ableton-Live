@@ -5,6 +5,10 @@ import { noteAtCursor, setCursor } from "./cursor";
 import { clearNoteOverlays, drawNoteOverlay, overlayCursor, overlaySelectedNotes } from "./overlay";
 import { updateTechPalette } from "./techUi";
 
+/** Set by keys.ts (bindKeys): redraws inspector, fretboard and overlays for the selection. */
+let selectionChanged: (() => void) | null = null;
+export function onDragSelection(fn: () => void) { selectionChanged = fn; }
+
 export type Rect = { x: number; y: number; w: number; h: number };
 
 /** Axis-aligned rectangle intersection (touching edges does not count as overlap area, but bounds often abut; treat >0 area). */
@@ -166,7 +170,8 @@ export function bindDragSelection(host: HTMLElement) {
     } else {
       const c = state.cursor; if (c) state.selectionAnchor = c.b;
     }
-    try { clearNoteOverlays(); overlaySelectedNotes(); } catch {}
+    try { clearNoteOverlays(); if (selectionChanged) selectionChanged(); else overlaySelectedNotes(); } catch {}
+    try { overlayCursor(); } catch {}
     try { updateTechPalette(); } catch {}
   });
 }
