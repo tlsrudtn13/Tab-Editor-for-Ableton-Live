@@ -29,6 +29,10 @@ export const state: {
   selectionAnchor: number | null;
   /** Any note/fingering change in this editor session (drives v2 snapshot save). */
   sessionChanged: boolean;
+  /** Default duration (beats) for next inserted note on an empty slot. */
+  defaultInsertDur: number;
+  /** Copied notes (relative to earliest b). */
+  clipboard: { notes: any[] } | null;
 } = {
   api: null,
   curTrack: null,
@@ -57,4 +61,6 @@ export const state: {
   slots: [],
   selectionAnchor: null,
   sessionChanged: false,
+  defaultInsertDur: 0.25,
+  clipboard: null,
 };

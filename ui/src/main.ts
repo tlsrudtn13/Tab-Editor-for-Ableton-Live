@@ -94,6 +94,20 @@ if (keysBtn && keysPop) {
   keysBtn.addEventListener("click", (e) => { e.stopPropagation(); pop.classList.toggle("hidden"); });
   document.addEventListener("click", (e) => { if (!pop.classList.contains("hidden") && !(e.target as Element)?.closest("#keys-popover") && e.target !== keysBtn) pop.classList.add("hidden"); });
 }
+const ek = () => (window as any).__editKeys;
+const bindRb = (id: string, fn: () => void) => { const el = document.getElementById(id); if (el) el.addEventListener("click", () => { fn(); }); };
+bindRb("rb-v-1", () => ek()?.setValueByDen?.(1));
+bindRb("rb-v-2", () => ek()?.setValueByDen?.(2));
+bindRb("rb-v-4", () => ek()?.setValueByDen?.(4));
+bindRb("rb-v-8", () => ek()?.setValueByDen?.(8));
+bindRb("rb-v-16", () => ek()?.setValueByDen?.(16));
+bindRb("rb-v-32", () => ek()?.setValueByDen?.(32));
+bindRb("rb-dot", () => ek()?.toggleDot?.());
+bindRb("rb-triplet", () => ek()?.toggleTriplet?.());
+bindRb("rb-tie", () => ek()?.tieAtCursor?.());
+bindRb("rb-rest", () => ek()?.restAtCursor?.());
+bindRb("rb-ins", () => ek()?.insertBeatAtCursor?.());
+bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {

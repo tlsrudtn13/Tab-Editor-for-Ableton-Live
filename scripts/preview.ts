@@ -19,8 +19,12 @@ function payload(id: string, name: string, notes: Note[], bpm: number): TrackPay
     const grid = detectQuantizeGrid(notes);
     const q = notes.map(x => ({ ...x, b: quantizeBeat(x.b, grid) }));
     const tab = applyGuitarVoicing(q, DEFAULT_INSTRUMENT)
-        .filter(x => x.s >= 1 && x.s <= DEFAULT_INSTRUMENT.stringCount && x.f >= 0);
+        .filter(x => x.s >= 1 && x.s <= DEFAULT_INSTRUMENT.stringCount && x.f >= 0)
+        .map((x, oid) => ({ ...x, oid }));
+    // editable like Open (Clip), so the edit tools can be tried here (Apply only logs)
+    const end = Math.ceil(Math.max(...tab.map(x => x.b + x.d)) / 4) * 4;
     return {
+        edit: { mode: "clip", regionStart: 0, regionLength: end, noteCount: tab.length },
         id, name, noteCount: tab.length, notes: tab, instruments: DEFAULT_INSTRUMENT, bpm,
         musicXml: toMusicXml(tab, bpm, { instrument: DEFAULT_INSTRUMENT, skipVoicing: true }),
         alphaTex: toAlphaTex(tab, { bpm }),

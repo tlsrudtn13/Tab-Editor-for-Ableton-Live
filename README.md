@@ -29,6 +29,14 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Ctrl + Home / End | First / last slot of the score |
 | ↑ / ↓ | String up / down |
 | 0–9 | Set fret on the note at cursor, or insert a note at the slot (two digits within 0.4 s) |
+| Ctrl + 1..6 | Set note value to 1/1..1/32 |
+| Shift + . | Toggle dot |
+| Shift + / | Toggle triplet |
+| L | Tie note to the next matching note or rest |
+| R | Turn cursor slot into a rest |
+| Ctrl + Insert | Insert a beat at the cursor slot |
+| Shift + Delete | Delete the cursor beat |
+| Ctrl + C / X / V | Copy / cut / paste selection |
 | Alt + ↑ / ↓ | Move the note to the adjacent string with the same pitch |
 | Alt + Shift + ↑ / ↓ | Pitch ±1 semitone on the same string (if the fret stays 0–24) |
 | Shift + ← / → | Extend selection by beat (all strings in range) |
@@ -140,6 +148,14 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | Ctrl + Home / End | 악보의 첫 / 마지막 슬롯 |
 | ↑ / ↓ | 줄 위 / 아래로 이동 |
 | 0–9 | 커서 위치 노트의 프렛 설정 또는 슬롯에 노트 입력 (0.4초 안에 두 자리) |
+| Ctrl + 1..6 | 음표 길이 1/1..1/32 설정 |
+| Shift + . | 점음표 토글 |
+| Shift + / | 셋잇단음표 토글 |
+| L | 커서 음표를 다음 같은 음/쉼표와 타이 |
+| R | 커서 슬롯을 쉼표로 |
+| Ctrl + Insert | 커서 위치에 박 삽입 |
+| Shift + Delete | 커서 박 삭제 |
+| Ctrl + C / X / V | 선택 복사 / 잘라내기 / 붙여넣기 |
 | Alt + ↑ / ↓ | 같은 음높이로 인접 줄로 이동 |
 | Alt + Shift + ↑ / ↓ | 같은 줄에서 반음 ±1 (프렛 0–24 범위 내) |
 | Shift + ← / → | 비트 범위 선택 확장 (범위 내 모든 줄) |

@@ -96,6 +96,13 @@ body { display:flex; flex-direction:row; }
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
   flex-wrap:nowrap;
 }
+#edit-toolbar {
+  height:28px; display:flex; align-items:center; gap:4px; padding:0 8px;
+  background:var(--p-live-input-bg);
+  border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
+}
+#edit-toolbar .rb { padding:1px 6px; font-size:10px; min-width:22px; }
+#edit-toolbar .rb.on { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
 #status { margin-left:auto; }
 .tl { font-size:9.5px; color:var(--p-live-text-secondary); user-select:none; white-space:nowrap; }
 .seg {

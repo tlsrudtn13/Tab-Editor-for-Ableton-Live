@@ -68,6 +68,23 @@
     <button class="btn edit-apply" id="btn-apply">Apply to Clip</button>
   </div>
 
+  <div id="edit-toolbar" class="hidden">
+    <span class="tl">Value</span>
+    <button class="btn rb" id="rb-v-1"  title="Whole (Ctrl+1)">1/1</button>
+    <button class="btn rb" id="rb-v-2"  title="Half (Ctrl+2)">1/2</button>
+    <button class="btn rb" id="rb-v-4"  title="Quarter (Ctrl+3)">1/4</button>
+    <button class="btn rb" id="rb-v-8"  title="Eighth (Ctrl+4)">1/8</button>
+    <button class="btn rb" id="rb-v-16" title="16th (Ctrl+5)">1/16</button>
+    <button class="btn rb" id="rb-v-32" title="32nd (Ctrl+6)">1/32</button>
+    <button class="btn rb" id="rb-dot"     title="Dot (Shift+.)">•</button>
+    <button class="btn rb" id="rb-triplet" title="Triplet (Shift+/)">3</button>
+    <button class="btn rb" id="rb-tie"     title="Tie (L)">⌒</button>
+    <button class="btn rb" id="rb-rest"    title="Rest (R)">𝄽</button>
+    <div class="sp"></div>
+    <button class="btn rb" id="rb-ins" title="Insert beat (Ctrl+Insert)">Ins beat</button>
+    <button class="btn rb" id="rb-del" title="Delete beat (Shift+Delete)">Del beat</button>
+  </div>
+
   <div id="viewer"><div id="alphaTab"></div></div>
 
   <!-- 선택 정보 바: 화음 표시 + 코드명 + 길이 편집 + 줄옮김 -->
@@ -104,6 +121,11 @@
         <tr><td>Ctrl+Home / End</td><td>First / last slot of score</td></tr>
         <tr><td>↑ / ↓</td><td>String up / down</td></tr>
         <tr><td>0–9</td><td>Set fret / insert note at cursor</td></tr>
+        <tr><td>Ctrl+1..6</td><td>Note value 1/1..1/32</td></tr>
+        <tr><td>Shift+. / Shift+/</td><td>Toggle dot / triplet</td></tr>
+        <tr><td>L / R</td><td>Tie / rest at cursor slot</td></tr>
+        <tr><td>Ctrl+Ins / Shift+Del</td><td>Insert / delete beat</td></tr>
+        <tr><td>Ctrl+C / X / V</td><td>Copy / cut / paste selection</td></tr>
         <tr><td>Alt+↑ / ↓</td><td>Move note to adjacent string (same pitch)</td></tr>
         <tr><td>Alt+Shift+↑ / ↓</td><td>Pitch ±1 semitone on same string</td></tr>
         <tr><td>Shift+← / →</td><td>Extend range selection by beat</td></tr>
