@@ -20,7 +20,9 @@ import path from "node:path";
 import { MidiClip, MidiTrack, type initialize } from "@ableton-extensions/sdk";
 import { notesFromClip, clipRegion } from "../notation/collectNotes.js";
 import { buildPayload } from "../notation/payload.js";
-import { FIXTURES } from "./fixtures.js";
+import { FIXTURES, DRUM_FIXTURES } from "./fixtures.js";
+import { drumRackInfo } from "../drumDetect.js";
+import { buildDrumPayload } from "../notation/drumPayload.js";
 
 type Ctx = ReturnType<typeof initialize>;
 type Cmd = { action: string; clip?: string; js?: string; full?: boolean };
@@ -30,7 +32,10 @@ const TEST_TRACK = "TAB-TEST";
 /** Second track with one arrangement clip, to tell "this track" from "all tracks". */
 const TEST_TRACK_2 = "TAB-TEST-BASS";
 const TEST_TRACK_BIG = "TAB-TEST-BIG";
-const isTestTrack = (t: any) => t?.name === TEST_TRACK || t?.name === TEST_TRACK_2 || t?.name === TEST_TRACK_BIG;
+/** Drum Rack track (docs/DRUMS.md), and a plain MIDI track named "Drums" for the name heuristic. */
+const TEST_TRACK_DRUMS = "TAB-TEST-DRUMS";
+const TEST_TRACK_DRUMS_NORACK = "TAB-TEST Drums";
+const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_TRACK_DRUMS, TEST_TRACK_DRUMS_NORACK].includes(t?.name);
 
 let devDir = "";
 let tempDir = "";
@@ -148,6 +153,42 @@ async function createBigFixture(ctx: Ctx, count: number) {
     return { track: TEST_TRACK_BIG, clip: clip.name, notes: clip.notes.length, bars: length / 4 };
 }
 
+/** Drum fixtures: a track with a Drum Rack nested in an Instrument Rack (recursive search), pads 36/38/42/44/46/49/50/48/45/43, and the GM fixture clips. */
+async function createDrumFixture(ctx: Ctx) {
+    const song: any = ctx.application.song;
+    for (const t of [...song.tracks]) if (t?.name === TEST_TRACK_DRUMS || t?.name === TEST_TRACK_DRUMS_NORACK) await song.deleteTrack(t);
+    const steps: string[] = [];
+    const track: any = await song.createMidiTrack();
+    track.name = TEST_TRACK_DRUMS;
+    const outer: any = await track.insertDevice("Instrument Rack", 0);
+    steps.push(`outer: ${outer?.constructor?.name} chains=${outer?.chains?.length}`);
+    const chain: any = outer.chains?.[0] ?? await outer.insertChain(0);
+    const rack: any = await chain.insertDevice("Drum Rack", 0);
+    steps.push(`rack: ${rack?.constructor?.name}`);
+    const pads = [36, 38, 42, 44, 46, 49, 50, 48, 45, 43];
+    for (let i = 0; i < pads.length; i++) {
+        const dc: any = await rack.insertChain(i);
+        dc.receivingNote = pads[i];
+        if (i < 2) { try { const d: any = await dc.insertDevice("Simpler", 0); steps.push(`pad ${pads[i]}: ${d?.constructor?.name} sample=${d?.sample?.filePath ?? "none"}`); } catch (e) { steps.push(`simpler failed: ${e}`); } }
+    }
+    const created: string[] = [];
+    for (let i = 0; i < DRUM_FIXTURES.length; i++) {
+        const fx = DRUM_FIXTURES[i]!;
+        const clip: any = await track.clipSlots[i].createMidiClip(fx.length);
+        clip.name = fx.name; clip.notes = fx.notes;
+        created.push(`slot ${i + 1}: ${fx.name} (${clip.notes.length} notes)`);
+    }
+    const arr: any = await track.createMidiClip(0, DRUM_FIXTURES[0]!.length);
+    arr.name = DRUM_FIXTURES[0]!.name + " (arr)"; arr.notes = DRUM_FIXTURES[0]!.notes;
+    created.push(`arrangement @0: ${arr.name}`);
+    const plain: any = await song.createMidiTrack();
+    plain.name = TEST_TRACK_DRUMS_NORACK;
+    const pc: any = await plain.createMidiClip(0, DRUM_FIXTURES[1]!.length);
+    pc.name = DRUM_FIXTURES[1]!.name + " (no rack)"; pc.notes = DRUM_FIXTURES[1]!.notes;
+    created.push(`${TEST_TRACK_DRUMS_NORACK} arrangement @0: ${pc.name}`);
+    return { track: TEST_TRACK_DRUMS, steps, detected: drumRackInfo(track), plainDetected: drumRackInfo(plain), created };
+}
+
 async function cleanup(ctx: Ctx) {
     const song: any = ctx.application.song;
     let removed = 0;
@@ -183,6 +224,11 @@ function payloadFor(ctx: Ctx, name: string, full: boolean) {
         endMarker: f.clip.endMarker,
     });
     const live = liveFor(ctx);
+    const rack = drumRackInfo(f.track);
+    if (rack) {
+        const d = buildDrumPayload("dev", name, regioned, tempo(ctx), live, { hints: rack.hints });
+        return { clip: name, where: f.where, track: f.track.name, drumRack: rack, pieces: d?.drum.pieces, tex: full ? d?.drum.tex : undefined, texLength: d?.drum.tex.length };
+    }
     const p = buildPayload("dev", name, regioned, tempo(ctx), live);
     return {
         clip: name, where: f.where, track: f.track.name,
@@ -205,6 +251,11 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
         case "fixtures": return createFixtures(ctx);
         case "cleanup":  return cleanup(ctx);
         case "bigFixture": return createBigFixture(ctx, Number(cmd.clip ?? 2000));
+        case "drumFixture": return createDrumFixture(ctx);
+        case "drumInfo": {
+            // Drum detection for every track (Drum Rack search, pads, pad labels)
+            return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));
+        }
         case "payload":  return payloadFor(ctx, cmd.clip ?? "", !!cmd.full);
         case "open": {
             const f = findClip(ctx, cmd.clip ?? "");

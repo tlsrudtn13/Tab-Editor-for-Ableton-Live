@@ -9,6 +9,8 @@ import { applyGuitarVoicing } from "../src/notation/voicing.js";
 import { toMusicXml } from "../src/notation/toMusicXml.js";
 import { toAlphaTex } from "../src/notation/toAlphaTex.js";
 import { DEFAULT_INSTRUMENT } from "../src/notation/instruments.js";
+import { buildDrumPayload } from "../src/notation/drumPayload.js";
+import { DRUM_FIXTURES } from "../src/dev/fixtures.js";
 
 function n(b: number, p: number, d = 0.5, v = 100): Note {
     return { b, d, p, v, f: 0, s: 1, src: "ses", clip: "demo" };
@@ -41,6 +43,8 @@ const tracks = [
     payload("t1", "Riff", riff, 120),
     payload("t2", "Chords", chords, 120),
     payload("t3", "Melody", melody, 96),
+    ...DRUM_FIXTURES.map((fx, i) => buildDrumPayload("d" + i, fx.name, fx.notes.map(x => n(x.startTime, x.pitch, x.duration, x.velocity)), 110,
+        undefined, { hints: { 36: "Kick 808", 38: "Snare Tight" } })!),
 ];
 
 const html = fs.readFileSync("dist-ui/index.html", "utf-8");

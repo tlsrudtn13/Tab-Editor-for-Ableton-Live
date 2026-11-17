@@ -4,6 +4,7 @@ import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { state } from "./state";
 import { log, status } from "./log";
 import { applyStaffMode, getXmlForMode, loadXmlIntoApi } from "./score";
+import { isDrumTrack, prepareDrumScore } from "./drums";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
 export var PDF_RENDER_W = 1406;
@@ -71,6 +72,11 @@ export function exportPDF() {
     status("Ready");
   }
 
+  if (isDrumTrack(state.curTrack)) {   // drum mode: percussion AlphaTex (ui/src/drums.ts)
+    printApi.scoreLoaded.on(prepareDrumScore);
+    try { printApi.tex(state.curTrack.drum.tex); } catch(e: any) { log("PDF: " + (e.message || e)); cleanup(); }
+    return;
+  }
   var xml = getXmlForMode(state.curTrack);
   if (!loadXmlIntoApi(printApi, xml)) cleanup();
 }
