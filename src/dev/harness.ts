@@ -18,7 +18,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { MidiClip, MidiTrack, type initialize } from "@ableton-extensions/sdk";
-import { notesFromClip } from "../notation/collectNotes.js";
+import { notesFromClip, clipRegion } from "../notation/collectNotes.js";
 import { buildPayload } from "../notation/payload.js";
 import { FIXTURES } from "./fixtures.js";
 
@@ -131,12 +131,35 @@ async function cleanup(ctx: Ctx) {
     return { removed };
 }
 
+function liveFor(ctx: Ctx): any {
+    const song: any = ctx.application.song;
+    const live: any = {};
+    try {
+        live.scale = { root: song.rootNote, name: song.scaleName, intervals: song.scaleIntervals, enabled: song.scaleMode };
+    } catch (e) {}
+    try {
+        live.cues = (Array.isArray(song.cuePoints) ? song.cuePoints : []).map((c: any) => ({ beat: c.time, name: c.name }));
+    } catch (e) {}
+    try {
+        live.grid = { quantization: song.gridQuantization, triplet: song.gridIsTriplet };
+    } catch (e) {}
+    return live;
+}
+
 function payloadFor(ctx: Ctx, name: string, full: boolean) {
     const f = findClip(ctx, name);
     if (!f) throw new Error(`clip not found: ${name}`);
     const raw = f.clip.notes;
     const notes = notesFromClip(f.clip, 0, "ses", name);
-    const p = buildPayload("dev", name, notes, tempo(ctx));
+    const regioned = clipRegion(notes, {
+        looping: f.clip.looping,
+        loopStart: f.clip.loopStart,
+        loopEnd: f.clip.loopEnd,
+        startMarker: f.clip.startMarker,
+        endMarker: f.clip.endMarker,
+    });
+    const live = liveFor(ctx);
+    const p = buildPayload("dev", name, regioned, tempo(ctx), live);
     return {
         clip: name, where: f.where, track: f.track.name,
         clipInfo: {
@@ -147,6 +170,7 @@ function payloadFor(ctx: Ctx, name: string, full: boolean) {
         tabNotes: p?.notes.map(n => ({ b: n.b, d: n.d, p: n.p, s: n.s, f: n.f, oor: n.oor })),
         musicXml: full ? p?.musicXml : undefined,
         musicXmlLength: p?.musicXml?.length,
+        live,
     };
 }
 

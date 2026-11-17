@@ -8,6 +8,40 @@
 import type { Note } from "./types.js";
 import { pitchToFs, safeNum, safeStr } from "./music.js";
 
+export type ClipRegionInfo = {
+    looping: boolean;
+    loopStart: number;
+    loopEnd: number;
+    startMarker: number;
+    endMarker: number;
+};
+
+export function clipRegion(
+    notes: Note[],
+    info: ClipRegionInfo
+): Note[] {
+    const regionStart = info.looping ? info.loopStart : info.startMarker;
+    const regionEnd   = info.looping ? info.loopEnd   : info.endMarker;
+    const out: Note[] = [];
+    for (const n of notes) {
+        if (!n) continue;
+        const start = n.b;
+        if (start < regionStart) continue;
+        if (start >= regionEnd) continue;
+        // shorten if extends past region end
+        let dur = n.d;
+        const end = start + dur;
+        if (end > regionEnd) dur = regionEnd - start;
+        if (dur <= 0) continue;
+        out.push({
+            ...n,
+            b: start - regionStart,
+            d: dur,
+        });
+    }
+    return out;
+}
+
 /** 양자화 단위 (1/96 박자 그리드 = 에이블톤 기본 해상도) */
 function q(v: number): number {
     const n = Math.round(v * 96) / 96;

@@ -15,7 +15,8 @@ export function buildPayload(
     id: string,          // 트랙/클립 식별자
     name: string,        // 에디터 탭에 표시될 이름
     allNotes: Note[],    // 수집된 원본 노트
-    tempo: number        // BPM
+    tempo: number,       // BPM
+    live?: TrackPayload["live"]  // Live 컨텍스트 (선택)
 ): TrackPayload | null {
     if (allNotes.length === 0) return null; // 노트 없으면 페이로드 생성 안 함
 
@@ -28,7 +29,7 @@ export function buildPayload(
     const tabNotes = applyGuitarVoicing(quantized, DEFAULT_INSTRUMENT)
         .filter(n => n.s >= 1 && n.s <= DEFAULT_INSTRUMENT.stringCount && n.f >= 0);
 
-    const xmlOpts = { instrument: DEFAULT_INSTRUMENT, skipVoicing: true };
+    const xmlOpts = { instrument: DEFAULT_INSTRUMENT, skipVoicing: true, cues: live?.cues };
     return {
         id,
         name,
@@ -38,5 +39,6 @@ export function buildPayload(
         bpm: tempo,
         musicXml: toMusicXml(tabNotes, tempo, xmlOpts),
         alphaTex: toAlphaTex(tabNotes, { bpm: tempo }),
+        live,
     };
 }

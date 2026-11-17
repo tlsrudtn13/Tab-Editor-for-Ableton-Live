@@ -75,6 +75,29 @@ export function loadTrack(id) {
   clearFretboard();
   showSelection(null);
   renderInspector(trk);
+  // Live scale → fretboard selects (when enabled & name maps)
+  if (trk && trk.live && trk.live.scale && trk.live.scale.enabled) {
+    var _scaleMap = {
+      "Major": "major",
+      "Minor": "minor",
+      "Dorian": "dorian",
+      "Mixolydian": "mixolydian",
+      "Harmonic Minor": "harm-minor",
+      "Minor Pentatonic": "pent-minor",
+      "Major Pentatonic": "pent-major",
+      "Minor Blues": "blues",
+      "Blues": "blues"
+    };
+    var _mapped = _scaleMap[trk.live.scale.name];
+    if (_mapped) {
+      var _rootSel = document.getElementById("ui-scale-root");
+      var _keySel = document.getElementById("ui-scale");
+      if (_rootSel) _rootSel.value = String(trk.live.scale.root);
+      if (_keySel) _keySel.value = _mapped;
+      state.uiScaleRoot = trk.live.scale.root;
+      state.uiScaleKey = _mapped;
+    }
+  }
   updateScaleOverlay();   // 악기(개방현)에 맞춰 스케일 표시 갱신
 
   // ★ v3: notes 가 있으면 항상 웹뷰에서 재생성 (Quantize 1/16 기본 적용)
@@ -102,5 +125,17 @@ window.loadTrack = loadTrack;
 if (state.tracks && state.tracks.length > 0) {
   setTimeout(function() { window.loadTrack(state.tracks[0].id); }, 100);
 } else {
-  status("No tracks");
+  if (window.tabMessage) {
+    status(window.tabMessage);
+    var viewer = document.getElementById("viewer");
+    if (viewer) {
+      viewer.innerHTML = "";
+      var msg = document.createElement("div");
+      msg.textContent = window.tabMessage;
+      msg.style.cssText = "display:flex;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;white-space:pre-wrap;font-size:1.1rem;opacity:0.8;";
+      viewer.appendChild(msg);
+    }
+  } else {
+    status("No tracks");
+  }
 }

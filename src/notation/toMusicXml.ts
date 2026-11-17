@@ -19,6 +19,15 @@ import type { InstrumentConfig } from "./instruments.js";
 import { DEFAULT_INSTRUMENT }    from "./instruments.js";
 import { applyGuitarVoicing }    from "./voicing.js";
 
+function escXml(s: string): string {
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+
 // ── 음이름 스펠링 (조표 기준 # / b 선택) ─────────────────────────────────────
 const SHARP_SPELL: ReadonlyArray<readonly [string, number]> = [
     ["C",0],["C",1],["D",0],["D",1],["E",0],["F",0],
@@ -269,6 +278,19 @@ export function toMusicXml(
     const table = buildNoteValueTable(divisions);
     const measures = timelineToMeasures(elems, cursor, table, upm, totalMeasures);
 
+    // 리허설 마크(cue) → 마디별 그룹 (measure = floor(beat / 4))
+    const cuesByMeasure = new Map<number, string[]>();
+    const rawCues = opts.cues ?? [];
+    for (const c of rawCues) {
+        if (!c) continue;
+        const beat = typeof c.beat === "number" ? c.beat : 0;
+        const mi = Math.floor(beat / 4);
+        if (mi < 0 || mi >= totalMeasures) continue;
+        const name = String(c.name ?? "");
+        if (!cuesByMeasure.has(mi)) cuesByMeasure.set(mi, []);
+        cuesByMeasure.get(mi)!.push(name);
+    }
+
     // ── 5. XML 헤더 ───────────────────────────────────────────────────────
     const L: string[] = [
         `<?xml version="1.0" encoding="UTF-8"?>`,
@@ -335,6 +357,18 @@ export function toMusicXml(
             L.push(`        </direction-type>`);
             L.push(`        <sound tempo="${Math.round(bpm)}"/>`);
             L.push(`      </direction>`);
+        }
+
+        // 리허설 마크 (cue) — 마디 시작
+        const cueNames = cuesByMeasure.get(mi);
+        if (cueNames) {
+            for (const cn of cueNames) {
+                L.push(`      <direction placement="above">`);
+                L.push(`        <direction-type>`);
+                L.push(`          <rehearsal>${escXml(cn)}</rehearsal>`);
+                L.push(`        </direction-type>`);
+                L.push(`      </direction>`);
+            }
         }
 
         // ── 마디 토큰 출력 ────────────────────────────────────────────────

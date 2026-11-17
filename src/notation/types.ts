@@ -21,6 +21,7 @@ export type Note = {
     slide?:    "up" | "down";
     bend?:     number; // 반음 단위 (2 = 온음 벤드)
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
+    lock?: boolean;
 };
 
 /** extension.ts → interface.html 으로 전달되는 트랙 페이로드 */
@@ -39,6 +40,13 @@ export type TrackPayload = {
     /** 악기 설정 */
     instruments?: InstrumentConfig;
     bpm: number;
+    /** Live 컨텍스트 (스케일, 큐포인트, 그리드) */
+    live?: {
+        scale?: { root: number; name: string; intervals: number[]; enabled: boolean };
+        cues?: { beat: number; name: string }[];
+        grid?: { quantization: number; triplet: boolean };
+        message?: string;
+    };
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */
@@ -67,4 +75,5 @@ export type MusicXmlOptions = {
     instrument?: InstrumentConfig;  // 악기 설정 (기본값: 6현 기타)
     skipVoicing?: boolean;  // true면 내부 보이싱 재적용 생략
     transpose?: number;     // 반음 단위로 전체 음정 이동 (양수 = 올림, 음수 = 내림)
+    cues?: { beat: number; name: string }[];  // 리허설 마크 (큐포인트)
 };

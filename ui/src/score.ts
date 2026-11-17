@@ -331,6 +331,7 @@ export function rebuildScore() {
       skipVoicing: true,
       transpose:   state.uiTranspose,
       capo:        state.uiCapo,
+      cues:        state.curTrack.live && state.curTrack.live.cues,   // Live locators → rehearsal marks
       quantize:    state.uiQuantize === "auto" ? undefined : state.uiQuantize  // ★ v3
     });
     state.curTrack.musicXml = xml;

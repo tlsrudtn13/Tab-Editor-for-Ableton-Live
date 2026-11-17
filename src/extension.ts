@@ -18,7 +18,7 @@ import modalInterface from "../dist-ui/index.html";
 
 // ── notation 모듈 임포트 (node16 규칙: .js 확장자 필수) ──
 import type { Note, TrackPayload } from "./notation/index.js";
-import { collectNotes, notesFromClip } from "./notation/collectNotes.js";
+import { collectNotes, notesFromClip, clipRegion } from "./notation/collectNotes.js";
 import { buildPayload } from "./notation/payload.js";
 import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
@@ -32,22 +32,26 @@ import path from "node:path";
 // ============================================================
 async function showEditor(
     context: ReturnType<typeof initialize>,
-    payloads: TrackPayload[]
+    payloads: TrackPayload[],
+    message?: string
 ): Promise<void> {
-    if (payloads.length === 0) {
+    if (payloads.length === 0 && !message) {
         console.warn("[TAB] no MIDI notes found — editor not opened.");
         return;
     }
 
+    const safePayloads = payloads ?? [];
     // </script 문자열이 HTML을 깨지 않도록 이스케이프
-    const safeJson = JSON.stringify(payloads)
+    const safeJson = JSON.stringify(safePayloads)
         .replace(/<\/script/gi, "<\\/script");
 
     // tracks 데이터를 <head> 안에 주입 (DOCTYPE 앞은 WebView2 오동작)
-    const finalHtml = modalInterface.replace(
-        "<head>",
-        `<head><script>window.tracks=${safeJson};</script>`
-    );
+    let headInject = `<head><script>window.tracks=${safeJson};</script>`;
+    if (message) {
+        headInject += `<script>window.tabMessage=${JSON.stringify(message)};</script>`;
+    }
+    headInject += "";
+    const finalHtml = modalInterface.replace("<head>", headInject);
 
    // ★ SDK 허용 경로 사용 (os.tmpdir()는 권한 차단됨).
     //   tempDirectory가 undefined일 수 있어 storageDirectory로 폴백.
@@ -85,6 +89,34 @@ function getTempo(context: ReturnType<typeof initialize>): number {
         : (song.tempo as any)?.value ?? 120;
 }
 
+function liveContext(context: ReturnType<typeof initialize>, beatOffset = 0): any {
+    const song: any = (context as any)?.application?.song ?? {};
+    const live: any = {};
+    try {
+        live.scale = {
+            root: song.rootNote,
+            name: song.scaleName,
+            intervals: song.scaleIntervals,
+            enabled: song.scaleMode,
+        };
+    } catch (e) { /* skip */ }
+    try {
+        const raw = song.cuePoints;
+        const cues = (Array.isArray(raw) ? raw : []).map((c: any) => ({
+            beat: (typeof c?.time === "number" ? c.time : 0) - beatOffset,
+            name: String(c?.name ?? ""),
+        })).filter((c: any) => c.beat >= 0);
+        live.cues = cues;
+    } catch (e) { /* skip */ }
+    try {
+        live.grid = {
+            quantization: song.gridQuantization,
+            triplet: song.gridIsTriplet,
+        };
+    } catch (e) { /* skip */ }
+    return live;
+}
+
 // ============================================================
 // activate: 커맨드 3종 + 메뉴 등록
 // ============================================================
@@ -98,24 +130,25 @@ export function activate(activation: ActivationContext) {
     //    tabeditor.openAll : 모든 트랙 (씬·오디오 트랙 메뉴, 인자 무시)
     //    arrangement 클립만 사용 → session 클립 끼어듦 방지
     // ──────────────────────────────────────────────────────
-    function trackPayload(rawTrack: any, idx: number, tempo: number): TrackPayload | null {
+    function trackPayload(rawTrack: any, idx: number, tempo: number, live: any): TrackPayload | null {
         const collected = collectNotes(rawTrack);
         if (!collected) return null;
         // arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
         const allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
         const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
-        return buildPayload(trackId, rawTrack.name ?? "Unknown", allNotes, tempo);
+        return buildPayload(trackId, rawTrack.name ?? "Unknown", allNotes, tempo, live);
     }
 
     async function openAllTracks(): Promise<void> {
         const tempo = getTempo(context);
+        const live = liveContext(context);
         console.log(`[TAB] opening ALL tracks. tempo: ${tempo}`);
         const payloads: TrackPayload[] = [];
         let trackIdx = 0;
         for (const rawTrack of context.application.song.tracks) {
             if (!rawTrack) continue;
             trackIdx++;
-            const p = trackPayload(rawTrack, trackIdx, tempo);
+            const p = trackPayload(rawTrack, trackIdx, tempo, live);
             if (p) payloads.push(p);
         }
         await showEditor(context, payloads);
@@ -133,10 +166,12 @@ export function activate(activation: ActivationContext) {
         if (!track) { await openAllTracks(); return; }
 
         const tempo = getTempo(context);
+        const live = liveContext(context);
         const name = safeStr(track.name, "Track");
-        const p = trackPayload(track, 1, tempo);
+        const p = trackPayload(track, 1, tempo, live);
         if (!p) {
             console.warn(`[TAB] track "${name}" has no notes in Arrangement clips — editor not opened.`);
+            await showEditor(context, [], `No notes in Arrangement clips of "${name}". Open a clip instead (right-click the clip → Open (Clip)).`);
             return;
         }
         console.log(`[TAB] track mode: "${name}"`);
@@ -154,6 +189,7 @@ export function activate(activation: ActivationContext) {
         const tempo = getTempo(context);
         const start = sel.time_selection_start;
         const end   = sel.time_selection_end;
+        const live  = liveContext(context, start);
         console.log(`[TAB] selection mode: beat ${start} → ${end}`);
 
         const payloads: TrackPayload[] = [];
@@ -180,10 +216,14 @@ export function activate(activation: ActivationContext) {
                 .map(n => ({ ...n, b: n.b - start })); // 선택 시작 = 0박자
 
             const name = `${safeStr(track.name, `Lane${laneIdx}`)} [sel]`;
-            const p = buildPayload(`sel_${laneIdx}`, name, inRange as Note[], tempo);
+            const p = buildPayload(`sel_${laneIdx}`, name, inRange as Note[], tempo, live);
             if (p) payloads.push(p);
         }
 
+        if (payloads.length === 0) {
+            await showEditor(context, [], "No notes in the selected range.");
+            return;
+        }
         await showEditor(context, payloads);
     });
 
@@ -201,19 +241,37 @@ export function activate(activation: ActivationContext) {
             return;
         }
 
-        if (!clip || !Array.isArray(clip.notes)) {
+        if (!clip) {
+            console.warn("[TAB] clip resolve failed.");
+            return;
+        }
+        if (!Array.isArray(clip.notes)) {
             console.warn("[TAB] clip has no notes array.");
+            await showEditor(context, [], "This clip has no notes in its loop region.");
             return;
         }
 
         const clipName = safeStr(clip.name, "Clip");
         console.log(`[TAB] clip mode: "${clipName}", ${clip.notes.length} raw notes`);
 
-        // 클립 단독 모드는 항상 0박부터 (offset = 0)
-        const notes = notesFromClip(clip, 0, "ses", clipName);
-        const p = buildPayload("clip_0", clipName, notes, tempo);
+        // 클립 단독 모드는 항상 0박부터 (offset = 0), 루프/마커 영역 적용
+        const rawNotes = notesFromClip(clip, 0, "ses", clipName);
+        const regioned = clipRegion(rawNotes, {
+            looping: clip.looping,
+            loopStart: clip.loopStart,
+            loopEnd: clip.loopEnd,
+            startMarker: clip.startMarker,
+            endMarker: clip.endMarker,
+        });
+        const live = liveContext(context);
+        delete live.cues;   // clip mode passes no cues
+        const p = buildPayload("clip_0", clipName, regioned, tempo, live);
 
-        await showEditor(context, p ? [p] : []);
+        if (!p) {
+            await showEditor(context, [], "This clip has no notes in its loop region.");
+            return;
+        }
+        await showEditor(context, [p]);
     });
 
     // ──────────────────────────────────────────────────────
