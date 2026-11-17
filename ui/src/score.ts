@@ -120,7 +120,7 @@ export function createApi() {
 
    state.api = new alphaTab.AlphaTabApi(el, {
     core: {
-      engine: "svg", useWorker: false,
+      engine: "svg", useWorkers: false,
       // ★ file:// 격리 환경: fontDirectory 대신 Base64 Data URL을 직접 주입
       fontDirectory: null,
       smuflFontSources: new Map([

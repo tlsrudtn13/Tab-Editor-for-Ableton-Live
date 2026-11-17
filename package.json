@@ -11,7 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:dev": "vite build --mode dev && tsx build.ts --dev",
-    "dev": "npm run build:dev && extensions-cli run --storage-directory .devstore --verbose"
+    "dev": "npm run build:dev && extensions-cli run --storage-directory .devstore"
   },
   "dependencies": {
     "@ableton-extensions/sdk": "file:vendor/ableton-extensions-sdk-1.0.0-beta.1.tgz",

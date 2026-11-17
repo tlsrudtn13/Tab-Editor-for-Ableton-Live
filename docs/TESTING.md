@@ -27,6 +27,9 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    ```
    This builds with `--dev` and runs the extension with storage in `.devstore/`.
    The log line `[TAB-DEV] harness ready` means it is up.
+   Live needs Settings → Extensions → Developer Mode on.
+   Do not add `--verbose`: CLI 1.0.0-beta.1 then never sees the "connected" line and
+   kills the host after 10 s ("Failed to connect to Live within 10s").
 3. Drive it from another terminal:
    ```bash
    node scripts/dev-cmd.mjs ping
