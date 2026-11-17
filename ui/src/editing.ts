@@ -103,7 +103,7 @@ export function moveString(dir) {
       if (Math.abs((o.b || 0) - (n.b || 0)) < 0.01 && o.s === ns2) { clash = true; break; }
     }
     if (clash) continue;
-    n.s = ns2; n.f = nf; moved++;
+    n.s = ns2; n.f = nf; n.lock = true; moved++;
   }
 
   if (moved > 0) {

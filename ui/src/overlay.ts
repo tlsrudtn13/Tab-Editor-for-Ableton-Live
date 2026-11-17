@@ -65,6 +65,58 @@ export function overlayOneNote(alphaTabNote) {
   }
 }
 
+// Draw cyan boxes over the currently selected track notes (staff + TAB).
+export function overlaySelectedNotes() {
+  clearNoteOverlays();
+  if (!state.selectedNoteIndices || state.selectedNoteIndices.length === 0) return;
+  if (!state.curTrack || !state.api) return;
+  var notes = state.curTrack.notes || [];
+  var sel = state.selectedNoteIndices.map(function(i) { return notes[i]; }).filter(Boolean);
+  if (sel.length === 0) return;
+  var bl = state.api.renderer ? state.api.renderer.boundsLookup : null;
+  if (!bl || !bl.staffSystems) return;
+  var nS = (state.curTrack.instrument && typeof state.curTrack.instrument.stringCount === "number")
+    ? state.curTrack.instrument.stringCount : 6;
+  var capo = state.uiCapo || 0;
+  for (var si = 0; si < bl.staffSystems.length; si++) {
+    var sys = bl.staffSystems[si];
+    var mbs = sys.bars || sys.masterBarBounds || [];
+    for (var mi = 0; mi < mbs.length; mi++) {
+      var bars = mbs[mi].bars || [];
+      for (var bi = 0; bi < bars.length; bi++) {
+        var bar = bars[bi];
+        var beats = bar.beats || [];
+        for (var ti = 0; ti < beats.length; ti++) {
+          var beat = beats[ti];
+          var bp = null;
+          try { if (bar.masterBar && beat.playbackStart !== undefined) bp = (bar.masterBar.start + beat.playbackStart) / 960; } catch(e) {}
+          var nbs = beat.notes || [];
+          for (var ni = 0; ni < nbs.length; ni++) {
+            var an = nbs[ni].note;
+            if (!an) continue;
+            var matched = false;
+            for (var k = 0; k < sel.length; k++) {
+              var tn = sel[k];
+              // beat position gate
+              if (bp !== null && tn.b !== undefined && Math.abs(tn.b - bp) > 0.03) continue;
+              // precise fret/string
+              if (an.fret !== undefined && an.string !== undefined && tn.f !== undefined && tn.s !== undefined) {
+                if (an.string === nS + 1 - tn.s && an.fret === tn.f - capo) { matched = true; break; }
+              }
+              // pitch fallback
+              if (!matched) {
+                var pitch = (an.realValue !== undefined) ? an.realValue : an.displayValue;
+                if (pitch !== undefined && tn.p !== undefined && pitch === tn.p) { matched = true; break; }
+              }
+            }
+            if (matched) drawNoteOverlay(nbs[ni].noteHeadBounds, true);
+          }
+        }
+      }
+    }
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v5] 트랙 노트 매칭 — f/s 우선, 실패 시 피치 매칭(quantize 병합으로
    resolveStringCollisions 가 줄을 재배치한 노트 대응), bp 로 가장 가까운 노트 선택
@@ -98,7 +150,9 @@ export function matchTrackNote(realF, ourStr, pitch, bp, excludeSet) {
 export function showSelection(noteList, isSingle) {
   var noteDisp  = document.getElementById("inspector-note-display");
   var chordDisp = document.getElementById("inspector-chord-display");
-  if (!noteList || noteList.length === 0) {
+  var has = !!(noteList && noteList.length);
+  document.querySelectorAll("#selection-bar .btn").forEach(function(b) { b.classList.toggle("idle", !has); });
+  if (!has) {
     if (noteDisp)  noteDisp.textContent  = "Click a note on the score...";
     if (chordDisp) chordDisp.textContent = "";
     return;

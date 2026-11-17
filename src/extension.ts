@@ -274,14 +274,16 @@ export function activate(activation: ActivationContext) {
             return;
         }
         p.edit = { mode: "clip", regionStart, noteCount: clip.notes.length };
+        // Snapshot of the notes as opened: edits refer to them by index (oid).
+        const openedNotes = JSON.stringify(clip.notes);
         const result = await showEditor(context, [p]);
         if (!result) return;
         try {
             const message = JSON.parse(result);
             if (message?.action !== "apply" || !message.edits) return;
             const current = clip.notes;
-            if (!Array.isArray(current) || current.length !== p.edit.noteCount) {
-                console.warn(`[TAB] Apply skipped: clip note count changed (${Array.isArray(current) ? current.length : "invalid"} vs ${p.edit.noteCount}).`);
+            if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {
+                console.warn("[TAB] Apply skipped: the clip's notes changed while the editor was open.");
                 return;
             }
             const merged = mergeClipEdits(current, message.edits, regionStart);

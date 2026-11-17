@@ -20,7 +20,7 @@ export function getOpenStrings() {
 }
 
 /* ── Fretboard HUD ────────────────────────────────────────────────────────── */
-export var MARKER_FRETS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
+export var MARKER_FRETS = [3, 5, 7, 9, 15, 17, 19, 21];
 
 // ★ v5: 악기(줄 수/개방현)에 맞춰 동적 생성 — 4현 베이스 ~ 8현 기타 대응
 export function buildFretboard() {
@@ -36,7 +36,7 @@ export function buildFretboard() {
     html += '<div class="str-label" title="String ' + s + ' = ' + pitchToName(openMidi) + '">' + label + "</div>";
     for (var f = 0; f <= 24; f++) {
       var dotClass = "";
-      if (f === 12 || f === 24) {
+      if (f === 12) {
         if (s === Math.max(1, midLane - 1) || s === Math.min(nS, midLane + 1)) dotClass = " dot";
       } else if (MARKER_FRETS.indexOf(f) !== -1 && s === midLane) {
         dotClass = " dot";
@@ -82,7 +82,7 @@ export function updateScaleOverlay() {
         c.classList.add("scale");
         if (iv === 0) c.classList.add("scale-root");
       }
-      if (nd) nd.textContent = NOTE_NAMES[pc];   // 스케일 모드: 음이름
+      if (nd) nd.textContent = (iv === 0) ? NOTE_NAMES[pc] : "";   // 스케일 모드: 루트만 음이름
     } else {
       if (nd) nd.textContent = String(f);        // 기본 모드: fret 번호
     }

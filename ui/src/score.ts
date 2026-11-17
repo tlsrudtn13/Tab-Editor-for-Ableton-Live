@@ -12,7 +12,8 @@ import { state } from "./state";
 import { log, status } from "./log";
 import { getAtRes } from "./theme";
 import { buildFretboard, clearFretboard, getOpenStrings, getStringCount, lightFret, updateScaleOverlay } from "./fretboard";
-import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, showSelection } from "./overlay";
+import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection } from "./overlay";
+import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
 
@@ -144,7 +145,7 @@ export function createApi() {
       resources: getAtRes()
 
     },
-    player: { enablePlayer: true, enableCursor: true, enableUserInteraction: true }
+    player: { enablePlayer: true, enableCursor: true, enableUserInteraction: true, soundFont: soundFontUrl }
   });
 
   var api = state.api;
@@ -163,7 +164,15 @@ export function createApi() {
     status("Ready");
   });
 
-  api.postRenderFinished.on(function() { log("Render complete"); });
+  api.postRenderFinished.on(function() {
+    log("Render complete");
+    // Keep selection box after re-render
+    try { overlaySelectedNotes(); } catch(e) {}
+  });
+  api.soundFontLoaded.on(function() { log("Soundfont loaded"); });
+  // soundFontLoadFailed lives on the synth (api.player), not on the API itself
+  var synth = api.player;
+  if (synth && synth.soundFontLoadFailed) synth.soundFontLoadFailed.on(function(e) { log("Soundfont load failed: " + ((e && e.message) || e)); });
 
   // ── beatMouseDown: 클릭 → 화음 표시 + 코드 분석 + ★줄옮김용 선택 ────────
   api.beatMouseDown.on(function(beat) {

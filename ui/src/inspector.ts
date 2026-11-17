@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { state } from "./state";
 import { clearFretboard, lightFret } from "./fretboard";
-import { showSelection } from "./overlay";
+import { showSelection, overlaySelectedNotes } from "./overlay";
 import { beatToBarBeat, durToLabel, pitchToName, velToDynamic } from "./musicUi";
 
 /* ── MIDI Inspector ───────────────────────────────────────────────────────── */
@@ -62,12 +62,13 @@ export function renderInspector(track) {
 export function inspectorRowClick(str, fret, idx, pitch) {
   clearFretboard();
   lightFret(str, fret);
-  showSelection([{ f: fret, s: str, p: pitch }]);
   state.selectedNoteIndices = [idx];           // 행 클릭으로도 줄옮김 선택 가능
+  showSelection([{ f: fret, s: str, p: pitch }]);
   var prev = document.querySelector(".sel");
   if (prev) prev.classList.remove("sel");
   var row = document.getElementById("nr-" + idx);
   if (row) row.classList.add("sel");
+  try { overlaySelectedNotes(); } catch(e) {}
 }
 
 /* ── 패널 토글 (Data / Log / Sidebar) ───────────────────────────────────────────────── */

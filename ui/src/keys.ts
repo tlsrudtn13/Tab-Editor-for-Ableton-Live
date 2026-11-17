@@ -3,7 +3,7 @@ import { state } from "./state";
 import { getOpenStrings, getStringCount, clearFretboard, lightFret } from "./fretboard";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
-import { showSelection } from "./overlay";
+import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overlay";
 import { adjustDuration, moveString } from "./editing";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
@@ -22,13 +22,16 @@ function highlightSelection() {
   showSelection(ns.map(n => ({ f:n.f, s:n.s, p:n.p })), ns.length === 1);
   document.querySelectorAll("#note-tbody tr.sel").forEach(r => r.classList.remove("sel"));
   state.selectedNoteIndices.forEach(i => { const r=document.getElementById("nr-"+i); if(r) r.classList.add("sel"); });
+  if (state.selectedNoteIndices.length === 0) clearNoteOverlays();
+  else { try { overlaySelectedNotes(); } catch(e) {} }
 }
 export function selectIndex(index) {
   if (!state.curTrack || index < 0 || index >= state.curTrack.notes.length) return;
   state.selectedNoteIndices = [index]; highlightSelection();
+  try { overlaySelectedNotes(); } catch(e) {}
 }
 export function updateEditUi() {
-  const edits = state.curTrack ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
+  const edits = state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
   const count = document.getElementById("edit-count"), apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (count) { count.textContent = "* " + edits + " edits"; count.classList.toggle("hidden", edits === 0); }
   const enabled = active();
@@ -44,7 +47,7 @@ function pitchChange(delta) {
 }
 export function setSelectedStringFret(s,f) {
   if(!active())return; const n=state.curTrack.notes[state.selectedNoteIndices[0]], open=getOpenStrings()[s]; if(!n||typeof open!=="number")return;
-  const before=state.curTrack.notes.map(n=>({...n})); n.s=s;n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;saveUndo(before);render();
+  const before=state.curTrack.notes.map(n=>({...n})); n.s=s;n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();
 }
 function onKey(e) {
   if (e.target instanceof Element && (e.target.matches("input,select,textarea") || e.target.isContentEditable)) return;
@@ -61,6 +64,6 @@ function onKey(e) {
   if((k==="["||k==="]")&&selected.length){adjustDuration(k==="]"?"+1":"-1");return;}
   if(k.toLowerCase()==="d"&&selected.length){adjustDuration("Auto");return;}
   if((k==="Delete"||k==="Backspace")&&selected.length){e.preventDefault();const before=state.curTrack.notes.map(n=>({...n})), deletedBefore=state.deletedOids.slice();const removed=selected.slice().sort((a,b)=>b-a);removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});state.selectedNoteIndices=[];saveUndo(before,deletedBefore);render();return;}
-  if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]],open=getOpenStrings()[n.s];if(n&&open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
+  if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]],open=getOpenStrings()[n.s];if(n&&open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
 }
 export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi};updateEditUi();}

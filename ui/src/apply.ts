@@ -2,7 +2,7 @@
 import { state } from "./state";
 
 export function editCount() {
-  return state.curTrack ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
+  return state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
 }
 export function sendApply() {
   if (!state.curTrack || !state.curTrack.edit) return;

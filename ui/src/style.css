@@ -147,14 +147,12 @@ body { display:flex; flex-direction:row; }
 /* ★ v5: 악보 위 선택 노트 강조 박스 (boundsLookup 좌표 기반) */
 .note-sel-overlay {
   position:absolute; z-index:10; pointer-events:none;
-  border:1.5px solid var(--p-live-accent-primary);
+  border:2px solid #00c8ff;
   border-radius:3px;
-  background:rgba(255,118,77,.20);
-  box-shadow:0 0 6px rgba(255,118,77,.45);
+  background:rgba(0,200,255,0.22);
 }
 .note-sel-overlay.single {
-  background:rgba(255,118,77,.34);
-  box-shadow:0 0 9px rgba(255,118,77,.75);
+  background:rgba(0,200,255,0.22);
 }
 
 /* ★ v3: SVG 색 강제(!important) 블록 제거됨.
@@ -174,7 +172,7 @@ body { display:flex; flex-direction:row; }
 }
 .idle { opacity:.35; pointer-events:none; }
 #inspector-note-display {
-  color:var(--p-live-accent-primary); font-weight:700; font-size:11px;
+  color:#00c8ff; font-weight:700; font-size:11px;
 }
 #inspector-chord-display { font-size:11px; font-weight:700; }
 
@@ -201,7 +199,7 @@ body { display:flex; flex-direction:row; }
 #fretboard-grid {
   display:flex; flex-direction:column; background:var(--fb-bg, #1a1a1a); border:1px solid var(--fb-border, #3a3a3a); border-radius:3px; user-select:none;
 }
-.string-lane { display:flex; height:18px; align-items:center; position:relative; }
+.string-lane { display:flex; height:22px; align-items:center; position:relative; }
 .string-lane::after {
   content:''; position:absolute; left:0; right:0; top:50%; z-index:1;
   pointer-events:none; background:var(--fb-string, #555); height:1px;
@@ -209,15 +207,19 @@ body { display:flex; flex-direction:row; }
 .string-lane[data-s="5"]::after { height:1.5px; background:#666; }
 .string-lane[data-s="6"]::after { height:2px;   background:#777; }
 .fc {
-  width:36px; min-width:36px; height:100%; border-right:1px solid var(--fb-cell-border, #2a2a2a);
+  width:38px; min-width:38px; height:100%; border-right:1px solid var(--fb-cell-border, #2a2a2a);
   position:relative; display:flex; align-items:center; justify-content:center;
   cursor:pointer; z-index:2; transition:background .08s;
 }
 .fc[data-f="0"] { width:28px; min-width:28px; background:var(--p-live-input-bg); border-right:3px double #444; }
 .fc:hover { background:rgba(255,255,255,.05); }
 .fc.dot::before {
-  content:''; position:absolute; bottom:-6px; left:50%; transform:translateX(-50%);
-  width:5px; height:5px; background:#3a3a3a; border-radius:50%; pointer-events:none; z-index:0;
+  content:''; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
+  width:6px; height:6px; background:#666; border-radius:50%; pointer-events:none; z-index:0;
+}
+.fc[data-f="12"].dot::before {
+  background:transparent;
+  box-shadow:-5px 0 0 #666, 5px 0 0 #666;
 }
 .nd {
   width:14px; height:14px; border-radius:50%; font-size:8px; font-weight:900;
@@ -228,33 +230,43 @@ body { display:flex; flex-direction:row; }
 
 /* ★ v3: Scale 오버레이 — 스케일 구성음 = 흰/회색, 루트 = 흰색 강조
    (정의 순서 중요: .lit 이 아래에 있어 MIDI 하이라이트(주황)가 항상 우선) */
-/* ✅ 스케일음: 작은 청록색 원 */
+/* ✅ 스케일음: 6px hollow rings */
 .fc.scale .nd {
-  opacity: 0.9;
-  transform: scale(0.99);
-  background: #4a9ead;   /* 청록 — 루트/MIDI와 구별 */
-  color: #000000;
-  font-size: 8px;
+  width: 6px;
+  height: 6px;
+  opacity: 0.55;
+  transform: scale(1);
+  background: transparent;
+  border: 1.5px solid #3d7885;
+  color: transparent;
+  font-size: 0;
   font-weight: 600;
 }
-/* ✅ 루트: 주황 accent, 눈에 띄게 크게 */
+/* ✅ 루트: 12px gold discs */
 .fc.scale-root .nd {
+  width: 12px;
+  height: 12px;
   opacity: 0.95;
   transform: scale(1);
-  background: hsl(28,95%,45%);   /* 테마 주황 */
-  color: #000;
+  background: #f5a623;
+  color: #181818;
   font-size: 8px;
   font-weight: 900;
-  box-shadow: 0 0 7px rgba(255,140,0,.6);
+  border: none;
+  box-shadow: none;
 }
-/* ✅ MIDI 활성(lit): 더 밝고 크게, 스케일 위에 항상 우선 */
+/* ✅ MIDI 활성(lit): cyan selected disc 18px with glow */
 .fc.lit .nd {
+  width: 18px;
+  height: 18px;
   opacity: 1;
-  transform: scale(1.18);
-  background: #ffb347;   /* 밝은 주황 — 루트보다 더 밝게 */
-  box-shadow: 0 0 10px rgba(255,140,0,.85);
-  color: var(--p-live-input-bg);
+  transform: scale(1);
+  background: #00c8ff;
+  color: #000000;
   font-weight: 900;
+  font-size: 9px;
+  box-shadow: 0 0 10px rgba(0,200,255,0.90);
+  border: none;
 }
 .str-label {
   width:20px; min-width:20px; display:flex; align-items:center; justify-content:center;
