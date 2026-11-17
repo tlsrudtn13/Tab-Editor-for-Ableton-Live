@@ -9,13 +9,14 @@
 //   - → 빈 마디는 | 로만 채워 bar 번호를 보존
 // ============================================================
 
-import type { Note } from "./types.js";
+import type { Note, TimeSig } from "./types.js";
 import { quantizeBeat, beatToNoteVal, detectQuantizeGrid } from "./music.js";
 
 export interface AlphaTexOptions {
     bpm:      number;
     /** 퀀타이즈 그리드. 미지정 시 detectQuantizeGrid() 로 자동 감지 */
     quantize?: 4 | 8 | 12 | 16 | 24 | 32;
+    timeSig?: TimeSig;
 }
 
 /**
@@ -32,7 +33,8 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
     const { bpm } = opts;
 
     if (!notes || notes.length === 0) {
-        return `\\tempo ${Math.round(bpm)}\n.\n`;
+        const ts = opts.timeSig ?? { beats: 4, type: 4 };
+        return `\\tempo ${Math.round(bpm)}\n\\ts ${ts.beats} ${ts.type}\n.\n`;
     }
 
     // 퀀타이즈 그리드 결정
@@ -43,7 +45,7 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
         .map(n => ({ ...n, b: quantizeBeat(n.b, grid) }))
         .sort((a, b) => a.b !== b.b ? a.b - b.b : a.p - b.p);
 
-    const BEATS_PER_BAR = 4.0;
+    const BEATS_PER_BAR = (opts.timeSig?.beats ?? 4) * 4 / (opts.timeSig?.type ?? 4);
     const CHORD_TOL     = 0.001; // 퀀타이즈 후 동일 박자 = 화음
 
     // First pass: build beat groups to compute intervals and triplet flags.
@@ -84,7 +86,8 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
     }
 
     // Second pass: render.
-    let tex          = `\\tempo ${Math.round(bpm)}\n.\n`;
+    const timeSig = opts.timeSig ?? { beats: 4, type: 4 };
+    let tex          = `\\tempo ${Math.round(bpm)}\n\\ts ${timeSig.beats} ${timeSig.type}\n.\n`;
     let lastBarIndex = -1;
     let groupIdx     = 0;
     gi = 0;

@@ -25,6 +25,48 @@ import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
 import fs   from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { BASS_4, BASS_4_DROPD, BASS_4_EB, BASS_5, BASS_6, GUITAR_6, GUITAR_6_D, GUITAR_6_DROPC, GUITAR_6_DROPD, GUITAR_6_DADGAD, GUITAR_6_EB, GUITAR_6_OPEND, GUITAR_6_OPENG, GUITAR_7, GUITAR_8, GUITAR_12 } from "./notation/instruments.js";
+import { layerKey, type TabLayer } from "./notation/tabLayer.js";
+
+const INSTRUMENT_BY_KEY: Record<string, any> = { guitar6:GUITAR_6, guitar7:GUITAR_7, guitar8:GUITAR_8, guitar12:GUITAR_12, bass4:BASS_4, bass5:BASS_5, bass6:BASS_6, "guitar6-dropd":GUITAR_6_DROPD, "guitar6-eb":GUITAR_6_EB, "guitar6-d":GUITAR_6_D, "guitar6-dropc":GUITAR_6_DROPC, "guitar6-dadgad":GUITAR_6_DADGAD, "guitar6-openg":GUITAR_6_OPENG, "guitar6-opend":GUITAR_6_OPEND, "bass4-dropd":BASS_4_DROPD, "bass4-eb":BASS_4_EB };
+function layerFile(context: any, key: string): string | undefined {
+    const dir = context.environment.storageDirectory;
+    if (!dir) return undefined;
+    return path.join(dir, "tablayers", createHash("sha256").update(key).digest("hex") + ".json");
+}
+function readLayer(context: any, key: string): TabLayer | undefined {
+    try {
+        const file=layerFile(context,key);
+        if (file && fs.existsSync(file)) {
+            const x=JSON.parse(fs.readFileSync(file,"utf8"));
+            const ts=x?.timeSig;
+            const validTimeSig=!ts || (Number.isInteger(ts.beats) && ts.beats >= 1 && ts.beats <= 32 && [1,2,4,8,16].includes(ts.type));
+            if(x?.v===1 && typeof x.instrument==="string" && INSTRUMENT_BY_KEY[x.instrument] && Number.isFinite(x.capo) && Array.isArray(x.notes) && validTimeSig && x.notes.every((n:any)=>typeof n?.h==="string" && Number.isInteger(n.s) && Number.isInteger(n.f))) return x;
+            console.warn("[TAB] invalid saved TAB layer ignored:", file);
+        }
+    }
+    catch(e) { console.warn("[TAB] saved TAB layer ignored:", e); }
+    return undefined;
+}
+function saveLayer(context: any, key: string, layer: TabLayer | undefined) {
+    if (!layer) return;
+    try { const file=layerFile(context,key); if(!file) return; fs.mkdirSync(path.dirname(file),{recursive:true}); fs.writeFileSync(file,JSON.stringify(layer),"utf8"); }
+    catch(e) { console.warn("[TAB] TAB layer save failed:", e); }
+}
+/** Find which track (and Session slot) a clip lives in. The SDK caches objects by handle, so identity works. */
+function locateClip(context: any, clip: any): { trackName: string; slotIndex?: number } | undefined {
+    try {
+        for (const t of context.application.song.tracks as any[]) {
+            const slots: any[] = Array.isArray(t?.clipSlots) ? t.clipSlots : [];
+            for (let i = 0; i < slots.length; i++) if (slots[i]?.clip === clip) return { trackName: String(t.name ?? "Track"), slotIndex: i };
+            const arr: any[] = Array.isArray(t?.arrangementClips) ? t.arrangementClips : [];
+            if (arr.includes(clip)) return { trackName: String(t.name ?? "Track") };
+        }
+    } catch (e) { console.warn("[TAB] clip location lookup failed:", e); }
+    return undefined;
+}
+function instrumentForLayer(layer?: TabLayer) { return layer ? INSTRUMENT_BY_KEY[layer.instrument] : undefined; }
 
 // 공용 헬퍼 1 (buildPayload) 은 src/notation/payload.ts 로 이동 — dev harness 와 공유
 
@@ -137,7 +179,12 @@ export function activate(activation: ActivationContext) {
         // arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
         const allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
         const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
-        return buildPayload(trackId, rawTrack.name ?? "Unknown", allNotes, tempo, live);
+        const trackName = rawTrack.name ?? "Unknown";
+        const storageKey = layerKey(trackName, "");
+        const layer = readLayer(context, storageKey);
+        const p = buildPayload(trackId, trackName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
+        if (p) (p as any).layerStorageKey = storageKey;
+        return p;
     }
 
     async function openAllTracks(): Promise<void> {
@@ -152,7 +199,8 @@ export function activate(activation: ActivationContext) {
             const p = trackPayload(rawTrack, trackIdx, tempo, live);
             if (p) payloads.push(p);
         }
-        await showEditor(context, payloads);
+        const result = await showEditor(context, payloads);
+        try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     }
 
     context.commands.registerCommand("tabeditor.open", async (...args: unknown[]) => {
@@ -176,7 +224,8 @@ export function activate(activation: ActivationContext) {
             return;
         }
         console.log(`[TAB] track mode: "${name}"`);
-        await showEditor(context, [p]);
+        const result = await showEditor(context, [p]);
+        try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     });
 
     context.commands.registerCommand("tabeditor.openAll", async () => { await openAllTracks(); });
@@ -267,19 +316,33 @@ export function activate(activation: ActivationContext) {
         const live = liveContext(context);
         delete live.cues;   // clip mode passes no cues
         const regionStart = clip.looping ? clip.loopStart : clip.startMarker;
-        const p = buildPayload("clip_0", clipName, regioned, tempo, live);
+        const where = locateClip(context, clip);
+        const trackName = where?.trackName ?? "Track";
+        const storageKey = layerKey(trackName, clipName);
+        const layer = readLayer(context, storageKey);
+        let timeSig = layer?.timeSig;
+        try {
+            const song: any = context.application.song;
+            const slotIndex = where?.slotIndex ?? NaN;   // Session clip: slot i belongs to scene i
+            const scene = Number.isInteger(slotIndex) ? song.scenes?.[slotIndex] : undefined;
+            const beats = Number(scene?.signatureNumerator), type = Number(scene?.signatureDenominator);
+            if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
+        } catch { /* default to 4/4 */ }
+        const p = buildPayload("clip_0", clipName, regioned, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig });
 
         if (!p) {
             await showEditor(context, [], "This clip has no notes in its loop region.");
             return;
         }
         p.edit = { mode: "clip", regionStart, noteCount: clip.notes.length };
+        (p as any).layerStorageKey = storageKey;
         // Snapshot of the notes as opened: edits refer to them by index (oid).
         const openedNotes = JSON.stringify(clip.notes);
         const result = await showEditor(context, [p]);
         if (!result) return;
         try {
             const message = JSON.parse(result);
+            if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
             if (message?.action !== "apply" || !message.edits) return;
             const current = clip.notes;
             if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {

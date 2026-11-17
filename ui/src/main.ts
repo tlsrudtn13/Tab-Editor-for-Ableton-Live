@@ -69,6 +69,12 @@ export function loadTrack(id) {
   if (!trk) { log("track \"" + id + "\" not found"); return; }
 
   state.curTrack = trk;
+  state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
+  var tsSel = document.getElementById("ui-timesig");
+  if (tsSel) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;
+  state.uiCapo = trk.capo || 0;
+  var capoSel = document.getElementById("ui-capo");
+  if (capoSel) capoSel.value = String(state.uiCapo);
   // Remember each note's values as opened, so Apply sends only what changed
   // (a pitch-only edit must not move the note's original, unquantized timing).
   if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {

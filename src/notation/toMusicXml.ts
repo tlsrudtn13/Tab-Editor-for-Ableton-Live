@@ -315,7 +315,7 @@ export function toMusicXml(
     for (const c of rawCues) {
         if (!c) continue;
         const beat = typeof c.beat === "number" ? c.beat : 0;
-        const mi = Math.floor(beat / 4);
+        const mi = Math.floor(beat / (timeSig.beats * 4 / timeSig.type));
         if (mi < 0 || mi >= totalMeasures) continue;
         const name = String(c.name ?? "");
         if (!cuesByMeasure.has(mi)) cuesByMeasure.set(mi, []);
@@ -329,7 +329,7 @@ export function toMusicXml(
         `<score-partwise version="4.0">`,
         `  <part-list>`,
         `    <score-part id="P1">`,
-        `      <part-name>${isBass ? "Bass" : "Guitar"}</part-name>`,
+        `      <part-name>${instr.name === "6-String Guitar" || instr.name === "7-String Guitar" || instr.name === "8-String Guitar" || instr.name === "12-String Guitar" ? "Guitar" : instr.name === "4-String Bass" || instr.name === "5-String Bass" || instr.name === "6-String Bass" ? "Bass" : instr.name}</part-name>`,
         `      <score-instrument id="P1-I1">`,
         `        <instrument-name>${instr.name}</instrument-name>`,
         `      </score-instrument>`,

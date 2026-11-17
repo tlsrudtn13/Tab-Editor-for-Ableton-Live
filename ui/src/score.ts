@@ -6,7 +6,9 @@ import { keyFromLiveScale } from "../../src/notation/music.js";
 import { applyGuitarVoicing } from "../../src/notation/voicing.js";
 import {
   GUITAR_6, GUITAR_7, GUITAR_8, GUITAR_12,
-  BASS_4, BASS_5, BASS_6
+  BASS_4, BASS_5, BASS_6, GUITAR_6_DROPD, GUITAR_6_EB, GUITAR_6_D,
+  GUITAR_6_DROPC, GUITAR_6_DADGAD, GUITAR_6_OPENG, GUITAR_6_OPEND,
+  BASS_4_DROPD, BASS_4_EB
 } from "../../src/notation/instruments.js";
 import { state } from "./state";
 import { log, status } from "./log";
@@ -29,10 +31,15 @@ export var INSTRUMENTS = {
   "guitar12": GUITAR_12,
   "bass4":    BASS_4,
   "bass5":    BASS_5,
-  "bass6":    BASS_6
+  "bass6":    BASS_6,
+  "guitar6-dropd": GUITAR_6_DROPD, "guitar6-eb": GUITAR_6_EB, "guitar6-d": GUITAR_6_D,
+  "guitar6-dropc": GUITAR_6_DROPC, "guitar6-dadgad": GUITAR_6_DADGAD,
+  "guitar6-openg": GUITAR_6_OPENG, "guitar6-opend": GUITAR_6_OPEND,
+  "bass4-dropd": BASS_4_DROPD, "bass4-eb": BASS_4_EB
 };
 
 export function instrumentKeyOf(instr) {
+  if (typeof instr === "string" && INSTRUMENTS[instr]) return instr;
   if (instr && instr.name) {
     for (var k in INSTRUMENTS) {
       if (INSTRUMENTS[k].name === instr.name) return k;
@@ -356,7 +363,8 @@ export function rebuildScore() {
       skipVoicing: true,
       transpose:   state.uiTranspose,
       capo:        state.uiCapo,
-      cues:        state.curTrack.live && state.curTrack.live.cues,   // Live locators → rehearsal marks
+      cues:        state.curTrack.live && state.curTrack.live.cues,
+      timeSig:     state.uiTimeSig || state.curTrack.timeSig,
       quantize:    state.uiQuantize === "auto" ? undefined : state.uiQuantize,  // ★ v3
       key:         (state.curTrack.live && state.curTrack.live.scale && state.curTrack.live.scale.enabled)
                     ? (keyFromLiveScale(state.curTrack.live.scale.root, state.curTrack.live.scale.name) || undefined)
@@ -393,6 +401,8 @@ export function bindControls() {
   var t = document.getElementById("ui-transpose");
   var c = document.getElementById("ui-capo");
   var q = document.getElementById("ui-quantize");
+  var ts = document.getElementById("ui-timesig");
+  if (ts) ts.addEventListener("change", function() { var a=ts.value.split("/"); state.uiTimeSig={beats:Number(a[0]),type:Number(a[1])}; rebuildScore(); });
   function onPitchChange() {
     state.uiTranspose = parseInt((t && t.value) || "0", 10) || 0;
     state.uiCapo      = Math.max(0, parseInt((c && c.value) || "0", 10) || 0);

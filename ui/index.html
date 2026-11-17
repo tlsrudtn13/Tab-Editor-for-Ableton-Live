@@ -24,13 +24,10 @@
       <button class="sb"    id="m-staff"  onclick="setMode('staff')">Staff</button>
     </div>
     <select id="ui-instrument" class="tsel" title="Instrument — re-voices the track">
-      <option value="guitar6" selected>Guitar 6</option>
-      <option value="guitar7">Guitar 7</option>
-      <option value="guitar8">Guitar 8</option>
-      <option value="guitar12">Guitar 12</option>
-      <option value="bass4">Bass 4</option>
-      <option value="bass5">Bass 5</option>
-      <option value="bass6">Bass 6</option>
+      <optgroup label="Guitar">
+      <option value="guitar6" selected>Guitar 6</option><option value="guitar6-dropd">Drop D</option><option value="guitar6-eb">Eb Standard</option><option value="guitar6-d">D Standard</option><option value="guitar6-dropc">Drop C</option><option value="guitar6-dadgad">DADGAD</option><option value="guitar6-openg">Open G</option><option value="guitar6-opend">Open D</option>
+      <option value="guitar7">Guitar 7</option><option value="guitar8">Guitar 8</option><option value="guitar12">Guitar 12</option>
+      </optgroup><optgroup label="Bass"><option value="bass4">Bass 4</option><option value="bass4-dropd">Bass 4 Drop D</option><option value="bass4-eb">Bass 4 Eb</option><option value="bass5">Bass 5</option><option value="bass6">Bass 6</option></optgroup>
     </select>
     <div class="sp"></div>
 
@@ -48,6 +45,7 @@
       <option value="32">1/32</option>
       <option value="auto" selected>Auto</option>
     </select>
+    <select id="ui-timesig" class="tsel" title="Time signature"><option>4/4</option><option>3/4</option><option>2/4</option><option>5/4</option><option>6/8</option><option>7/8</option><option>9/8</option><option>12/8</option></select>
     <label class="numlab">Trans
       <input type="number" id="ui-transpose" value="0" min="-24" max="24" />
     </label>

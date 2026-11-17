@@ -1,5 +1,12 @@
 // @ts-nocheck
 import { state } from "./state";
+import { layerFromNotes } from "../../src/notation/tabLayer.js";
+import { instrumentKeyOf } from "./score";
+
+function currentLayer() {
+  const t=state.curTrack;
+  return t ? layerFromNotes(t.notes, instrumentKeyOf(t.instrument), state.uiCapo, state.uiTimeSig || t.timeSig) : null;
+}
 
 export function editCount() {
   return state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
@@ -17,11 +24,11 @@ export function sendApply() {
     added: notes.filter(n => n.oid === undefined).map(n => ({ pitch:n.p, start:n.b, duration:n.d, velocity:n.v })),
     deleted: state.deletedOids.slice(),
   };
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits })] });
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer:currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
 }
 export function sendCancel() {
   if (editCount() && !window.confirm("Discard your edits and close?")) return;
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"cancel" })] });
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action: editCount() ? "cancel" : "close", layer:currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
 }
 export function bindApply() {
   const apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");

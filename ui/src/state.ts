@@ -6,6 +6,7 @@ export const state: {
   pdfBusy: boolean;
   uiTranspose: number;
   uiCapo: number;
+  uiTimeSig: { beats: number; type: number } | null;
   uiQuantize: number | "auto";
   selectedNoteIndices: number[];
   uiScaleRoot: number;
@@ -27,6 +28,7 @@ export const state: {
   pdfBusy: false,
   uiTranspose: 0,
   uiCapo: 0,
+  uiTimeSig: null,
   uiQuantize: "auto",   // follow the grid detected from the notes (straight or triplet)
   selectedNoteIndices: [],
   uiScaleRoot: 0,

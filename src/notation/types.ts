@@ -41,9 +41,13 @@ export type TrackPayload = {
     musicXmlTab?:   string;
     /** 악기 설정 */
     instruments?: InstrumentConfig;
+    instrument?: InstrumentConfig;
+    capo?: number;
+    timeSig?: TimeSig;
     bpm: number;
     /** Live 컨텍스트 (스케일, 큐포인트, 그리드) */
     live?: {
+        timeSig?: TimeSig;
         scale?: { root: number; name: string; intervals: number[]; enabled: boolean };
         cues?: { beat: number; name: string }[];
         grid?: { quantization: number; triplet: boolean };
