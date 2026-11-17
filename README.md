@@ -40,6 +40,7 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Alt + ↑ / ↓ | Move the note to the adjacent string with the same pitch |
 | Alt + Shift + ↑ / ↓ | Pitch ±1 semitone on the same string (if the fret stays 0–24) |
 | Shift + ← / → | Extend selection by beat (all strings in range) |
+| Drag on score | Drag to select a range of notes (Shift+drag adds) |
 | Shift + ↑ / ↓ | Select all notes of the cursor slot |
 | Ctrl + A | Select all notes |
 | `+` / `-` | Shorter / longer duration (halve / double) |
@@ -55,10 +56,11 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Esc | Clear the selection |
 
 A cyan cursor box shows the current beat slot and string on the TAB. Click a note, rest or string
-position to place the cursor. Clicking a fret on the fretboard sets or inserts the note at the
-cursor's slot on that string; Shift + click adds a chord tone. Use the **Keys** button for a quick
-reference.
+position to place the cursor, or drag to select a range of notes (Shift+drag adds). Clicking a fret
+on the fretboard sets or inserts the note at the cursor's slot on that string; Shift + click adds a
+chord tone. Use the **Keys** button for a quick reference.
 **Techniques** are shown on the score, saved with the clip's TAB layout, and do not change the MIDI.
+With a range selected, a technique key or palette button applies to the whole selection.
 Overlapping arpeggio notes are marked let ring automatically.
 **Apply to Clip** writes only the notes you changed. Notes whose pitch you changed keep their original
 (unquantized) timing. The whole apply is one step in Live's Undo. If the clip changed in Live while the
@@ -159,6 +161,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | Alt + ↑ / ↓ | 같은 음높이로 인접 줄로 이동 |
 | Alt + Shift + ↑ / ↓ | 같은 줄에서 반음 ±1 (프렛 0–24 범위 내) |
 | Shift + ← / → | 비트 범위 선택 확장 (범위 내 모든 줄) |
+| 악보에서 드래그 | 드래그로 음 범위 선택 (Shift+드래그로 추가) |
 | Shift + ↑ / ↓ | 커서 슬롯의 모든 노트 선택 |
 | Ctrl + A | 모든 노트 선택 |
 | `+` / `-` | 길이 절반 / 두 배 |
@@ -174,9 +177,11 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | Esc | 선택 해제 |
 
 TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍니다. 노트, 쉼표, 줄 위치를 클릭해 커서를
-놓을 수 있습니다. 프렛보드 칸을 누르면 커서 슬롯의 해당 줄에 노트를 넣거나 바꾸고, Shift를 누른 채
-누르면 화음 음을 추가합니다. **Keys** 버튼으로 단축키를 빠르게 볼 수 있습니다.
-**기법 표기**는 악보에 그려지고 클립의 TAB 설정과 함께 저장되며, MIDI는 바꾸지 않습니다.
+놓거나, 드래그해 음 범위를 선택할 수 있습니다(Shift+드래그로 추가). 프렛보드 칸을 누르면 커서 슬롯의
+해당 줄에 노트를 넣거나 바꾸고, Shift를 누른 채 누르면 화음 음을 추가합니다. **Keys** 버튼으로 단축키를
+빠르게 볼 수 있습니다.
+**기법 표기**는 악보에 그려지고 클립의 TAB 설정과 함께 저장되며, MIDI는 바꾸지 않습니다. 범위를 선택한
+상태에서는 기법 키나 팔레트 버튼이 선택 전체에 적용됩니다.
 겹쳐 울리는 아르페지오에는 let ring이 자동으로 붙습니다.
 **Apply to Clip**은 바꾼 노트만 클립에 씁니다. 음높이만 바꾼 노트는 원래(퀀타이즈 전) 타이밍을 유지합니다.
 한 번의 반영은 Live 실행 취소 한 단계입니다. 에디터가 열려 있는 동안 Live에서 클립이 바뀌었다면

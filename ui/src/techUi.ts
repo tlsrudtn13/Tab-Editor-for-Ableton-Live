@@ -29,6 +29,15 @@ export function effectiveTech(index: number): Tech[] {
   return autoLetRing().has(index) ? ["lr"] : [];
 }
 
+export type TechTriState = "idle" | "none" | "all" | "mixed";
+/** Pure: compute palette state for a technique over selected indices given an effective-tech accessor. */
+export function techSelectionState(sel: number[], t: Tech, getTech: (i: number) => Tech[]): TechTriState {
+  if (!sel.length) return "idle";
+  let on = 0;
+  for (const i of sel) if (getTech(i).includes(t)) on++;
+  return on === 0 ? "none" : on === sel.length ? "all" : "mixed";
+}
+
 /**
  * Called from scoreLoaded, before alphaTab draws: copy techniques onto the matching alphaTab notes
  * (same string/fret, nearest beat) and re-run score.finish so let-ring / hammer / slide end points exist.
@@ -69,6 +78,16 @@ export function applyTechniquesToScore(score: any) {
         if (tech.includes("sl")) an.slideOutType = alphaTab.model.SlideOutType.Legato;
         if (tech.includes("x")) an.isDead = true;
         if (tech.includes("vb")) an.vibrato = alphaTab.model.VibratoType.Slight;
+        // propagate let ring / palm mute across tie destinations so continuation beats carry the flag (continuous line)
+        if (tech.includes("lr") || tech.includes("pm")) {
+          let dest = an.tieDestination;
+          let guard = 0;
+          while (dest && guard++ < 64) {
+            if (tech.includes("lr")) dest.isLetRing = true;
+            if (tech.includes("pm")) dest.isPalmMute = true;
+            dest = dest.tieDestination;
+          }
+        }
         changed++;
       }))))));
     if (changed && state.api) {
@@ -85,13 +104,14 @@ export function applyTechniquesToScore(score: any) {
   } catch (e: any) { log("techniques: " + (e.message || e)); }
 }
 
-/** Toggle one technique on the selected notes (on for all if any lacks it, else off for all). */
+/** Toggle one technique on the selected notes. Mixed or all-off -> set all on; all-on -> set all off. */
 export function toggleSelectedTech(t: Tech, saveUndo: (before: any[]) => void, render: () => void) {
   if (!state.curTrack || !state.curTrack.edit) return;
   const sel = state.selectedNoteIndices.filter(i => state.curTrack.notes[i]);
   if (!sel.length) return;
   const before = state.curTrack.notes.map((n: any) => ({ ...n }));
-  const turnOn = sel.some(i => !effectiveTech(i).includes(t));
+  const st = techSelectionState(sel, t, effectiveTech);
+  const turnOn = st !== "all"; // all-on -> off; mixed/none -> on
   for (const i of sel) {
     const cur = new Set(effectiveTech(i));
     if (turnOn) cur.add(t); else cur.delete(t);
@@ -120,13 +140,18 @@ export function cycleSelectedBend(saveUndo: (before: any[]) => void, render: () 
   render();
 }
 
-/** Palette buttons light up for techniques every selected note has. */
+/** Palette buttons: all on -> on; none/idle -> idle; some -> mixed. */
 export function updateTechPalette() {
   const sel = state.curTrack ? state.selectedNoteIndices.filter(i => state.curTrack.notes[i]) : [];
   document.querySelectorAll<HTMLElement>("#tech-palette [data-tech]").forEach(b => {
     const t = b.dataset.tech as Tech;
-    b.classList.toggle("on", sel.length > 0 && sel.every(i => effectiveTech(i).includes(t)));
-    b.classList.toggle("idle", sel.length === 0);
+    const st = techSelectionState(sel, t, effectiveTech);
+    b.classList.toggle("on", st === "all");
+    b.classList.toggle("idle", st === "idle" || st === "none");
+    b.classList.toggle("mixed", st === "mixed");
+    const base = b.dataset.label || (b.textContent || "").replace(/\*$/, "") || "";
+    if (!b.dataset.label) b.dataset.label = base;
+    b.textContent = st === "mixed" ? base + "*" : base;
   });
   const bendBtn = document.querySelector<HTMLElement>("#tech-palette [data-bend]");
   if (bendBtn) {
@@ -134,5 +159,6 @@ export function updateTechPalette() {
     bendBtn.textContent = amt ? "B " + BEND_LABEL[amt] : "B";
     bendBtn.classList.toggle("on", !!amt);
     bendBtn.classList.toggle("idle", sel.length === 0);
+    bendBtn.classList.remove("mixed");
   }
 }

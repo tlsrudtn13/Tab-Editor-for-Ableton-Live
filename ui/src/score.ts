@@ -16,6 +16,7 @@ import { buildFretboard, clearFretboard, getOpenStrings, getStringCount, lightFr
 import { applyTechniquesToScore } from "./techUi";
 import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection, stringAtY, tabBarBoundsAt } from "./overlay";
 import { ensureCursor, rebuildSlotsFromApi, setCursor, slotAt, noteAtCursor } from "./cursor";
+import { bindDragSelection, consumeRecentDrag, isDragSelecting } from "./dragSelect";
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
@@ -129,6 +130,7 @@ export function colorizeOutOfRange(score) {
 /* ── createApi ────────────────────────────────────────────────────────────── */
 export function createApi() {
   var el = document.getElementById("alphaTab")!;
+  if (!(el as any).__dragBound) { (el as any).__dragBound = true; bindDragSelection(el); }
   if (state.api) {
     try { if (state.api.destroy) state.api.destroy(); } catch(e) {}
     state.api = null;
@@ -181,8 +183,12 @@ export function createApi() {
     try { if (window.__editKeys && (window.__editKeys as any).selectIndex === undefined) {} } catch(e) {}
     try {
       // sync selection to cursor after render
-      const hit = noteAtCursor();
-      if (hit) state.selectedNoteIndices = [hit.index]; else state.selectedNoteIndices = [];
+      // sync a single selection to the cursor; keep a range selection (several notes) as it is
+      const sel = state.selectedNoteIndices || [], count = state.curTrack ? state.curTrack.notes.length : 0;
+      if (!(sel.length > 1 && sel.every(function(i: number) { return i >= 0 && i < count; }))) {
+        const hit = noteAtCursor();
+        state.selectedNoteIndices = hit ? [hit.index] : [];
+      }
       overlaySelectedNotes();
     } catch(e) {}
   });
@@ -223,6 +229,7 @@ export function createApi() {
 
   api.beatMouseDown.on(function(beat: any) {
     if (!beat) return;
+    if (isDragSelecting() || consumeRecentDrag()) return;
     const b = beatPosOf(beat); if (b == null) return;
     // try to detect string from last mouse y on tab staff
     let sPick: number | null = null;
@@ -238,6 +245,7 @@ export function createApi() {
   if (api.noteMouseDown) {
     api.noteMouseDown.on(function(note: any) {
       if (!note) return;
+      if (isDragSelecting() || consumeRecentDrag()) return;
       const f = note.fret, sRaw = note.string;
       if (f === undefined || sRaw === undefined || sRaw <= 0) return;
       const nStrings = getStringCount();

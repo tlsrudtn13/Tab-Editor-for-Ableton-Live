@@ -38,7 +38,11 @@ export function saveUndo(before?: any, deletedBefore?: any) {
 
 function render() {
   if (!state.curTrack) return;
-  rebuildScore(); renderInspector(state.curTrack); syncFromCursor();
+  rebuildScore(); renderInspector(state.curTrack);
+  // a range selection survives the edit (e.g. I then P on the same range); a single note follows the cursor
+  const sel = state.selectedNoteIndices, n = state.curTrack.notes.length;
+  if (sel.length > 1 && sel.every((i: number) => i >= 0 && i < n)) { highlightSelection(); try { updateRhythmToolbar(); } catch {} }
+  else syncFromCursor();
   updateEditUi();
   try { updateRhythmToolbar(); } catch {}
 }

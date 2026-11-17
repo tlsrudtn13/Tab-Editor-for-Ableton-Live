@@ -172,6 +172,18 @@ body { display:flex; flex-direction:row; }
   border:2px dashed #00c8ff;
   background:rgba(0,200,255,0.08);
 }
+/* Drag-box range selection */
+.drag-select-box {
+  position:absolute; z-index:12; pointer-events:none;
+  border:1px solid rgba(0,200,255,0.8);
+  background:rgba(0,200,255,0.14);
+  display:none;
+}
+/* Technique palette mixed state */
+#tech-palette .btn.mixed {
+  border:1.5px dashed #ff764d;
+  background:rgba(255,118,77,0.15);
+}
 
 /* Keys help popover */
 #keys-popover {
