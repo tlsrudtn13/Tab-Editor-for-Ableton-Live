@@ -56,35 +56,32 @@ export function quantizeBeat(beat: number, grid: QuantizeGrid = 16): number {
 }
 
 /**
- * Note[] 배열의 인접 노트 간격을 분석해 최적 퀀타이즈 그리드를 자동 감지.
+ * Pick the coarsest grid (1/4 → 1/32) that the note onsets actually sit on.
  *
- * 알고리즘:
- *   1. 인접 노트 간격(interval) 배열을 구한다.
- *   2. 최솟값 기반으로 "이 곡이 몇 분음표 그리드인가"를 추정한다.
- *
- * madisonrickert 방식을 참고한 단순화 버전.
+ * Each onset must be within a small tolerance of a grid line (20 % of a grid
+ * step, at most 0.06 beat, so slightly humanized playing still fits). At least
+ * 90 % of distinct onsets must fit. The smallest gap alone is not enough: a
+ * dotted-8th line (0, 0.75, 1.5 …) has 0.75-beat gaps but needs the 1/16 grid.
+ * If no grid fits (e.g. triplets) the default 1/16 is returned.
  */
 export function detectQuantizeGrid(notes: Note[]): QuantizeGrid {
     if (notes.length < 2) return 16;
 
-    const sorted  = notes.slice().sort((a, b) => a.b - b.b);
-    const gaps: number[] = [];
-
-    for (let i = 1; i < sorted.length; i++) {
-        const g = sorted[i]!.b - sorted[i - 1]!.b;
-        if (g > 0.01) gaps.push(g); // 0.01 미만 간격(화음 구성음)은 무시
+    // distinct onsets (chord tones within 0.01 beat count once)
+    const onsets: number[] = [];
+    for (const b of notes.map(n => n.b).sort((a, c) => a - c)) {
+        if (!onsets.length || b - onsets[onsets.length - 1]! > 0.01) onsets.push(b);
     }
+    if (onsets.length < 2) return 16;
 
-    if (!gaps.length) return 16;
-
-    const minGap = Math.min(...gaps);
-
-    // 최소 간격이 어느 그리드에 가장 가까운지 판별
-    // 32분음표 = 0.125beats, 16분 = 0.25, 8분 = 0.5, 4분 = 1.0
-    if (minGap < 0.19) return 32;
-    if (minGap < 0.38) return 16;
-    if (minGap < 0.75) return 8;
-    return 4;
+    const grids: QuantizeGrid[] = [4, 8, 16, 32];
+    for (const g of grids) {
+        const step = 4 / g;
+        const tol = Math.min(0.06, step * 0.2);
+        const fit = onsets.filter(b => Math.abs(b - Math.round(b / step) * step) <= tol).length;
+        if (fit >= Math.ceil(onsets.length * 0.9)) return g;
+    }
+    return 16;
 }
 
 // ── 조표 감지 (Krumhansl–Schmuckler 간소화) ─────────────────
