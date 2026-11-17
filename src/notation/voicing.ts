@@ -8,6 +8,7 @@
 import type { Note }             from "./types.js";
 import type { InstrumentConfig } from "./instruments.js";
 import { DEFAULT_INSTRUMENT }    from "./instruments.js";
+import { assignFingering } from "./fingering.js";
 
 /** 특정 피치를 해당 줄에서 연주할 때의 프렛 번호. 불가능하면 null */
 function fretOn(pitch: number, stringIdx: number, open: number[]): number | null {
@@ -45,7 +46,7 @@ function getPositions(
  * @param notes      보이싱을 적용할 음표 배열
  * @param instrument 악기 설정 (기본값: 6현 기타)
  */
-export function applyGuitarVoicing(
+export function applyGreedyVoicing(
     notes:      Note[],
     instrument: InstrumentConfig = DEFAULT_INSTRUMENT
 ): Note[] {
@@ -137,4 +138,11 @@ export function applyGuitarVoicing(
     }
 
     return result;
+}
+
+export function applyGuitarVoicing(
+    notes: Note[],
+    instrument: InstrumentConfig = DEFAULT_INSTRUMENT
+): Note[] {
+    return assignFingering(notes, instrument);
 }

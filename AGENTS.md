@@ -45,3 +45,6 @@ Live check (orchestrator only, Live must be running with Developer Mode): see `d
 - Never read, print or commit `.env`. SDK `.tgz` files stay out of git.
 - No new runtime dependencies without the orchestrator's OK.
 - Workers: finish the listed items, stop and report; start nothing that is not listed.
+- Other agents may be editing the same work tree at the same time. **Never** run `git stash`,
+  `git checkout -- <file>`, `git restore`, `git reset`, `git clean`, or delete/revert files you did not
+  create in this order. If tests outside your scope fail, report them; do not "restore a clean baseline".

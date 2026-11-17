@@ -169,9 +169,9 @@ exports[`exporters > writes a MusicXML 4.0 score with tab technical data 1`] = `
 
 exports[`voicing > current behaviour: chooses frets per chord, ignoring neighbours 1`] = `
 [
-  "1:5",
-  "1:7",
-  "1:8",
+  "2:10",
+  "2:12",
+  "2:13",
   "1:10",
   "1:12",
 ]

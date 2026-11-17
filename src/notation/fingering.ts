@@ -1,0 +1,196 @@
+import type { Note } from "./types.js";
+import type { InstrumentConfig } from "./instruments.js";
+import { applyGreedyVoicing } from "./voicing.js";
+
+type Pos = { s: number; f: number };
+type Candidate = { positions: Pos[]; costs: number[] };
+type Group = { indices: number[]; beat: number; candidates: Candidate[] };
+type PartialCandidate = { positions: Pos[]; used: Set<number>; score: number };
+
+const CHORD_TOL = 0.0625;
+const MAX_CANDIDATES = 64;
+const POSITION_COUNT = 20;
+const INF = Number.POSITIVE_INFINITY;
+
+function positions(pitch: number, instrument: InstrumentConfig): Pos[] {
+    const out: Pos[] = [];
+    for (let s = 1; s <= instrument.stringCount; s++) {
+        const open = instrument.open[s];
+        if (open === undefined) continue;
+        const f = pitch - open;
+        if (f >= 0 && f <= 24) out.push({ s, f });
+    }
+    return out;
+}
+
+/** Prefer low positions: 0.02 per fret, plus 0.1 per fret above the 5th position. */
+const POSITION_WEIGHT = 0.1;
+const FREE_POSITIONS = 5;
+
+function candidateCost(ps: Pos[], hand: number): number {
+    let cost = 0.02 * hand + POSITION_WEIGHT * Math.max(0, hand - FREE_POSITIONS);
+    for (const p of ps) {
+        if (p.f === 0) {
+            if (hand <= 5) cost -= 0.1;
+        } else if (p.f >= hand && p.f <= hand + 3) {
+            // Frets in the four-fret hand span have zero cost.
+        } else if (p.f === hand + 4 || p.f === hand - 1) {
+            cost += 2;
+        } else return INF;
+    }
+    return cost;
+}
+
+function makeCandidates(indices: number[], sorted: Note[], instrument: InstrumentConfig): Candidate[] {
+    const order = [...indices].sort((a, b) => sorted[a]!.p - sorted[b]!.p);
+    let beam: PartialCandidate[] = [{ positions: [], used: new Set(), score: 0 }];
+    for (const idx of order) {
+        const note = sorted[idx]!;
+        const choices = positions(note.p, instrument).filter(p => !note.lock || (p.s === note.s && p.f === note.f));
+        if (!choices.length) return [];
+        const next: PartialCandidate[] = [];
+        for (const item of beam) for (const p of choices) {
+            if (item.used.has(p.s)) continue;
+            const used = new Set(item.used); used.add(p.s);
+            next.push({ positions: [...item.positions, p], used, score: item.score + p.f + p.s * 0.001 });
+        }
+        next.sort((a, b) => a.score - b.score);
+        beam = next.slice(0, MAX_CANDIDATES);
+        if (!beam.length) return [];
+    }
+    return beam.map(item => ({
+        positions: item.positions,
+        costs: Array.from({ length: POSITION_COUNT }, (_, p) => candidateCost(item.positions, p + 1)),
+    }));
+}
+
+/** Fixed cost of any hand shift, on top of `scale` per fret moved. */
+const SHIFT_BASE = 1.5;
+
+function l1(values: number[], scale: number): { costs: number[]; sources: number[] } {
+    const costs = values.slice();
+    const sources = values.map((_, i) => i);
+    for (let i = 1; i < costs.length; i++) {
+        if (costs[i - 1]! + scale < costs[i]!) {
+            costs[i] = costs[i - 1]! + scale;
+            sources[i] = sources[i - 1]!;
+        }
+    }
+    for (let i = costs.length - 2; i >= 0; i--) {
+        if (costs[i + 1]! + scale < costs[i]!) {
+            costs[i] = costs[i + 1]! + scale;
+            sources[i] = sources[i + 1]!;
+        }
+    }
+    // Staying put is free; moving anywhere else also pays SHIFT_BASE.
+    for (let i = 0; i < costs.length; i++) {
+        if (sources[i] !== i) {
+            const moved = costs[i]! + SHIFT_BASE * scale;
+            if (values[i]! <= moved) { costs[i] = values[i]!; sources[i] = i; }
+            else costs[i] = moved;
+        }
+    }
+    return { costs, sources };
+}
+
+export function assignFingering(notes: Note[], instrument: InstrumentConfig): Note[] {
+    if (!notes.length) return notes;
+    const sorted = [...notes].sort((a, b) => a.b !== b.b ? a.b - b.b : b.p - a.p);
+    const result = [...sorted];
+    const groups: Group[] = [];
+    for (let i = 0; i < sorted.length;) {
+        const beat = sorted[i]!.b, indices = [i];
+        let j = i + 1;
+        while (j < sorted.length && sorted[j]!.b - beat <= CHORD_TOL) indices.push(j++);
+        groups.push({ indices, beat, candidates: [] }); i = j;
+    }
+    for (const group of groups) {
+        const valid = group.indices.filter(i => positions(sorted[i]!.p, instrument).length > 0);
+        if (valid.length !== group.indices.length) {
+            const legacy = applyGreedyVoicing(group.indices.map(i => sorted[i]!), instrument);
+            group.indices.forEach((i, j) => { if (legacy[j]!.oor !== undefined) result[i] = legacy[j]!; });
+        }
+        if (!valid.length) continue;
+        if (valid.length > instrument.stringCount) {
+            const legacy = applyGreedyVoicing(valid.map(i => sorted[i]!), instrument);
+            valid.forEach((i, j) => { result[i] = legacy[j]!; });
+            continue;
+        }
+        group.candidates = makeCandidates(valid, sorted, instrument);
+        if (!group.candidates.length) {
+            const legacy = applyGreedyVoicing(valid.map(i => sorted[i]!), instrument);
+            valid.forEach((i, j) => { result[i] = legacy[j]!; });
+        }
+    }
+
+    const active = groups.filter(g => g.candidates.length);
+    if (!active.length) return result;
+    const back: number[][][] = [];
+    let states: number[][] = [], prevCandidates: Candidate[] = [];
+    for (let gi = 0; gi < active.length; gi++) {
+        const group = active[gi]!;
+        const next = group.candidates.map(() => Array(POSITION_COUNT).fill(INF) as number[]);
+        const links = group.candidates.map(() => Array(POSITION_COUNT).fill(-1) as number[]);
+        if (gi === 0) {
+            group.candidates.forEach((c, ci) => c.costs.forEach((v, p) => { next[ci]![p] = v; }));
+        } else {
+            const scale = group.beat - active[gi - 1]!.beat >= 2 ? 0.5 : 1;
+            const singles = group.candidates.every(c => c.positions.length === 1) && prevCandidates.every(c => c.positions.length === 1);
+            if (singles) {
+                const transforms = states.map(row => l1(row, scale));
+                group.candidates.forEach((c, ci) => {
+                    const open = c.positions[0]!.f === 0;
+                    for (let p = 0; p < POSITION_COUNT; p++) {
+                        let best = INF, link = -1;
+                        for (let pi = 0; pi < prevCandidates.length; pi++) {
+                            const t = transforms[pi]!;
+                            const q = open ? p : t.sources[p]!;
+                            const jump = open ? 0 : Math.abs(c.positions[0]!.s - prevCandidates[pi]!.positions[0]!.s) * 0.5;
+                            const value = (open ? states[pi]![p]! : t.costs[p]!) + jump;
+                            if (value < best) { best = value; link = pi * POSITION_COUNT + q; }
+                        }
+                        if (link >= 0 && Number.isFinite(c.costs[p]!)) {
+                            next[ci]![p] = best + c.costs[p]!;
+                            links[ci]![p] = link;
+                        }
+                    }
+                });
+            } else {
+                const atPosition = Array.from({ length: POSITION_COUNT }, (_, p) => {
+                    let best = INF, ciBest = -1;
+                    for (let ci = 0; ci < prevCandidates.length; ci++) if (states[ci]![p]! < best) {
+                        best = states[ci]![p]!; ciBest = ci;
+                    }
+                    return { best, ciBest };
+                });
+                const transformed = l1(atPosition.map(x => x.best), scale);
+                group.candidates.forEach((c, ci) => {
+                    const open = c.positions.every(p => p.f === 0);
+                    for (let p = 0; p < POSITION_COUNT; p++) {
+                        const q = open ? p : transformed.sources[p]!;
+                        const prior = atPosition[q]!;
+                        if (prior.ciBest < 0 || !Number.isFinite(c.costs[p]!)) continue;
+                        next[ci]![p] = (open ? prior.best : transformed.costs[p]!) + c.costs[p]!;
+                        links[ci]![p] = prior.ciBest * POSITION_COUNT + q;
+                    }
+                });
+            }
+        }
+        back.push(links); states = next; prevCandidates = group.candidates;
+    }
+    let ci = -1, pi = -1, best = INF;
+    for (let c = 0; c < states.length; c++) for (let p = 0; p < POSITION_COUNT; p++) {
+        const value = states[c]![p]!;
+        if (value < best) { best = value; ci = c; pi = p; }
+    }
+    for (let gi = active.length - 1; gi >= 0; gi--) {
+        const group = active[gi]!, chosen = group.candidates[ci]!;
+        const ordered = [...group.indices].sort((a, b) => sorted[a]!.p - sorted[b]!.p);
+        ordered.forEach((idx, j) => { result[idx] = { ...sorted[idx]!, s: chosen.positions[j]!.s, f: chosen.positions[j]!.f, oor: undefined }; });
+        if (gi > 0) {
+            const link = back[gi]![ci]![pi]!;
+            ci = Math.floor(link / POSITION_COUNT); pi = link % POSITION_COUNT;
+        }
+    }
+    return result;
+}
