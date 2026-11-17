@@ -29,8 +29,8 @@ import { safeStr }      from "./notation/music.js";
 import fs   from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { BASS_4, BASS_4_DROPD, BASS_4_EB, BASS_5, BASS_6, GUITAR_6, GUITAR_6_D, GUITAR_6_DROPC, GUITAR_6_DROPD, GUITAR_6_DADGAD, GUITAR_6_EB, GUITAR_6_OPEND, GUITAR_6_OPENG, GUITAR_7, GUITAR_8, GUITAR_12 } from "./notation/instruments.js";
-import { layerKey, type TabLayer } from "./notation/tabLayer.js";
+import { BASS_4, BASS_4_DROPD, BASS_4_EB, BASS_5, BASS_6, DEFAULT_INSTRUMENT, GUITAR_6, GUITAR_6_D, GUITAR_6_DROPC, GUITAR_6_DROPD, GUITAR_6_DADGAD, GUITAR_6_EB, GUITAR_6_OPEND, GUITAR_6_OPENG, GUITAR_7, GUITAR_8, GUITAR_12 } from "./notation/instruments.js";
+import { applyLayerV2, clipNoteHash, layerKey, matchClipLayer, type TabLayer, type TabLayerV2 } from "./notation/tabLayer.js";
 
 const INSTRUMENT_BY_KEY: Record<string, any> = { guitar6:GUITAR_6, guitar7:GUITAR_7, guitar8:GUITAR_8, guitar12:GUITAR_12, bass4:BASS_4, bass5:BASS_5, bass6:BASS_6, "guitar6-dropd":GUITAR_6_DROPD, "guitar6-eb":GUITAR_6_EB, "guitar6-d":GUITAR_6_D, "guitar6-dropc":GUITAR_6_DROPC, "guitar6-dadgad":GUITAR_6_DADGAD, "guitar6-openg":GUITAR_6_OPENG, "guitar6-opend":GUITAR_6_OPEND, "bass4-dropd":BASS_4_DROPD, "bass4-eb":BASS_4_EB };
 function layerFile(context: any, key: string): string | undefined {
@@ -56,6 +56,63 @@ function saveLayer(context: any, key: string, layer: TabLayer | undefined) {
     if (!layer) return;
     try { const file=layerFile(context,key); if(!file) return; fs.mkdirSync(path.dirname(file),{recursive:true}); fs.writeFileSync(file,JSON.stringify(layer),"utf8"); }
     catch(e) { console.warn("[TAB] TAB layer save failed:", e); }
+}
+function v2Dir(context: any): string | undefined {
+    const dir = context.environment.storageDirectory;
+    return dir ? path.join(dir, "tablayers", "v2") : undefined;
+}
+function v2File(context: any, id: string): string | undefined {
+    const dir = v2Dir(context);
+    return dir ? path.join(dir, id + ".json") : undefined;
+}
+function isValidV2(x: any): x is TabLayerV2 {
+    const ts=x?.timeSig;
+    const validTimeSig=!ts || (Number.isInteger(ts.beats) && ts.beats >= 1 && ts.beats <= 32 && [1,2,4,8,16].includes(ts.type));
+    return x?.v===2 && typeof x.instrument==="string" && !!INSTRUMENT_BY_KEY[x.instrument] && Number.isFinite(x.capo) && x.hint && typeof x.hint.track==="string" && typeof x.hint.clip==="string" && Array.isArray(x.notes) && validTimeSig && x.notes.every((n:any)=>typeof n?.h==="string" && Number.isInteger(n.s) && Number.isInteger(n.f));
+}
+function readClipLayers(context: any): { id: string; layer: TabLayerV2 }[] {
+    const dir = v2Dir(context); if (!dir || !fs.existsSync(dir)) return [];
+    const out: { id: string; layer: TabLayerV2 }[] = [];
+    for (const name of fs.readdirSync(dir)) {
+        if (!name.endsWith(".json")) continue;
+        const file = path.join(dir, name);
+        try {
+            const x = JSON.parse(fs.readFileSync(file, "utf8"));
+            if (isValidV2(x)) out.push({ id: name.slice(0, -5), layer: x });
+            else console.warn("[TAB] invalid v2 TAB layer ignored:", file);
+        } catch (e) { console.warn("[TAB] invalid v2 TAB layer ignored:", file, e); }
+    }
+    return out;
+}
+function clipRawHashes(clip: any): Set<string> {
+    const raw: unknown[] = Array.isArray(clip?.notes) ? clip.notes : [];
+    const set = new Set<string>();
+    for (const n of raw as any[]) {
+        const start = typeof n?.startTime === "number" ? n.startTime : (typeof n?.time === "number" ? n.time : NaN);
+        const pitch = Math.min(127, Math.max(0, Math.round(Number(n?.pitch ?? 60))));
+        if (Number.isFinite(start)) set.add(`${pitch}@${Math.round(Math.round(start * 96))}`);
+    }
+    return set;
+}
+function findClipLayer(context: any, clip: any, hint: { track: string; clip: string }): { id?: string; layer?: TabLayerV2 } {
+    const id = matchClipLayer(readClipLayers(context), clipRawHashes(clip), hint);
+    if (!id) return {};
+    const file = v2File(context, id);
+    try { if (file) { const x = JSON.parse(fs.readFileSync(file, "utf8")); if (isValidV2(x)) return { id, layer: x }; } } catch {}
+    return {};
+}
+function newV2Id(hint: { track: string; clip: string }): string {
+    return createHash("sha256").update(`${hint.track}\u0000${hint.clip}\u0000${Date.now()}\u0000${Math.random()}`).digest("hex").slice(0, 16);
+}
+function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 | undefined, hint: { track: string; clip: string }): string | undefined {
+    if (!layer) return id;
+    try {
+        const useId = id || newV2Id(hint);
+        const file = v2File(context, useId); if (!file) return id;
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, JSON.stringify(layer), "utf8");
+        return useId;
+    } catch (e) { console.warn("[TAB] v2 TAB layer save failed:", e); return id; }
 }
 /** Find which track (and Session slot) a clip lives in. The SDK caches objects by handle, so identity works. */
 function locateClip(context: any, clip: any): { trackName: string; slotIndex?: number } | undefined {
@@ -200,28 +257,43 @@ export function activate(activation: ActivationContext) {
     //    arrangement 클립만 사용 → session 클립 끼어듦 방지
     // ──────────────────────────────────────────────────────
     /** For write-back in track view: track-wide id -> clip/index, clip spans, and the clips' notes as opened. */
-    type TrackEditContext = { refs: TrackNoteRef[]; spans: TrackClipSpan[]; snapshots: Map<number, string> };
+    type TrackEditContext = { refs: TrackNoteRef[]; spans: TrackClipSpan[]; snapshots: Map<number, string>; v2Ids: Map<number, string | undefined> };
 
     function trackPayload(rawTrack: any, idx: number, tempo: number, live: any, editCtx?: TrackEditContext): TrackPayload | null {
         const collected = collectNotes(rawTrack);
         if (!collected) return null;
-        // arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
         let allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
+        const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
+        const trackName = safeStr(rawTrack.name, "Unknown");
+        const clips: any[] = rawTrack.arrangementClips ?? [];
         if (editCtx) {
-            // the editor's oid becomes a track-wide id; refs map it back to (clip, index in that clip)
             editCtx.refs = allNotes.map(n => ({ cref: n.cref ?? -1, oid: n.oid ?? -1 }));
             editCtx.spans = collected.arrClips;
-            const clips: any[] = rawTrack.arrangementClips ?? [];
+            editCtx.v2Ids = new Map();
             for (const span of collected.arrClips) editCtx.snapshots.set(span.index, JSON.stringify(clips[span.index]?.notes ?? []));
+            for (const span of collected.arrClips) {
+                const clip = clips[span.index];
+                const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
+                const found = clip ? findClipLayer(context, clip, hint) : {};
+                editCtx.v2Ids.set(span.index, found.id);
+                if (found.layer) {
+                    const inst = INSTRUMENT_BY_KEY[found.layer.instrument] || DEFAULT_INSTRUMENT;
+                    allNotes = allNotes.map(n => n.cref === span.index ? applyLayerV2([n], found.layer!, inst)[0]! : n);
+                }
+            }
             allNotes = allNotes.map((n, gid) => ({ ...n, oid: gid }));
         }
-        const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
-        const trackName = rawTrack.name ?? "Unknown";
         const storageKey = layerKey(trackName, "");
         const layer = readLayer(context, storageKey);
         const p = buildPayload(trackId, trackName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
-        if (p) (p as any).layerStorageKey = storageKey;
-        if (p && editCtx) p.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end })), noteCount: allNotes.length };
+        if (p) {
+            (p as any).layerStorageKey = storageKey;
+            (p as any).layerHint = { track: trackName, clip: "" };
+        }
+        if (p && editCtx) {
+            p.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+            (p as any).layerV2IdsByClip = Object.fromEntries([...editCtx.v2Ids.entries()]);
+        }
         return p;
     }
 
@@ -252,6 +324,26 @@ export function activate(activation: ActivationContext) {
         return true;
     }
 
+    function saveTrackV2Layers(rawTrack: any, trackName: string, editCtx: TrackEditContext, message: any) {
+        if (!message?.layer || message.layer.v !== 2) return;
+        const clips: any[] = rawTrack.arrangementClips ?? [];
+        const allLayer = message.layer as TabLayerV2;
+        for (const span of editCtx.spans) {
+            const clip = clips[span.index];
+            const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
+            const hashes = clip ? clipRawHashes(clip) : new Set<string>();
+            // entries carry their clip index (c); older messages without it fall back to the clip's note hashes
+            const notes = allLayer.notes
+                .filter(n => typeof n.c === "number" ? n.c === span.index : hashes.has(n.h))
+                .map(({ c, ...rest }) => rest);
+            const per: TabLayerV2 = { v: 2, instrument: allLayer.instrument, capo: allLayer.capo, hint, notes };
+            if (allLayer.timeSig) per.timeSig = { ...allLayer.timeSig };
+            editCtx.v2Ids.set(span.index, saveClipLayer(context, editCtx.v2Ids.get(span.index), per, hint));
+        }
+        // track-level settings in v1 file
+        saveLayer(context, layerKey(trackName, ""), { v: 1, instrument: allLayer.instrument, capo: allLayer.capo, notes: [], ...(allLayer.timeSig ? { timeSig: allLayer.timeSig } : {}) });
+    }
+
     async function openAllTracks(): Promise<void> {
         const tempo = getTempo(context);
         const live = liveContext(context);
@@ -265,7 +357,7 @@ export function activate(activation: ActivationContext) {
             if (p) payloads.push(p);
         }
         const result = await showEditor(context, payloads);
-        try { const message=JSON.parse(result || "null"); if(message?.layer) saveLayer(context, message.layerKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
+        try { const message=JSON.parse(result || "null"); if(message?.layer && message.layer.v === 1) saveLayer(context, message.layerKey, message.layer); } catch(e) { console.warn("[TAB] track layer message ignored:",e); }
     }
 
     // Every command goes through this: an exception inside one must never take down the extension host.
@@ -291,7 +383,7 @@ export function activate(activation: ActivationContext) {
         const tempo = getTempo(context);
         const live = liveContext(context);
         const name = safeStr(track.name, "Track");
-        const editCtx: TrackEditContext = { refs: [], spans: [], snapshots: new Map() };
+        const editCtx: TrackEditContext = { refs: [], spans: [], snapshots: new Map(), v2Ids: new Map() };
         const p = trackPayload(track, 1, tempo, live, editCtx);
         if (!p) {
             console.warn(`[TAB] track "${name}" has no notes in Arrangement clips — editor not opened.`);
@@ -306,7 +398,7 @@ export function activate(activation: ActivationContext) {
         if (message?.action === "apply" && message.edits) {
             try {
                 const ok = await applyTrackEdits(track, editCtx, message.edits);
-                if (ok && message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
+                if (ok) saveTrackV2Layers(track, name, editCtx, message);
             } catch (e) {
                 console.warn("[TAB] Track apply failed:", e);
                 await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
@@ -314,7 +406,7 @@ export function activate(activation: ActivationContext) {
             return;
         }
         const hasEdits = !!(message?.edits && ((message.edits.changed?.length || 0) + (message.edits.added?.length || 0) + (message.edits.deleted?.length || 0)) > 0);
-        if (!hasEdits && message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
+        if (!hasEdits) saveTrackV2Layers(track, name, editCtx, message);
     });
 
     register("tabeditor.openAll", async () => { await openAllTracks(); });
@@ -395,7 +487,7 @@ export function activate(activation: ActivationContext) {
 
         // 클립 단독 모드는 항상 0박부터 (offset = 0), 루프/마커 영역 적용
         const rawNotes = notesFromClip(clip, 0, "ses", clipName);
-        const regioned = clipRegion(rawNotes, {
+        let regioned = clipRegion(rawNotes, {
             looping: clip.looping,
             loopStart: clip.loopStart,
             loopEnd: clip.loopEnd,
@@ -407,9 +499,12 @@ export function activate(activation: ActivationContext) {
         const regionStart = clip.looping ? clip.loopStart : clip.startMarker;
         const where = locateClip(context, clip);
         const trackName = where?.trackName ?? "Track";
+        const hint = { track: trackName, clip: clipName };
         const storageKey = layerKey(trackName, clipName);
-        const layer = readLayer(context, storageKey);
-        let timeSig = layer?.timeSig;
+        const foundV2 = findClipLayer(context, clip, hint);
+        let v2Id = foundV2.id;
+        const v1Layer = readLayer(context, storageKey);
+        let timeSig = foundV2.layer?.timeSig ?? v1Layer?.timeSig;
         try {
             const song: any = context.application.song;
             const slotIndex = where?.slotIndex ?? NaN;   // Session clip: slot i belongs to scene i
@@ -417,7 +512,14 @@ export function activate(activation: ActivationContext) {
             const beats = Number(scene?.signatureNumerator), type = Number(scene?.signatureDenominator);
             if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
         } catch { /* default to 4/4 */ }
-        const p = buildPayload("clip_0", clipName, regioned, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig });
+        let p: TrackPayload | null;
+        if (foundV2.layer) {
+            const inst = INSTRUMENT_BY_KEY[foundV2.layer.instrument] || DEFAULT_INSTRUMENT;
+            regioned = applyLayerV2(regioned, foundV2.layer, inst);
+            p = buildPayload("clip_0", clipName, regioned, tempo, live, { instrument: inst, capo: foundV2.layer.capo, timeSig });
+        } else {
+            p = buildPayload("clip_0", clipName, regioned, tempo, live, { instrument: instrumentForLayer(v1Layer), layer: v1Layer, capo: v1Layer?.capo, timeSig });
+        }
 
         if (!p) {
             await showEditor(context, [], "This clip has no notes in its loop region.");
@@ -426,6 +528,8 @@ export function activate(activation: ActivationContext) {
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
         (p as any).layerStorageKey = storageKey;
+        (p as any).layerHint = hint;
+        (p as any).layerV2Id = v2Id;
         // Snapshot of the notes as opened: edits refer to them by index (oid).
         const openedNotes = JSON.stringify(clip.notes);
         const result = await showEditor(context, [p]);
@@ -433,6 +537,9 @@ export function activate(activation: ActivationContext) {
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         try {
+            const saveV2 = () => {
+                if (message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint);
+            };
             if (message?.action === "apply" && message.edits) {
                 const current = clip.notes;
                 if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {
@@ -443,18 +550,18 @@ export function activate(activation: ActivationContext) {
                 const merged = mergeClipEdits(current, message.edits, regionStart);
                 if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) {
                     console.log(`[TAB] Apply has no valid changes: ${JSON.stringify(merged.stats)}`);
-                    if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer); // clip unchanged, layer still matches
+                    saveV2(); // clip unchanged, layer still matches
                     await notify(context, "Nothing to apply: no valid note changes.");
                     return;
                 }
                 context.withinTransaction(() => { clip.notes = merged.notes as any; });
-                if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
+                saveV2();
                 console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
                 await notify(context, applySummary(merged.stats));
                 return;
             }
             const hasEdits = !!(message?.edits && ((message.edits.changed?.length || 0) + (message.edits.added?.length || 0) + (message.edits.deleted?.length || 0)) > 0);
-            if (!hasEdits && message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
+            if (!hasEdits) saveV2();
         } catch (e) {
             console.warn("[TAB] Apply message ignored:", e);
             await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);

@@ -1,10 +1,36 @@
 import { state } from "./state";
-import { layerFromNotes } from "../../src/notation/tabLayer.js";
+import { layerV2FromNotes } from "../../src/notation/tabLayer.js";
 import { instrumentKeyOf } from "./score";
 
-function currentLayer() {
-  const t=state.curTrack;
-  return t ? layerFromNotes(t.notes, instrumentKeyOf(t.instrument), state.uiCapo, state.uiTimeSig || t.timeSig) : null;
+function spanForBeat(b: number): any | undefined {
+  const e = state.curTrack && state.curTrack.edit;
+  if (!e || e.mode !== "track") return undefined;
+  return (e.spans || []).find((s: any) => b >= s.start - 1e-6 && b < s.end - 1e-6);
+}
+
+function notesForLayer() {
+  const t = state.curTrack; if (!t) return [];
+  const e = t.edit;
+  return (t.notes || []).map((n: any) => {
+    const out: any = { ...n };
+    let cb = (Math.abs(n.b - n.b0) < 1e-6 && n.cb != null) ? n.cb : undefined;
+    if (cb == null) {
+      if (e && e.mode === "clip") cb = n.b + (e.regionStart || 0);
+      else if (e && e.mode === "track") {
+        const sp = spanForBeat(n.b);
+        if (sp) { cb = n.b - sp.offset; out.c = sp.index; }
+      }
+    }
+    if (cb != null) out.cb = cb;
+    if (e && e.mode === "track" && n.cref != null && out.c == null) out.c = n.cref;
+    return out;
+  });
+}
+
+function currentLayer(snapshot: boolean) {
+  const t = state.curTrack; if (!t) return null;
+  const hint = t.layerHint || { track: t.name || "", clip: "" };
+  return layerV2FromNotes(notesForLayer(), { instrument: instrumentKeyOf(t.instrument), capo: state.uiCapo, timeSig: state.uiTimeSig || t.timeSig, hint, snapshot });
 }
 
 export function editCount() {
@@ -23,12 +49,15 @@ export function sendApply() {
     added: notes.filter(n => n.oid === undefined).map(n => ({ pitch:n.p, start:n.b, duration:n.d, velocity:n.v })),
     deleted: state.deletedOids.slice(),
   };
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer:currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
+  const layer = currentLayer(true);
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer, layerKey:state.curTrack.layerStorageKey, layerV2Id:state.curTrack.layerV2Id, sessionChanged:true })] });
 }
 export function sendCancel() {
   const edits = editCount();
   if (edits && !window.confirm("Discard your edits and close?")) return;
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action: edits ? "cancel" : "close", layer: edits ? undefined : currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
+  const snapshot = state.sessionChanged;
+  const layer = edits ? undefined : currentLayer(snapshot);
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action: edits ? "cancel" : "close", layer, layerKey:state.curTrack.layerStorageKey, layerV2Id:state.curTrack.layerV2Id, sessionChanged:snapshot })] });
 }
 export function bindApply() {
   const apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");

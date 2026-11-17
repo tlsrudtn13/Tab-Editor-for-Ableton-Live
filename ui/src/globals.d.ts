@@ -8,6 +8,7 @@ interface Window {
   applyClipEdits?: () => void;
   __tabState?: any;
   __editKeys?: any;
+  refingerNotes?: () => void;
   toggleTheme?: () => void;
   fretClick?: (s: number, f: number, ev?: MouseEvent) => void;
   toggleTech?: (t: string) => void;

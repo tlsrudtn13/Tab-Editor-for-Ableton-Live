@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyLayer, layerFromNotes, noteHash, type TabLayer } from "../tabLayer.js";
-import { GUITAR_6_DROPD } from "../instruments.js";
+import { applyLayer, applyLayerV2, clipNoteHash, layerFromNotes, layerV2FromNotes, matchClipLayer, noteHash, type TabLayer, type TabLayerV2 } from "../tabLayer.js";
+import { GUITAR_6, GUITAR_6_DROPD } from "../instruments.js";
 import { toAlphaTex } from "../toAlphaTex.js";
 import { toMusicXml } from "../toMusicXml.js";
 import type { Note } from "../types.js";
@@ -66,5 +66,39 @@ describe("TAB layers", () => {
     const texPlain = toAlphaTex(plain, { bpm: 120 });
     expect(texPlain).toBe(toAlphaTex([n(38, 0, 6, 0), n(45, 1, 5, 0)], { bpm: 120 }));
     expect(texPlain).not.toContain("{");
+  });
+
+  it("v2 hash survives quantize change (keyed by cb)", () => {
+    const note = { ...n(38, 1.25, 6, 0), cb: 0.5 };
+    expect(clipNoteHash({ p: note.p, cb: note.cb! })).toBe("38@48");
+    const layer = layerV2FromNotes([{ ...note, lock: true }], { instrument: "guitar6-dropd", hint: { track: "T", clip: "C" } });
+    const moved = applyLayerV2([{ ...note, b: 1.0, s: 1, f: 7 }], layer, GUITAR_6_DROPD);
+    expect(moved[0]).toMatchObject({ s: 6, f: 0, lock: true });
+  });
+
+  it("v2 rename still matches by content and unnamed clips pick their own", () => {
+    const a = [{ ...n(40, 0, 6, 0), cb: 0 }, { ...n(45, 1, 5, 0), cb: 1 }];
+    const b = [{ ...n(52, 0, 4, 2), cb: 0 }];
+    const la = layerV2FromNotes(a, { instrument: "guitar6", hint: { track: "T", clip: "old" }, snapshot: true });
+    const lb = layerV2FromNotes(b, { instrument: "guitar6", hint: { track: "T", clip: "" }, snapshot: true });
+    const cand = [{ id: "a", layer: la }, { id: "b", layer: lb }];
+    expect(matchClipLayer(cand, new Set(a.map(x => clipNoteHash({ p: x.p, cb: x.cb! }))), { track: "T", clip: "new" })).toBe("a");
+    expect(matchClipLayer(cand, new Set(b.map(x => clipNoteHash({ p: x.p, cb: x.cb! }))), { track: "T", clip: "" })).toBe("b");
+  });
+
+  it("v2 ignores invalid s/f entry and snapshot vs non-snapshot", () => {
+    const base = { ...n(40, 0, 5, 0), cb: 0 }; // E2 on string 5 fret 0 in guitar
+    const layer: TabLayerV2 = { v: 2, instrument: "guitar6", capo: 0, hint: { track: "T", clip: "C" }, notes: [{ h: "40@0", s: 1, f: 0, k: 2 }] };
+    const applied = applyLayerV2([{ ...base, s: 5, f: 0 }], layer, GUITAR_6);
+    expect(applied[0]).toMatchObject({ s: 5, f: 0 });
+    expect(applied[0]!.lock).toBeUndefined();
+    const notes = [{ ...n(40, 0, 5, 0), cb: 0 }, { ...n(45, 1, 4, 0), cb: 1, lock: true }];
+    const snap = layerV2FromNotes(notes, { instrument: "guitar6", hint: { track: "T", clip: "C" }, snapshot: true });
+    expect(snap.notes).toHaveLength(2);
+    expect(snap.notes.find(x => x.h === "40@0")!.k).toBe(2);
+    expect(snap.notes.find(x => x.h === "45@96")!.k).toBeUndefined();
+    const plain = layerV2FromNotes(notes, { instrument: "guitar6", hint: { track: "T", clip: "C" }, snapshot: false });
+    expect(plain.notes).toHaveLength(1);
+    expect(plain.notes[0]).toMatchObject({ h: "45@96" });
   });
 });

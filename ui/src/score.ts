@@ -440,6 +440,23 @@ export function renderScore() {
   }
 }
 
+export function refingerNotes() {
+  if (!state.curTrack || !Array.isArray(state.curTrack.notes)) return;
+  var preset = state.curTrack.instrument || GUITAR_6;
+  state.curTrack.notes = applyGuitarVoicing(
+    state.curTrack.notes.map(function(n) { var c = Object.assign({}, n); delete c.lock; return c; }),
+    preset
+  );
+  state.sessionChanged = true;
+  clearNoteOverlays();
+  clearFretboard();
+  showSelection(null);
+  state.selectedNoteIndices = [];
+  renderInspector(state.curTrack);
+  rebuildScore();
+  log("Re-fingered");
+}
+
 /* ── View Mode 전환 ───────────────────────────────────────────────────────── */
 export function setMode(mode) {
   state.dispMode = mode;

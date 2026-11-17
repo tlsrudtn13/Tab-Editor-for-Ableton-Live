@@ -22,6 +22,8 @@ export const state: {
   digitTimer: ReturnType<typeof setTimeout> | null;
   /** Insert cursor on a rest: where a new note goes (beats from the score start, string). */
   restCursor: { b: number; d: number; s: number } | null;
+  /** Any note/fingering change in this editor session (drives v2 snapshot save). */
+  sessionChanged: boolean;
 } = {
   api: null,
   curTrack: null,
@@ -46,4 +48,5 @@ export const state: {
   digitBuffer: "",
   digitTimer: null,
   restCursor: null,
+  sessionChanged: false,
 };

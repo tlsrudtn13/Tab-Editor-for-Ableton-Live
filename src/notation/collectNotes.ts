@@ -83,6 +83,7 @@ export function notesFromClip(
             s,
             src,
             clip: clipName,
+            cb:   q(localStart),
             oid,
         });
     }

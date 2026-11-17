@@ -48,6 +48,7 @@ Overlapping arpeggio notes are marked let ring automatically.
 editor was open, nothing is written and Live shows a message.
 
 String choices, tuning, capo and time signature are saved per clip and restored when you open it again.
+Edited fingering is kept per clip, also after renaming or moving the clip; Re-finger clears it.
 
 ## Install
 
@@ -149,6 +150,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 아무것도 쓰지 않고 안내 메시지를 띄웁니다.
 
 고른 줄, 튜닝, 카포, 박자표는 클립마다 저장되어 다시 열 때 복원됩니다.
+편집한 운지는 클립 이름을 바꾸거나 옮긴 뒤에도 클립별로 유지되며, Re-finger는 이를 지웁니다.
 
 ## 설치
 

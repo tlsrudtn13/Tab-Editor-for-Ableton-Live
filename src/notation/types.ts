@@ -20,6 +20,8 @@ export type Note = {
     s:    number;          // string      (1–6, 표준 튜닝)
     src:  "arr" | "ses";   // 소스: arrangement 클립 | session 슬롯
     clip: string;          // 클립 이름
+    /** Clip-local start in the Live clip (for per-clip fingering layers). */
+    cb?:  number;
     /** Guitar techniques set by the user. undefined = not decided; [] = user cleared all. */
     tech?: Tech[];
     /** Bend shown on the note, in quarter tones: 2 = ½ step, 4 = full, 6 = 1½. Display only (MIDI unchanged). */
@@ -63,7 +65,7 @@ export type TrackPayload = {
     };
     /** regionLength: beats shown (loop or start/end markers); edits must stay inside it. */
     edit?: { mode: "clip"; regionStart: number; regionLength?: number; noteCount: number }
-         | { mode: "track"; spans: { start: number; end: number }[]; noteCount: number };
+         | { mode: "track"; spans: { start: number; end: number; offset: number; index: number }[]; noteCount: number };
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */

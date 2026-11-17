@@ -23,6 +23,7 @@ function spanIndex(b: number): number {
   return sp.findIndex(s => b >= s.start - 1e-6 && b < s.end - 1e-6);
 }
 export function saveUndo(before?: any, deletedBefore?: any) {
+  state.sessionChanged = true;
   state.editHistory.push({ notes: before || state.curTrack.notes.map(n => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
   if (state.editHistory.length > 50) state.editHistory.shift();
 }

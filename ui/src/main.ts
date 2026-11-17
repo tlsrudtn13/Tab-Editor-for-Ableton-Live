@@ -18,7 +18,7 @@ import { initLog, log, status } from "./log";
 import { getAtRes, initTheme, syncThemeBtn, toggleTheme } from "./theme";
 import { bindScaleControls, buildFretboard, clearFretboard, fretClick, updateScaleOverlay } from "./fretboard";
 import { clearNoteOverlays, showSelection } from "./overlay";
-import { bindControls, bindInstrument, instrumentKeyOf, rebuildScore, renderScore, setInstrument, setMode } from "./score";
+import { bindControls, bindInstrument, instrumentKeyOf, rebuildScore, refingerNotes, renderScore, setInstrument, setMode } from "./score";
 import { adjustDuration, moveString } from "./editing";
 import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggleSidebar } from "./inspector";
 import { exportAlphaTex, exportPDF } from "./export";
@@ -51,6 +51,8 @@ bindInstrument();
 bindControls();
 bindKeys();
 bindApply();
+var ref = document.getElementById("btn-refinger");
+if (ref) ref.addEventListener("click", refingerNotes);
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
@@ -79,7 +81,7 @@ export function loadTrack(id) {
   if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {
     if (n.b0 === undefined) { n.b0 = n.b; n.d0 = n.d; }
   });
-  state.deletedOids = []; state.editHistory = [];
+  state.deletedOids = []; state.editHistory = []; state.sessionChanged = false;
   if (window.__editKeys) window.__editKeys.updateEditUi();
   state.selectedNoteIndices = [];
   clearNoteOverlays();
@@ -137,6 +139,7 @@ window.exportAlphaTex = exportAlphaTex;
 window.togglePlay = togglePlay;
 window.stopPlay = stopPlay;
 window.loadTrack = loadTrack;
+window.refingerNotes = refingerNotes;
 
 /* ── 초기 실행 ────────────────────────────────────────────────────────────── */
 if (state.tracks && state.tracks.length > 0) {
