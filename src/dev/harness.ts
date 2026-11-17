@@ -160,10 +160,26 @@ async function createDrumFixture(ctx: Ctx) {
     const steps: string[] = [];
     const track: any = await song.createMidiTrack();
     track.name = TEST_TRACK_DRUMS;
-    const outer: any = await track.insertDevice("Instrument Rack", 0);
-    steps.push(`outer: ${outer?.constructor?.name} chains=${outer?.chains?.length}`);
-    const chain: any = outer.chains?.[0] ?? await outer.insertChain(0);
-    const rack: any = await chain.insertDevice("Drum Rack", 0);
+    const step = async <T>(label: string, f: () => Promise<T>): Promise<T> => {
+        try { return await f(); } catch (e) { throw new Error(`${label}: ${e} | steps: ${steps.join("; ")}`); }
+    };
+    // nested on purpose (recursive detection); the default Instrument Rack preset may
+    // already hold an instrument, so the Drum Rack goes into a fresh, empty chain
+    // the owner's default MIDI track template already holds an instrument: start from an empty chain
+    const clearDevices = async (t: any) => { for (const d of [...t.devices]) { try { await t.deleteDevice(d); } catch (_) {} } };
+    await clearDevices(track);
+    let rack: any;
+    try {
+        const outer: any = await step("insert Instrument Rack", () => track.insertDevice("Instrument Rack", 0));
+        steps.push(`outer: ${outer?.constructor?.name} chains=${outer?.chains?.length}`);
+        const chain: any = await step("insert chain", () => outer.insertChain(outer.chains?.length ?? 0));
+        steps.push(`chain devices=${chain?.devices?.length}`);
+        rack = await step("insert Drum Rack in chain", () => chain.insertDevice("Drum Rack", 0));
+    } catch (e) {
+        steps.push(`nested failed (${e}); Drum Rack on the track instead`);
+        await clearDevices(track);
+        rack = await step("insert Drum Rack on track", () => track.insertDevice("Drum Rack", track.devices.length));
+    }
     steps.push(`rack: ${rack?.constructor?.name}`);
     const pads = [36, 38, 42, 44, 46, 49, 50, 48, 45, 43];
     for (let i = 0; i < pads.length; i++) {
@@ -183,6 +199,7 @@ async function createDrumFixture(ctx: Ctx) {
     created.push(`arrangement @0: ${arr.name}`);
     const plain: any = await song.createMidiTrack();
     plain.name = TEST_TRACK_DRUMS_NORACK;
+    await clearDevices(plain);                 // name heuristic only: no rack at all
     const pc: any = await plain.createMidiClip(0, DRUM_FIXTURES[1]!.length);
     pc.name = DRUM_FIXTURES[1]!.name + " (no rack)"; pc.notes = DRUM_FIXTURES[1]!.notes;
     created.push(`${TEST_TRACK_DRUMS_NORACK} arrangement @0: ${pc.name}`);

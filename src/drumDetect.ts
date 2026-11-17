@@ -13,7 +13,7 @@ import { padLabelFromPath, type PadHints } from "./notation/drumMap.js";
 export type DrumRackInfo = { pads: number[]; hints: PadHints; depth: number };
 
 const MAX_DEPTH = 6;
-const GENERIC_DEVICE = /^(simpler|sampler|impulse|drum sampler|operator|analog|wavetable|drift|meld|collision|tension|electric|drum rack|instrument rack|drum buss)$/i;
+const GENERIC_DEVICE = /^(simpler|sampler|impulse|drum sampler|operator|analog|wavetable|drift|meld|collision|tension|electric|drum rack|instrument rack|drum buss|ext\. instrument|external instrument)$/i;
 
 const isClass = (obj: any, cls: any, name: string) => {
     try { return obj instanceof cls || obj?.constructor?.className === name; } catch { return false; }

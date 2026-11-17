@@ -65,7 +65,14 @@ A track is a drum track when its device chain contains a **Drum Rack**
 (`DrumRack`, className `DrumRackDevice`), searched depth-first through nested
 racks (`RackDevice.chains[].devices`, max depth 6). The rack's `DrumChain.receivingNote`
 gives the pads; a chain's first `Simpler` sample file name (`sample.filePath`)
-labels the pad; chains have no names in SDK 1.0.0-beta.1.
+labels the pad, else the first device's name unless it is a stock device name
+(Simpler, Ext. Instrument, …); chains have no names in SDK 1.0.0-beta.1.
+
+Live check (Live 12 Beta, 2026-11-18): a Drum Rack nested in an Instrument Rack is found
+at depth 1 with its 16 pads and sample labels; a rack-less track named "TAB-TEST Drums"
+switches by the name rule; both open as a percussion staff with the legend, and a pad
+change saved on Close is applied on reopen. Playback could not be checked in the dev
+harness (the player does not get ready there, for guitar clips too).
 
 Fallback, deliberately narrow: no Drum Rack, but the **track name** says drums
 (`drum(s)`, `kit`, `beat`, `perc`, `808`, `909`, `드럼`) **and** ≥ 80 % of notes sit on core
