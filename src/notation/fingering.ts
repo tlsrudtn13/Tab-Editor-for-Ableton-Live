@@ -58,10 +58,12 @@ function makeCandidates(indices: number[], sorted: Note[], instrument: Instrumen
         beam = next.slice(0, MAX_CANDIDATES);
         if (!beam.length) return [];
     }
+    // Drop shapes no hand position can play (e.g. a high note over two open-position bass notes):
+    // they would break the Viterbi chain. If none is left, the caller falls back to greedy voicing.
     return beam.map(item => ({
         positions: item.positions,
         costs: Array.from({ length: POSITION_COUNT }, (_, p) => candidateCost(item.positions, p + 1)),
-    }));
+    })).filter(c => c.costs.some(v => Number.isFinite(v)));
 }
 
 /** Fixed cost of any hand shift, on top of `scale` per fret moved. */
@@ -116,6 +118,7 @@ export function assignFingering(notes: Note[], instrument: InstrumentConfig): No
             valid.forEach((i, j) => { result[i] = legacy[j]!; });
             continue;
         }
+        group.indices = valid; // candidates cover only the playable notes
         group.candidates = makeCandidates(valid, sorted, instrument);
         if (!group.candidates.length) {
             const legacy = applyGreedyVoicing(valid.map(i => sorted[i]!), instrument);
@@ -125,7 +128,7 @@ export function assignFingering(notes: Note[], instrument: InstrumentConfig): No
 
     const active = groups.filter(g => g.candidates.length);
     if (!active.length) return result;
-    const back: number[][][] = [];
+    const back: number[][][] = [], history: number[][][] = [];
     let states: number[][] = [], prevCandidates: Candidate[] = [];
     for (let gi = 0; gi < active.length; gi++) {
         const group = active[gi]!;
@@ -176,20 +179,29 @@ export function assignFingering(notes: Note[], instrument: InstrumentConfig): No
                 });
             }
         }
-        back.push(links); states = next; prevCandidates = group.candidates;
+        back.push(links); history.push(next); states = next; prevCandidates = group.candidates;
     }
-    let ci = -1, pi = -1, best = INF;
-    for (let c = 0; c < states.length; c++) for (let p = 0; p < POSITION_COUNT; p++) {
-        const value = states[c]![p]!;
-        if (value < best) { best = value; ci = c; pi = p; }
-    }
+    // Best (candidate, position) of one group's states; ci = -1 if every state is unreachable.
+    const argmin = (rows: number[][]) => {
+        let ci = -1, pi = -1, best = INF;
+        for (let c = 0; c < rows.length; c++) for (let p = 0; p < POSITION_COUNT; p++) {
+            const value = rows[c]![p]!;
+            if (value < best) { best = value; ci = c; pi = p; }
+        }
+        return { ci, pi };
+    };
+    let { ci, pi } = argmin(states);
     for (let gi = active.length - 1; gi >= 0; gi--) {
-        const group = active[gi]!, chosen = group.candidates[ci]!;
+        const group = active[gi]!;
+        // Broken link (should not happen): restart from this group's own best state.
+        if (ci < 0 || !group.candidates[ci]) ({ ci, pi } = argmin(history[gi]!));
+        const chosen = group.candidates[ci] ?? group.candidates[0]!;
         const ordered = [...group.indices].sort((a, b) => sorted[a]!.p - sorted[b]!.p);
         ordered.forEach((idx, j) => { result[idx] = { ...sorted[idx]!, s: chosen.positions[j]!.s, f: chosen.positions[j]!.f, oor: undefined }; });
         if (gi > 0) {
-            const link = back[gi]![ci]![pi]!;
-            ci = Math.floor(link / POSITION_COUNT); pi = link % POSITION_COUNT;
+            const link = pi >= 0 ? back[gi]![ci]?.[pi] ?? -1 : -1;
+            if (link >= 0) { ci = Math.floor(link / POSITION_COUNT); pi = link % POSITION_COUNT; }
+            else { ci = -1; pi = -1; }
         }
     }
     return result;

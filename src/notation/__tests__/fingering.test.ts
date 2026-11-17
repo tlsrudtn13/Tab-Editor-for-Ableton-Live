@@ -74,3 +74,44 @@ describe("position-aware fingering", () => {
         expect(performance.now() - start).toBeLessThan(500);
     });
 });
+
+describe("fingering robustness", () => {
+    const playable = (out: Note[], inst = GUITAR_6) =>
+        out.every(x => x.s >= 1 && x.s <= inst.stringCount && x.f >= 0 && (x.oor !== undefined || inst.open[x.s]! + x.f === x.p));
+
+    it("does not throw on a chord no single hand position can reach", () => {
+        // 72 is high on the neck, 47/40 need the nut: every shape is unplayable as one position.
+        const input = [n(0, 60), n(1, 72), n(1, 47), n(1, 40), n(2, 62)];
+        const out = assignFingering(input, GUITAR_6);
+        expect(out).toHaveLength(5);
+        expect(playable(out)).toBe(true);
+    });
+
+    it("keeps string/fret aligned when a chord mixes out-of-range and playable notes", () => {
+        const out = assignFingering([n(0, 30), n(0, 52), n(0, 59)], GUITAR_6);
+        const byPitch = new Map(out.map(x => [x.p, x]));
+        expect(GUITAR_6.open[byPitch.get(52)!.s]! + byPitch.get(52)!.f).toBe(52);
+        expect(GUITAR_6.open[byPitch.get(59)!.s]! + byPitch.get(59)!.f).toBe(59);
+        expect(byPitch.get(30)!.oor).toBeDefined();
+    });
+
+    it("never throws on random lines and chords (fuzz)", () => {
+        let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+        for (let round = 0; round < 30; round++) {
+            const input: Note[] = [];
+            for (let i = 0; i < 120; i++) {
+                const size = rnd() < 0.3 ? 1 + Math.floor(rnd() * 6) : 1;
+                const used = new Set<number>();
+                for (let k = 0; k < size; k++) {
+                    const p = 28 + Math.floor(rnd() * 70);
+                    if (!used.has(p)) { used.add(p); input.push(n(i * 0.25, p)); }
+                }
+            }
+            for (const inst of [GUITAR_6, BASS_4]) {
+                const out = assignFingering(input.map(x => ({ ...x })), inst);
+                expect(out).toHaveLength(input.length);
+                expect(playable(out, inst)).toBe(true);
+            }
+        }
+    });
+});
