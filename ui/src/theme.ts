@@ -45,12 +45,12 @@ export function syncThemeBtn() {
 
 export function getAtRes() {
   return state.isLight ? {
-    mainGlyphColor: "#1a1a1a",  secondaryGlyphColor: "#505050",
-    staffLineColor: "#b8b8b8",  barSeparatorColor:   "#a8a8a8",
+    mainGlyphColor: "#111111",  secondaryGlyphColor: "#505050",
+    staffLineColor: "#9a9a9a",  barSeparatorColor:   "#7a7a7a",
     barNumberColor: "#8a8a8a",  scoreInfoColor:      "#606060"
   } : {
-    mainGlyphColor: "#d4d4d4",   secondaryGlyphColor: "#9a9a9a",
-    staffLineColor: "#4a4a4a",  barSeparatorColor:   "#5a5a5a",
+    mainGlyphColor: "#f0f0f0",   secondaryGlyphColor: "#b8b8b8",
+    staffLineColor: "#525252",  barSeparatorColor:   "#757575",
     barNumberColor: "#6f6f6f",  scoreInfoColor:      "#8a8a8a"
   };
 }

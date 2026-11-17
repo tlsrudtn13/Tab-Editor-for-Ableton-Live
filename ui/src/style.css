@@ -1,13 +1,13 @@
 /* ── Ableton SDK official CSS variables ── */
 :root {
-  --p-live-ui-bg:          hsl(0,0%,21%);
-  --p-live-control-bg:     hsl(0,0%,16%);
-  --p-live-input-bg:       hsl(0,0%,12%);
-  --p-live-text-primary:   hsl(0,0%,71%);
-  --p-live-text-secondary: hsl(0,0%,41%);
-  --p-live-control-border: hsl(0,0%,7%);
-  --p-live-accent-primary: hsl(31,100%,67%);
-  --at-fg: rgb(181,181,181);
+  --p-live-ui-bg:          #1e1e1e;
+  --p-live-control-bg:     #282828;
+  --p-live-input-bg:       #181818;
+  --p-live-text-primary:   #f0f0f0;
+  --p-live-text-secondary: #b8b8b8;
+  --p-live-control-border: #181818;
+  --p-live-accent-primary: #ff764d;
+  --at-fg: #f0f0f0;
 
 }
 
@@ -47,7 +47,7 @@ body { display:flex; flex-direction:row; }
 
 /* ── Sidebar ── */
 #sidebar {
-  width:200px; min-width:200px; background:var(--p-live-control-bg);
+  width:140px; min-width:140px; background:var(--p-live-control-bg);
   border-right:1px solid var(--p-live-control-border);
   display:flex; flex-direction:column; overflow:hidden;
 }
@@ -69,12 +69,12 @@ body { display:flex; flex-direction:row; }
 }
 #track-list { flex:1; overflow-y:auto; }
 .ti {
-  display:flex; align-items:center; gap:8px; padding:0 10px; height:28px;
+  display:flex; align-items:center; gap:8px; padding:0 10px; height:24px;
   cursor:pointer; border-bottom:1px solid var(--p-live-control-border);
-  user-select:none; transition:background .08s;
+  user-select:none; transition:background .08s; font-size:10px;
 }
 .ti:hover  { background:rgba(255,255,255,.05); }
-.ti.active { background:var(--p-live-ui-bg); }
+.ti.active { background:var(--p-live-ui-bg); border-left:3px solid #ff764d; }
 .tn  { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
 .ti.active .tn { color:var(--p-live-accent-primary); }
 .tc  { font-size:9px; color:var(--p-live-text-secondary); flex-shrink:0; }
@@ -85,11 +85,12 @@ body { display:flex; flex-direction:row; }
 
 /* ── Toolbar ── */
 #toolbar {
-  display:flex; align-items:center; gap:5px; padding:4px 10px;
+  height:32px; display:flex; align-items:center; gap:5px; padding:0 8px;
   background:var(--p-live-input-bg);
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
 }
+#status { margin-left:auto; }
 .tl { font-size:9.5px; color:var(--p-live-text-secondary); user-select:none; white-space:nowrap; }
 .seg {
   display:flex; background:var(--p-live-control-bg);
@@ -134,41 +135,38 @@ body { display:flex; flex-direction:row; }
 }
 
 /* ── Score viewer ── */
-#viewer { flex:1; overflow-y:auto; overflow-x:hidden; padding:20px 24px; }
-#alphaTab { min-height:300px; position:relative; }  /* ★ v5: 오버레이 기준점 */
+#viewer { flex:1; overflow-y:auto; overflow-x:hidden; padding:12px 16px; }
+#alphaTab { min-height:300px; position:relative; width:100%; min-width:960px; }  /* ★ v5: 오버레이 기준점 */
 
 /* ★ v5: 악보 위 선택 노트 강조 박스 (boundsLookup 좌표 기반) */
 .note-sel-overlay {
   position:absolute; z-index:10; pointer-events:none;
   border:1.5px solid var(--p-live-accent-primary);
   border-radius:3px;
-  background:rgba(255,140,0,.20);
-  box-shadow:0 0 6px rgba(255,140,0,.45);
+  background:rgba(255,118,77,.20);
+  box-shadow:0 0 6px rgba(255,118,77,.45);
 }
 .note-sel-overlay.single {
-  background:rgba(255,140,0,.34);
-  box-shadow:0 0 9px rgba(255,140,0,.75);
+  background:rgba(255,118,77,.34);
+  box-shadow:0 0 9px rgba(255,118,77,.75);
 }
 
 /* ★ v3: SVG 색 강제(!important) 블록 제거됨.
    음표/오선 색은 main.ts 의 display.resources 가 결정:
    - 음표·TAB 숫자(mainGlyphColor) = 밝게
    - 오선·마디선(staffLineColor 등) = 어둡게 → 배경처럼 가독성 향상 */
-#alphaTab .at-cursor-bar   { background:rgba(255,140,0,.15) !important; }
-#alphaTab .at-selection > div {
-  background: rgba(255, 140, 0, 0.35) !important;
-  border-left: 2px solid rgba(255, 140, 0, 0.9) !important;
-}
-#alphaTab .at-cursor-beat  { background:rgba(255,140,0,.50) !important; }
-#alphaTab .at-selection div{ background:rgba(255,255,255,.10) !important; }
-#alphaTab > div[style*="text-align"] { display:none !important; }
+#alphaTab .at-cursor-bar   { background:transparent !important; }
+#alphaTab .at-cursor-beat  { width:2px !important; background:#ffae42 !important; }
+#alphaTab .at-selection div{ background:rgba(255,118,77,0.18) !important; }
+#alphaTab .at-watermark, #alphaTab div[style*="text-align"] { display:none !important; }
 
 /* ── Selection bar (Inspector 헤더 + 줄옮김) ── */
 #selection-bar {
   flex-shrink:0; display:flex; gap:12px; align-items:center;
-  padding:5px 10px; background:var(--p-live-input-bg);
+  height:26px; padding:3px 10px; background:var(--p-live-input-bg);
   border-top:1px solid var(--p-live-control-border);
 }
+.idle { opacity:.35; pointer-events:none; }
 #inspector-note-display {
   color:var(--p-live-accent-primary); font-weight:700; font-size:11px;
 }
@@ -178,7 +176,7 @@ body { display:flex; flex-direction:row; }
 #fretboard-panel {
   flex-shrink:0; background:var(--p-live-control-bg);
   border-top:1px solid var(--p-live-control-border);
-  display:flex; flex-direction:column; height:188px;
+  display:flex; flex-direction:column; height:auto; min-height:112px;
 }
 #fb-header { display:flex; align-items:center; gap:8px; }
 #fb-note-label {
@@ -197,7 +195,7 @@ body { display:flex; flex-direction:row; }
 #fretboard-grid {
   display:flex; flex-direction:column; background:var(--fb-bg, #1a1a1a); border:1px solid var(--fb-border, #3a3a3a); border-radius:3px; user-select:none;
 }
-.string-lane { display:flex; height:21px; align-items:center; position:relative; }
+.string-lane { display:flex; height:18px; align-items:center; position:relative; }
 .string-lane::after {
   content:''; position:absolute; left:0; right:0; top:50%; z-index:1;
   pointer-events:none; background:var(--fb-string, #555); height:1px;
@@ -205,7 +203,7 @@ body { display:flex; flex-direction:row; }
 .string-lane[data-s="5"]::after { height:1.5px; background:#666; }
 .string-lane[data-s="6"]::after { height:2px;   background:#777; }
 .fc {
-  width:42px; min-width:42px; height:100%; border-right:1px solid var(--fb-cell-border, #2a2a2a);
+  width:36px; min-width:36px; height:100%; border-right:1px solid var(--fb-cell-border, #2a2a2a);
   position:relative; display:flex; align-items:center; justify-content:center;
   cursor:pointer; z-index:2; transition:background .08s;
 }

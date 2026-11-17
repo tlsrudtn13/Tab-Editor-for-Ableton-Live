@@ -16,16 +16,13 @@
 <div id="main">
 
   <div id="toolbar">
-    <span class="tl">View</span>
+    <!-- Group 1: Navigation & Mode -->
+    <button class="btn" onclick="toggleSidebar()" title="Toggle sidebar">≡</button>
     <div class="seg">
       <button class="sb on" id="m-both"   onclick="setMode('both')">Staff+TAB</button>
       <button class="sb"    id="m-tab"    onclick="setMode('tab')">TAB</button>
       <button class="sb"    id="m-staff"  onclick="setMode('staff')">Staff</button>
     </div>
-    <div class="sp"></div>
-
-    <!-- ★ v5: 악기 변환 -->
-    <span class="tl">Instr</span>
     <select id="ui-instrument" class="tsel" title="Instrument — re-voices the track">
       <option value="guitar6" selected>Guitar 6</option>
       <option value="guitar7">Guitar 7</option>
@@ -37,21 +34,18 @@
     </select>
     <div class="sp"></div>
 
-    <span class="tl">Play</span>
+    <!-- Group 2: Transport -->
     <button class="btn" id="btn-play" onclick="togglePlay()">&#9654; Play</button>
     <button class="btn" id="btn-stop" onclick="stopPlay()">&#9632; Stop</button>
     <div class="sp"></div>
 
-    <span class="tl">Quantize</span>
+    <!-- Group 3: Rhythm & Tuning -->
     <select id="ui-quantize" class="tsel" title="Rhythm quantize grid">
       <option value="8">1/8</option>
       <option value="16" selected>1/16</option>
       <option value="32">1/32</option>
       <option value="auto">Auto</option>
     </select>
-    <div class="sp"></div>
-
-    <span class="tl">Pitch</span>
     <label class="numlab">Trans
       <input type="number" id="ui-transpose" value="0" min="-24" max="24" />
     </label>
@@ -60,16 +54,12 @@
     </label>
     <div class="sp"></div>
 
-    <span class="tl">Export</span>
+    <!-- Group 4: Panels & Export -->
     <button class="btn pdf" onclick="exportPDF()" title="Save as PDF">&#x1F5B6; PDF</button>
     <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex">&#128194; ATex</button>
-    <div class="sp"></div>
-
-    <span class="tl">Panels</span>
     <button class="btn" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
     <button class="btn" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
     <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark / light theme">&#9728;</button>
-    <div class="sp"></div>
 
     <span class="tn2" id="status">&ndash;</span>
   </div>

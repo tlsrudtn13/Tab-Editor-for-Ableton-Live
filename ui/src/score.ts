@@ -84,7 +84,7 @@ export function applyStaffMode(score) {
 
 // ★ v5.2: 음역 밖 노트(XML에서 괄호 notehead → isGhost=true) 색상 구별
 //   tie 괄호 프렛은 기본색 유지 → 노란색 = 음역 밖으로 즉시 식별
-var OOR_COLOR = "#E5C07B";
+var OOR_COLOR = "#e5c07b";
 export function colorizeOutOfRange(score) {
   try {
     var col = alphaTab.model.Color.fromJson(OOR_COLOR);
@@ -130,6 +130,8 @@ export function createApi() {
     },
     display: {
       layoutMode: 0,
+      scale: 1.2,
+      stretchForce: 1.0,
       // ★ v3: 오선/마디선은 어둡게(배경), 음표/TAB 숫자는 밝게 → 가독성↑
       resources: getAtRes()
 
