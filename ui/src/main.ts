@@ -24,7 +24,7 @@ import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggl
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
 import { startDevReporter } from "./devReporter";
-import { bindKeys } from "./keys";
+import { bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
 
@@ -124,6 +124,7 @@ export function loadTrack(id) {
 /* ── Window handlers (must stay on window) ────────────────────────────────── */
 window.toggleTheme = toggleTheme;
 window.fretClick = fretClick;
+window.toggleTech = toggleTech;
 window.setInstrument = setInstrument;
 window.adjustDuration = adjustDuration;
 window.moveString = moveString;

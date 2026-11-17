@@ -32,9 +32,15 @@ Score rendering by [alphaTab](https://alphatab.net).
 | Ctrl + D | Duplicate the note |
 | Ctrl + Z | Undo the last edit in the editor |
 | Ctrl + Enter | Apply to Clip |
+| L / P / H / S / X / V | Let ring, palm mute, hammer-on/pull-off, slide, dead note, vibrato (toggle) |
 | Esc | Clear the selection |
 
 Clicking a fret on the fretboard moves the selected note there.
+**Adding notes:** click a rest in the score (a dashed box marks the spot), then click a fret on the
+fretboard or type a fret number; Alt + ↑ / ↓ picks the string first. Shift + click a fret adds a chord
+tone to the selected note.
+**Techniques** are shown on the score, saved with the clip's TAB layout, and do not change the MIDI.
+Overlapping arpeggio notes are marked let ring automatically.
 **Apply to Clip** writes only the notes you changed. Notes whose pitch you changed keep their original
 (unquantized) timing. The whole apply is one step in Live's Undo. If the clip changed in Live while the
 editor was open, nothing is written and Live shows a message.
@@ -59,9 +65,9 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 
 ## Known limitations (beta)
 
-- Overlapping notes (let ring) are written as one voice.
-- No technique marks yet (hammer-on, pull-off, slide, bend, palm mute).
-- You cannot add a note in an empty spot yet; duplicate an existing note and move it.
+- Overlapping notes are written as one voice (with a let-ring mark).
+- No bend marks yet.
+- New notes go only into rests; use Shift + fret click for chord tones.
 - Track and selection views cannot write back.
 - Very long tracks (thousands of notes) take a few seconds to render.
 
@@ -123,9 +129,15 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 | Ctrl + D | 노트 복제 |
 | Ctrl + Z | 에디터 안에서 마지막 편집 되돌리기 |
 | Ctrl + Enter | 클립에 반영 (Apply to Clip) |
+| L / P / H / S / X / V | let ring, 브리지 뮤트, 해머링·풀링, 슬라이드, 데드 노트, 비브라토 (켜고 끄기) |
 | Esc | 선택 해제 |
 
 프렛보드의 칸을 누르면 선택한 노트가 그 자리로 옮겨집니다.
+**노트 추가:** 악보의 쉼표를 누르면 점선 상자로 자리가 표시됩니다. 프렛보드의 칸을 누르거나 프렛 번호를
+치면 그 자리에 노트가 들어갑니다. 줄은 Alt + ↑ / ↓로 먼저 고릅니다. 노트를 고른 상태에서 Shift를 누른 채
+프렛을 누르면 같은 박에 화음 음이 추가됩니다.
+**기법 표기**는 악보에 그려지고 클립의 TAB 설정과 함께 저장되며, MIDI는 바꾸지 않습니다.
+겹쳐 울리는 아르페지오에는 let ring이 자동으로 붙습니다.
 **Apply to Clip**은 바꾼 노트만 클립에 씁니다. 음높이만 바꾼 노트는 원래(퀀타이즈 전) 타이밍을 유지합니다.
 한 번의 반영은 Live 실행 취소 한 단계입니다. 에디터가 열려 있는 동안 Live에서 클립이 바뀌었다면
 아무것도 쓰지 않고 안내 메시지를 띄웁니다.
@@ -150,9 +162,9 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 
 ## 알려진 제한 (베타)
 
-- 겹쳐 울리는 음(let ring)은 한 성부로 표기됩니다.
-- 해머링·풀링, 슬라이드, 벤드, 브리지 뮤트 같은 기법 표기는 아직 없습니다.
-- 빈 자리에 새 노트를 넣을 수 없습니다. 기존 노트를 복제해서 옮기세요.
+- 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
+- 벤드 표기는 아직 없습니다.
+- 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
 - 트랙·선택 구간 보기에서는 클립에 반영할 수 없습니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
 

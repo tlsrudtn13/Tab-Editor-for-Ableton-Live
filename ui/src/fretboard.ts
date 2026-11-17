@@ -42,7 +42,7 @@ export function buildFretboard() {
       }
       html += '<div class="fc' + dotClass + '" id="fc-' + s + "-" + f + '"'
            +  ' data-s="' + s + '" data-f="' + f + '"'
-           +  ' onclick="fretClick(' + s + "," + f + ')"><div class="nd">' + f + "</div></div>";
+           +  ' onclick="fretClick(' + s + "," + f + ',event)"><div class="nd">' + f + "</div></div>";
     }
     html += "</div>";
   }
@@ -101,9 +101,17 @@ export function bindScaleControls() {
   });
 }
 
-export function fretClick(s, f) {
+export function fretClick(s, f, ev?: MouseEvent) {
+  var keys = window.__editKeys;
+  if (state.curTrack && state.curTrack.edit && keys) {
+    if (state.restCursor && !state.selectedNoteIndices.length) { keys.insertNote(s, f); return; }
+    if (ev && ev.shiftKey && state.selectedNoteIndices.length) {
+      if (!keys.insertNote(s, f, true)) log("String " + s + " is already used at this beat");
+      return;
+    }
+  }
   if (!state.curTrack || !state.curTrack.edit || !state.selectedNoteIndices.length) { log("Fret: String " + s + " / Fret " + f); return; }
   var n = state.curTrack.notes[state.selectedNoteIndices[0]], open = getOpenStrings()[s];
   if (!n || typeof open !== "number") return;
-  var keys = window.__editKeys; if (keys) keys.setSelectedStringFret(s, f);
+  if (keys) keys.setSelectedStringFret(s, f);
 }

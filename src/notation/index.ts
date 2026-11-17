@@ -10,3 +10,4 @@ export * from "./music.js";
 export * from "./collectNotes.js";
 export * from "./toAlphaTex.js";
 export * from "./toMusicXml.js";
+export * from "./techniques.js";

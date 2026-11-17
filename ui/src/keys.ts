@@ -4,6 +4,7 @@ import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
 import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overlay";
 import { adjustDuration, moveString } from "./editing";
+import { TECH_KEY, toggleSelectedTech } from "./techUi";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
 export function saveUndo(before?: any, deletedBefore?: any) {
@@ -45,17 +46,57 @@ function pitchChange(delta) {
     n.p=p;n.s=s;n.f=f;if(n.oid!==undefined)n.dirty=true;touched=true;
   }); if(touched){saveUndo(before);render();}
 }
+/** Put the insert cursor on a rest (b, d in beats from the score start). */
+export function setRestCursor(b: number, d: number) {
+  if (!active()) return;
+  const prev = state.restCursor;
+  state.restCursor = { b, d: d > 0 ? d : 0.25, s: prev ? prev.s : 1 };
+  state.selectedNoteIndices = [];
+  showRestCursor();
+}
+function showRestCursor() {
+  const rc = state.restCursor; if (!rc) return;
+  clearFretboard(); lightFret(rc.s, 0, "Empty beat " + (rc.b + 1).toFixed(2) + " · string " + rc.s + ": click a fret or type a number (Alt+↑/↓ string)");
+}
+/** Add a note at the insert cursor, or as a chord tone at the selected note's time (chord=true). */
+export function insertNote(s: number, f: number, chord = false) {
+  if (!active()) return false;
+  const open = getOpenStrings()[s]; if (typeof open !== "number" || f < 0 || f > 24) return false;
+  let b: number, d: number;
+  if (chord) {
+    const ref = state.curTrack.notes[state.selectedNoteIndices[0]]; if (!ref) return false;
+    if (state.curTrack.notes.some((n: any) => Math.abs(n.b - ref.b) < 1e-6 && n.s === s)) return false; // string taken
+    b = ref.b; d = ref.d;
+  } else {
+    const rc = state.restCursor; if (!rc) return false;
+    b = rc.b; d = rc.d;
+  }
+  const tmpl = state.curTrack.notes[0] || {};
+  const before = state.curTrack.notes.map((n: any) => ({ ...n }));
+  state.curTrack.notes.push({ b, d, p: open + f, v: 100, s, f, src: tmpl.src || "ses", clip: tmpl.clip || "", lock: true });
+  state.restCursor = null;
+  saveUndo(before);
+  state.selectedNoteIndices = [state.curTrack.notes.length - 1];
+  render();
+  return true;
+}
 export function setSelectedStringFret(s,f) {
   if(!active())return; const n=state.curTrack.notes[state.selectedNoteIndices[0]], open=getOpenStrings()[s]; if(!n||typeof open!=="number")return;
   const before=state.curTrack.notes.map(n=>({...n})); n.s=s;n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();
 }
 function onKey(e) {
+  if(state.restCursor&&(e.key==="ArrowLeft"||e.key==="ArrowRight"))state.restCursor=null;
   if (e.target instanceof Element && (e.target.matches("input,select,textarea") || e.target.isContentEditable)) return;
   const k=e.key, selected=state.selectedNoteIndices;
   if(e.ctrlKey&&k.toLowerCase()==="enter"){e.preventDefault();window.applyClipEdits&&window.applyClipEdits();return;}
   if(e.ctrlKey&&k.toLowerCase()==="d"&&active()&&selected.length){e.preventDefault();const i=selected[0],n=state.curTrack.notes[i],before=state.curTrack.notes.map(x=>({...x}));if(n){state.curTrack.notes.push({...n,b:n.b+n.d,oid:undefined,dirty:undefined});selectIndex(state.curTrack.notes.length-1);saveUndo(before);render();}return;}
   if(e.ctrlKey&&k.toLowerCase()==="z"&&active()){e.preventDefault();const h=state.editHistory.pop();if(h){state.curTrack.notes=h.notes.map(n=>({...n}));state.deletedOids=h.deletedOids.slice();state.selectedNoteIndices=[];render();}return;}
-  if(k==="Escape"){state.selectedNoteIndices=[];highlightSelection();return;}
+  if(k==="Escape"){state.selectedNoteIndices=[];state.restCursor=null;clearNoteOverlays();highlightSelection();return;}
+  // Insert cursor on a rest: Alt+arrows pick the string, digits add a note there
+  if(state.restCursor&&!selected.length&&active()){
+    if((k==="ArrowUp"||k==="ArrowDown")&&e.altKey){e.preventDefault();const rc=state.restCursor;rc.s=Math.max(1,Math.min(getStringCount(),rc.s+(k==="ArrowUp"?-1:1)));showRestCursor();return;}
+    if(/^[0-9]$/.test(k)){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const go=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f<=24&&state.restCursor)insertNote(state.restCursor.s,f);};state.digitTimer=setTimeout(go,400);if(state.digitBuffer.length>=2)go();return;}
+  }
   if(!state.curTrack)return;
   const sorted=state.curTrack.notes.map((n,i)=>({n,i})).sort((a,b)=>a.n.b-b.n.b||b.n.p-a.n.p).map(x=>x.i);
   if(k==="ArrowLeft"||k==="ArrowRight"){e.preventDefault();let pos=sorted.indexOf(selected[0]);if(pos<0)pos=k==="ArrowLeft"?sorted.length: -1;selectIndex(sorted[Math.max(0,Math.min(sorted.length-1,pos+(k==="ArrowLeft"?-1:1)))] as number);return;}
@@ -63,7 +104,10 @@ function onKey(e) {
   if((k==="ArrowUp"||k==="ArrowDown")&&selected.length){e.preventDefault();if(e.altKey)moveString(k==="ArrowUp"?-1:1);else pitchChange((k==="ArrowUp"?1:-1)*(e.shiftKey?12:1));return;}
   if((k==="["||k==="]")&&selected.length){adjustDuration(k==="]"?"+1":"-1");return;}
   if(k.toLowerCase()==="d"&&selected.length){adjustDuration("Auto");return;}
+  if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&selected.length&&TECH_KEY[k.toLowerCase()]){e.preventDefault();toggleSelectedTech(TECH_KEY[k.toLowerCase()],saveUndo,render);return;}
   if((k==="Delete"||k==="Backspace")&&selected.length){e.preventDefault();const before=state.curTrack.notes.map(n=>({...n})), deletedBefore=state.deletedOids.slice();const removed=selected.slice().sort((a,b)=>b-a);removed.forEach(i=>{const n=state.curTrack.notes[i];if(n&&n.oid!==undefined)state.deletedOids.push(n.oid);state.curTrack.notes.splice(i,1);});state.selectedNoteIndices=[];saveUndo(before,deletedBefore);render();return;}
   if(/^[0-9]$/.test(k)&&selected.length){state.digitBuffer+=k;if(state.digitTimer)clearTimeout(state.digitTimer);const apply=()=>{const f=Number(state.digitBuffer);state.digitBuffer="";if(f>24)return;const n=state.curTrack.notes[state.selectedNoteIndices[0]];if(!n)return;const open=getOpenStrings()[n.s];if(open!==undefined){const before=state.curTrack.notes.map(x=>({...x}));n.f=f;n.p=open+f;if(n.oid!==undefined)n.dirty=true;n.lock=true;saveUndo(before);render();}};state.digitTimer=setTimeout(apply,400);if(state.digitBuffer.length>=2)apply();return;}
 }
-export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi};updateEditUi();}
+/** Palette button / window handler. */
+export function toggleTech(t){ toggleSelectedTech(t, saveUndo, render); }
+export function bindKeys(){document.addEventListener("keydown",onKey);window.__editKeys={selectIndex,setSelectedStringFret,updateEditUi,insertNote,setRestCursor};updateEditUi();}

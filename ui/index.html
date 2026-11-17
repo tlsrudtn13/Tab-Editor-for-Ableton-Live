@@ -83,6 +83,16 @@
     <span class="tl">Move</span>
     <button class="btn" onclick="moveString(-1)" title="Move selected note to a thinner string">&#9650; Str</button>
     <button class="btn" onclick="moveString(1)"  title="Move selected note to a thicker string">&#9660; Str</button>
+    <div class="sp"></div>
+    <span class="tl">Tech</span>
+    <span id="tech-palette">
+      <button class="btn" data-tech="lr" onclick="toggleTech('lr')" title="Let ring (L)">LR</button>
+      <button class="btn" data-tech="pm" onclick="toggleTech('pm')" title="Palm mute (P)">PM</button>
+      <button class="btn" data-tech="hp" onclick="toggleTech('hp')" title="Hammer-on / pull-off to the next note on this string (H)">H/P</button>
+      <button class="btn" data-tech="sl" onclick="toggleTech('sl')" title="Slide to the next note on this string (S)">SL</button>
+      <button class="btn" data-tech="x"  onclick="toggleTech('x')"  title="Dead note (X)">X</button>
+      <button class="btn" data-tech="vb" onclick="toggleTech('vb')" title="Vibrato (V)">~</button>
+    </span>
   </div>
 
   <div id="fretboard-panel">

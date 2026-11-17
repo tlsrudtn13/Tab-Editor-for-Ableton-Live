@@ -9,7 +9,8 @@ interface Window {
   __tabState?: any;
   __editKeys?: any;
   toggleTheme?: () => void;
-  fretClick?: (s: number, f: number) => void;
+  fretClick?: (s: number, f: number, ev?: MouseEvent) => void;
+  toggleTech?: (t: string) => void;
   setInstrument?: (key: string) => void;
   adjustDuration?: (mode: string) => void;
   moveString?: (dir: number) => void;

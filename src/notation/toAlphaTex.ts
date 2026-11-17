@@ -9,8 +9,9 @@
 //   - → 빈 마디는 | 로만 채워 bar 번호를 보존
 // ============================================================
 
-import type { Note, TimeSig } from "./types.js";
+import type { Note, TimeSig, Tech } from "./types.js";
 import { quantizeBeat, beatToNoteVal, detectQuantizeGrid } from "./music.js";
+import { detectLetRing } from "./techniques.js";
 
 export interface AlphaTexOptions {
     bpm:      number;
@@ -86,6 +87,14 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
     }
 
     // Second pass: render.
+    const letRingIdx = detectLetRing(sorted);
+    const techToFx: Record<Tech, string> = { lr: "lr", pm: "pm", hp: "h", sl: "sl", x: "x", vb: "v" };
+    const effectsStr = (note: Note, idx: number): string => {
+        const fromUser = note.tech !== undefined ? (note.tech as Tech[]) : (letRingIdx.has(idx) ? (["lr"] as Tech[]) : []);
+        if (fromUser.length === 0) return "";
+        return `{${fromUser.map(t => techToFx[t]).join(" ")}}`;
+    };
+
     const timeSig = opts.timeSig ?? { beats: 4, type: 4 };
     let tex          = `\\tempo ${Math.round(bpm)}\n\\ts ${timeSig.beats} ${timeSig.type}\n.\n`;
     let lastBarIndex = -1;
@@ -114,14 +123,14 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
         const isTrip        = tripletFlag[groupIdx]!;
 
         if (count === 1) {
-            tex += `${cur.f}.${cur.s}:${noteVal}${isTrip ? "{tu 3}" : ""} `;
+            tex += `${cur.f}.${cur.s}${effectsStr(cur, gi)}:${noteVal}${isTrip ? "{tu 3}" : ""} `;
         } else {
             // 화음
             let chord = "(";
             for (let kk = gi; kk < j; kk++) {
                 const n = sorted[kk]!;
                 if (kk > gi) chord += " ";
-                chord += `${n.f}.${n.s}`;
+                chord += `${n.f}.${n.s}${effectsStr(n, kk)}`;
             }
             tex += `${chord}):${noteVal}${isTrip ? "{tu 3}" : ""} `;
         }

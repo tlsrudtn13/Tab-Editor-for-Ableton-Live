@@ -1,6 +1,7 @@
 import { state } from "./state";
 import { clearFretboard } from "./fretboard";
 import { detectChord, pitchToName } from "./musicUi";
+import { updateTechPalette } from "./techUi";
 
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v5] 악보 위 선택 노트 강조 오버레이
@@ -51,6 +52,35 @@ export function collectNoteBounds(beat: any): any[] {
   return out;
 }
 
+/** Dashed box over a rest beat: the insert cursor. */
+export function overlayRest(beat: any) {
+  try {
+    var bl = (state.api && state.api.renderer) ? state.api.renderer.boundsLookup : null;
+    if (!bl || !beat || !bl.staffSystems) return;
+    var host = document.getElementById("alphaTab");
+    if (!host) return;
+    for (var si = 0; si < bl.staffSystems.length; si++) {
+      var mbs = bl.staffSystems[si].bars || [];
+      for (var mi = 0; mi < mbs.length; mi++) {
+        var bars = mbs[mi].bars || [];
+        for (var bi = 0; bi < bars.length; bi++) {
+          var beats = bars[bi].beats || [];
+          for (var ti = 0; ti < beats.length; ti++) {
+            if (beats[ti].beat !== beat) continue;
+            var b = beats[ti].visualBounds;
+            if (!b) continue;
+            var d = document.createElement("div");
+            d.className = "note-sel-overlay rest-cursor";
+            d.style.left = (b.x - 3) + "px"; d.style.top = (b.y - 3) + "px";
+            d.style.width = (b.w + 6) + "px"; d.style.height = (b.h + 6) + "px";
+            host.appendChild(d);
+          }
+        }
+      }
+    }
+  } catch(e: any) {}
+}
+
 export function overlayBeatNotes(beat: any) {
   var nbs = collectNoteBounds(beat);
   for (var i = 0; i < nbs.length; i++) drawNoteOverlay(nbs[i].noteHeadBounds, false);
@@ -88,7 +118,12 @@ export function overlaySelectedNotes() {
         for (var ti = 0; ti < beats.length; ti++) {
           var beat = beats[ti];
           var bp: number | null = null;
-          try { if (bar.masterBar && beat.playbackStart !== undefined) bp = (bar.masterBar.start + beat.playbackStart) / 960; } catch(e) {}
+          // bounds objects wrap the model: BarBounds.bar / BeatBounds.beat hold the positions
+          try {
+            var mBar = bar.bar ? bar.bar.masterBar : bar.masterBar;
+            var mBeat = beat.beat || beat;
+            if (mBar && mBeat.playbackStart !== undefined) bp = (mBar.start + mBeat.playbackStart) / 960;
+          } catch(e) {}
           var nbs = beat.notes || [];
           for (var ni = 0; ni < nbs.length; ni++) {
             var an = nbs[ni].note;
@@ -150,6 +185,7 @@ export function showSelection(noteList: any, isSingle?: boolean) {
   var noteDisp  = document.getElementById("inspector-note-display");
   var chordDisp = document.getElementById("inspector-chord-display");
   var has = !!(noteList && noteList.length);
+  try { updateTechPalette(); } catch(e) {}
   document.querySelectorAll("#selection-bar .btn").forEach(function(b) { b.classList.toggle("idle", !has); });
   if (!has) {
     if (noteDisp)  noteDisp.textContent  = "Click a note on the score...";

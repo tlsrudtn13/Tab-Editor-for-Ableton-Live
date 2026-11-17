@@ -20,6 +20,8 @@ export const state: {
   editHistory: any[];
   digitBuffer: string;
   digitTimer: ReturnType<typeof setTimeout> | null;
+  /** Insert cursor on a rest: where a new note goes (beats from the score start, string). */
+  restCursor: { b: number; d: number; s: number } | null;
 } = {
   api: null,
   curTrack: null,
@@ -43,4 +45,5 @@ export const state: {
   editHistory: [],
   digitBuffer: "",
   digitTimer: null,
+  restCursor: null,
 };

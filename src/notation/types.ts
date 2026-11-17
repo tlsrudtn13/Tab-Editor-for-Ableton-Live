@@ -7,6 +7,8 @@
 import type { InstrumentConfig } from "./instruments.js";
 
 /** 에이블톤에서 수집한 MIDI 노트 (compact 포맷 — 필드명을 단일 문자로 유지해 JSON 크기 최소화) */
+export type Tech = "lr" | "pm" | "hp" | "sl" | "x" | "vb"; // let ring, palm mute, hammer-on/pull-off, legato slide, dead note, vibrato
+
 export type Note = {
     b:    number;          // startBeat  — 어레인지먼트 시작부터의 절대 박자
     d:    number;          // durationBeat
@@ -16,10 +18,8 @@ export type Note = {
     s:    number;          // string      (1–6, 표준 튜닝)
     src:  "arr" | "ses";   // 소스: arrangement 클립 | session 슬롯
     clip: string;          // 클립 이름
-    hammerOn?: boolean;
-    pullOff?:  boolean;
-    slide?:    "up" | "down";
-    bend?:     number; // 반음 단위 (2 = 온음 벤드)
+    /** Guitar techniques set by the user. undefined = not decided; [] = user cleared all. */
+    tech?: Tech[];
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
     lock?: boolean;
     oid?: number;

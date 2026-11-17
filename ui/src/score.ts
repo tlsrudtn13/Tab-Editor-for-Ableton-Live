@@ -13,7 +13,8 @@ import { state } from "./state";
 import { log, status } from "./log";
 import { getAtRes } from "./theme";
 import { buildFretboard, clearFretboard, getOpenStrings, getStringCount, lightFret, updateScaleOverlay } from "./fretboard";
-import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection } from "./overlay";
+import { applyTechniquesToScore } from "./techUi";
+import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlayRest, overlaySelectedNotes, showSelection } from "./overlay";
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
@@ -168,6 +169,7 @@ export function createApi() {
   api.scoreLoaded.on(function(score) {
     applyStaffMode(score);
     colorizeOutOfRange(score);   // ★ 음역 밖 노트 노란색
+    applyTechniquesToScore(score); // let ring, palm mute, hammer, slide, dead, vibrato
     log("Score loaded (" + state.dispMode + ")");
     status("Ready");
   });
@@ -190,6 +192,16 @@ export function createApi() {
     if (!beat) return;
     clearFretboard();
     clearNoteOverlays();
+    state.restCursor = null;
+    // A rest in an editable clip: put the insert cursor there (a note is added by fret click / digits)
+    if (beat.isRest && state.curTrack && state.curTrack.edit && window.__editKeys) {
+      try {
+        var restPos = (beat.voice.bar.masterBar.start + beat.playbackStart) / 960;
+        window.__editKeys.setRestCursor(restPos, (beat.playbackDuration || 240) / 960);
+        overlayRest(beat);
+      } catch(e: any) { log("rest cursor: " + (e.message || e)); }
+      return;
+    }
     overlayBeatNotes(beat);          // ★ v5: 화음 전체 주황 박스
     state.selectedNoteIndices = [];
 

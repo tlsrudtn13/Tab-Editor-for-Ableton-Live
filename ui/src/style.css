@@ -154,6 +154,11 @@ body { display:flex; flex-direction:row; }
 .note-sel-overlay.single {
   background:rgba(0,200,255,0.22);
 }
+/* Insert cursor on a rest: a new note goes here */
+.note-sel-overlay.rest-cursor {
+  border:2px dashed #00c8ff;
+  background:rgba(0,200,255,0.08);
+}
 
 /* ★ v3: SVG 색 강제(!important) 블록 제거됨.
    음표/오선 색은 main.ts 의 display.resources 가 결정:
