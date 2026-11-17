@@ -74,7 +74,7 @@ export function detectQuantizeGrid(notes: Note[]): QuantizeGrid {
     }
     if (onsets.length < 2) return 16;
 
-    const grids: QuantizeGrid[] = [4, 8, 16, 32];
+    const grids: QuantizeGrid[] = [4, 8, 12, 16, 24, 32];
     for (const g of grids) {
         const step = 4 / g;
         const tol = Math.min(0.06, step * 0.2);
@@ -94,6 +94,48 @@ const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.6
  * Note[] 에서 가장 가능성 높은 조표를 추정.
  * 각 피치 클래스의 사용 빈도(velocity 가중)를 프로필과 비교.
  */
+const FIFTHS_MAJOR = [0, -5, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5] as const;
+
+export function majorFifths(root: number): number {
+    const r = ((root % 12) + 12) % 12;
+    return FIFTHS_MAJOR[r]!;
+}
+
+export function keyFromLiveScale(root: number, name: string): KeyInfo | null {
+    const r = ((root % 12) + 12) % 12;
+    const nm = String(name ?? "").trim();
+    const lower = nm.toLowerCase();
+    // Major / Ionian
+    if (lower === "major" || lower === "ionian" || lower === "major pentatonic") {
+        // Major Pentatonic → major
+        return { fifths: majorFifths(r), mode: "major" };
+    }
+    if (lower === "minor" || lower === "aeolian" ||
+        lower === "minor pentatonic" || lower === "minor blues" || lower === "blues") {
+        return { fifths: majorFifths((r + 3) % 12), mode: "minor" };
+    }
+    if (lower === "dorian") {
+        return { fifths: majorFifths((r - 2 + 12) % 12), mode: "major" };
+    }
+    if (lower === "phrygian") {
+        return { fifths: majorFifths((r - 4 + 12) % 12), mode: "major" };
+    }
+    if (lower === "lydian") {
+        return { fifths: majorFifths((r - 5 + 12) % 12), mode: "major" };
+    }
+    if (lower === "mixolydian") {
+        return { fifths: majorFifths((r - 7 + 12) % 12), mode: "major" };
+    }
+    if (lower === "locrian") {
+        return { fifths: majorFifths((r - 11 + 12) % 12), mode: "major" };
+    }
+    // Major Pentatonic handled above; allow "major pentatonic" alias already.
+    if (lower === "majorpentatonic") {
+        return { fifths: majorFifths(r), mode: "major" };
+    }
+    return null;
+}
+
 export function detectKey(notes: Note[]): KeyInfo {
     if (!notes.length) return { fifths: 0, mode: "major" };
 
@@ -103,29 +145,54 @@ export function detectKey(notes: Note[]): KeyInfo {
         weights[n.p % 12]! += n.v; // velocity 가중
     }
 
-    let bestScore = -Infinity;
-    let bestFifths = 0;
-    let bestMode: "major" | "minor" = "major";
+    // distinct note count (for confidence)
+    const distinctPitches = new Set(notes.map(n => n.p % 12)).size;
+    const noteCount = notes.length;
 
-    // 12개 장조 + 12개 단조 비교
+    // Krumhansl correlation for all 24 keys
+    type Cand = { root: number; mode: "major" | "minor"; score: number; fifths: number };
+    const cands: Cand[] = [];
+
+    // helper: pearson correlation between weights and rotated profile
+    function corr(profile: number[], root: number): number {
+        // profile rotated: key root means profile[(pc - root + 12)%12]
+        let sumW = 0, sumP = 0;
+        for (let pc = 0; pc < 12; pc++) {
+            sumW += weights[pc]!;
+            sumP += profile[(pc - root + 12) % 12]!;
+        }
+        const meanW = sumW / 12, meanP = sumP / 12;
+        let num = 0, denW = 0, denP = 0;
+        for (let pc = 0; pc < 12; pc++) {
+            const w = weights[pc]! - meanW;
+            const p = profile[(pc - root + 12) % 12]! - meanP;
+            num += w * p;
+            denW += w * w;
+            denP += p * p;
+        }
+        const den = Math.sqrt(denW * denP);
+        return den === 0 ? 0 : num / den;
+    }
+
     for (let root = 0; root < 12; root++) {
         for (const [mode, profile] of [["major", MAJOR_PROFILE], ["minor", MINOR_PROFILE]] as const) {
-            let score = 0;
-            for (let pc = 0; pc < 12; pc++) {
-                score += weights[pc]! * profile[(pc - root + 12) % 12]!;
-            }
-            if (score > bestScore) {
-                bestScore  = score;
-                bestMode   = mode;
-                // root를 fifths(조표 샵/플랫 수)로 변환
-                // C=0, G=1, D=2, A=3, E=4, B=5, F#=6, F=-1, Bb=-2, Eb=-3, Ab=-4, Db=-5, Gb=-6
-                const ORDER = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]; // root → fifths
-                bestFifths = ORDER[root]! > 6 ? ORDER[root]! - 12 : ORDER[root]!;
-            }
+            const score = corr(profile as unknown as number[], root);
+            const fifths = mode === "major"
+                ? majorFifths(root)
+                : majorFifths((root + 3) % 12);
+            cands.push({ root, mode, score, fifths });
         }
     }
 
-    return { fifths: bestFifths, mode: bestMode };
+    cands.sort((a, b) => b.score - a.score);
+    const best = cands[0]!;
+    const second = cands[1]!;
+
+    if (noteCount < 8 || (best.score - second.score) < 0.05) {
+        return { fifths: 0, mode: "major" };
+    }
+
+    return { fifths: best.fifths, mode: best.mode };
 }
 
 // ── 음표값 계산 ──────────────────────────────────────────────

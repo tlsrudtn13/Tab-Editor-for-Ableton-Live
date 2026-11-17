@@ -5,7 +5,7 @@
 // scripts/preview.ts. No SDK or DOM dependency.
 // ============================================================
 import type { Note, TrackPayload } from "./types.js";
-import { detectQuantizeGrid, quantizeBeat } from "./music.js";
+import { detectQuantizeGrid, quantizeBeat, keyFromLiveScale } from "./music.js";
 import { applyGuitarVoicing } from "./voicing.js";
 import { toMusicXml } from "./toMusicXml.js";
 import { toAlphaTex } from "./toAlphaTex.js";
@@ -29,7 +29,11 @@ export function buildPayload(
     const tabNotes = applyGuitarVoicing(quantized, DEFAULT_INSTRUMENT)
         .filter(n => n.s >= 1 && n.s <= DEFAULT_INSTRUMENT.stringCount && n.f >= 0);
 
-    const xmlOpts = { instrument: DEFAULT_INSTRUMENT, skipVoicing: true, cues: live?.cues };
+    const xmlOpts: any = { instrument: DEFAULT_INSTRUMENT, skipVoicing: true, cues: live?.cues };
+    if (live?.scale?.enabled) {
+        const k = keyFromLiveScale(live.scale.root, live.scale.name);
+        if (k) xmlOpts.key = k;
+    }
     return {
         id,
         name,

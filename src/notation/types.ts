@@ -50,7 +50,7 @@ export type TrackPayload = {
 };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */
-export type QuantizeGrid = 4 | 8 | 16 | 32;
+export type QuantizeGrid = 4 | 8 | 12 | 16 | 24 | 32;
 
 /** 조표 정보 */
 export type KeyInfo = {

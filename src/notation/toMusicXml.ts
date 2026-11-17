@@ -46,7 +46,7 @@ function spellPitch(midi: number, keyFifths: number) {
 }
 
 // ── 음표값 테이블 & greedy 분해 ──────────────────────────────────────────────
-interface NoteValue { type: string; dots: 0 | 1; units: number; }
+interface NoteValue { type: string; dots: 0 | 1; units: number; triplet?: boolean; }
 
 const BASE_VALUES: ReadonlyArray<{ type: string; quarters: number }> = [
     { type: "whole",   quarters: 4 },
@@ -66,7 +66,14 @@ function buildNoteValueTable(divisions: number): NoteValue[] {
             if (Number.isInteger(units) && units >= 1) table.push({ type: b.type, dots, units });
         }
     }
-    return table.sort((a, b) => b.units - a.units);
+    // Triplet values only meaningful at divisions=12 (1/8T, 1/16T grids).
+    if (divisions === 12) {
+        table.push({ type: "quarter", dots: 0, units: 8, triplet: true });
+        table.push({ type: "eighth",  dots: 0, units: 4, triplet: true });
+        table.push({ type: "16th",    dots: 0, units: 2, triplet: true });
+    }
+    // straight values first when units tie
+    return table.sort((a, b) => b.units - a.units || (Number(a.triplet) - Number(b.triplet)));
 }
 
 /** units 를 표준 음표값들로 greedy 분해 (예: 1.25박 → 4분음표 + 16분음표) */
@@ -94,6 +101,8 @@ interface Token {
     value:   NoteValue;
     tieStart: boolean;      // 다음 조각으로 이어짐
     tieStop:  boolean;      // 이전 조각에서 이어짐
+    tupletStart: boolean;
+    tupletStop:  boolean;
 }
 
 /**
@@ -230,6 +239,8 @@ function timelineToMeasures(
                 value:    p.value,
                 tieStart: el.kind === "note" && i < pieces.length - 1,
                 tieStop:  el.kind === "note" && i > 0,
+                tupletStart: false,
+                tupletStop:  false,
             });
         });
     }
@@ -260,8 +271,9 @@ export function toMusicXml(
     const voiced: Note[] = needVoicing ? applyGuitarVoicing(src, instr) : src;
 
     // ── 3. Grid / Key ─────────────────────────────────────────────────────
-    const grid = opts.quantize ?? detectQuantizeGrid(voiced);   // 4|8|16|32 (분모)
-    const divisions = Math.max(1, Math.round(grid / 4));        // units per quarter
+    const grid = opts.quantize ?? detectQuantizeGrid(voiced);   // 4|8|12|16|24|32 (분모)
+    // triplet grids (12/24) share divisions=12 so triplet values are whole units
+    const divisions = (grid === 12 || grid === 24) ? 12 : Math.max(1, Math.round(grid / 4));
     const key: KeyInfo = opts.key ??
         (voiced.length ? detectKey(voiced) : { fifths: 0, mode: "major" });
 
@@ -277,6 +289,25 @@ export function toMusicXml(
     const totalMeasures = Math.max(1, Math.ceil(cursor / upm));
     const table = buildNoteValueTable(divisions);
     const measures = timelineToMeasures(elems, cursor, table, upm, totalMeasures);
+
+    // Triplet tuplet grouping: mark first/last token of each complete group
+    // of three equal triplet values (rests count).
+    const flat = measures.flat();
+    let ti = 0;
+    while (ti < flat.length) {
+        if (!flat[ti]!.value.triplet) { ti++; continue; }
+        let tj = ti;
+        const v = flat[ti]!.value;
+        while (tj < flat.length && flat[tj]!.value.triplet &&
+               flat[tj]!.value.units === v.units && flat[tj]!.value.type === v.type) tj++;
+        const run = tj - ti;
+        const groups = Math.floor(run / 3);
+        for (let g = 0; g < groups; g++) {
+            flat[ti + g * 3]!.tupletStart = true;
+            flat[ti + g * 3 + 2]!.tupletStop = true;
+        }
+        ti = tj;
+    }
 
     // 리허설 마크(cue) → 마디별 그룹 (measure = floor(beat / 4))
     const cuesByMeasure = new Map<number, string[]>();
@@ -391,6 +422,19 @@ export function toMusicXml(
                     L.push(`        <voice>1</voice>`);
                     L.push(`        <type>${t.value.type}</type>`);
                     if (t.value.dots) L.push(`        <dot/>`);
+                    if (t.value.triplet) {
+                        L.push(`        <time-modification>`);
+                        L.push(`          <actual-notes>3</actual-notes>`);
+                        L.push(`          <normal-notes>2</normal-notes>`);
+                        L.push(`        </time-modification>`);
+                    }
+                    const hasTuplet = t.tupletStart || t.tupletStop;
+                    if (hasTuplet) {
+                        L.push(`        <notations>`);
+                        if (t.tupletStart) L.push(`          <tuplet type="start" bracket="yes"/>`);
+                        if (t.tupletStop) L.push(`          <tuplet type="stop"/>`);
+                        L.push(`        </notations>`);
+                    }
                     L.push(`      </note>`);
                 } else {
                     // chord 구성 노트들 출력 (두 번째부터 <chord/>)
@@ -413,15 +457,23 @@ export function toMusicXml(
                         L.push(`        <voice>1</voice>`);
                         L.push(`        <type>${t.value.type}</type>`);
                         if (t.value.dots) L.push(`        <dot/>`);
+                        if (t.value.triplet) {
+                            L.push(`        <time-modification>`);
+                            L.push(`          <actual-notes>3</actual-notes>`);
+                            L.push(`          <normal-notes>2</normal-notes>`);
+                            L.push(`        </time-modification>`);
+                        }
                         if ((n as any).oor) {
                             L.push(`        <notehead parentheses="yes">normal</notehead>`);
                         }
                         const hasTab = n.s >= 1 && n.f >= 0;
-                        const hasNotations = hasTab || t.tieStart || t.tieStop;
+                        const hasNotations = hasTab || t.tieStart || t.tieStop || t.tupletStart || t.tupletStop;
                         if (hasNotations) {
                             L.push(`        <notations>`);
                             if (t.tieStop)  L.push(`          <tied type="stop"/>`);
                             if (t.tieStart) L.push(`          <tied type="start"/>`);
+                            if (t.tupletStart) L.push(`          <tuplet type="start" bracket="yes"/>`);
+                            if (t.tupletStop)  L.push(`          <tuplet type="stop"/>`);
                             if (hasTab) {
                                 L.push(`          <technical>`);
                                 L.push(`            <fret>${displayFret}</fret>`);

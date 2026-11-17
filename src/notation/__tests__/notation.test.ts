@@ -61,9 +61,9 @@ describe("quantize", () => {
         const ns = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9.25].map((b, i) => n(b, 60 + i));
         expect(detectQuantizeGrid(ns)).toBe(4);
     });
-    it("current behaviour: 1/8 triplets fall back to the 1/16 grid", () => {
+    it("1/8 triplets detect as the 1/8-triplet grid", () => {
         const trip = [n(0, 60), n(1 / 3, 62), n(2 / 3, 64)];
-        expect(detectQuantizeGrid(trip)).toBe(16);
+        expect(detectQuantizeGrid(trip)).toBe(12);
     });
 });
 

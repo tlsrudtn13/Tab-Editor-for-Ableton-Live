@@ -15,7 +15,7 @@ import { quantizeBeat, beatToNoteVal, detectQuantizeGrid } from "./music.js";
 export interface AlphaTexOptions {
     bpm:      number;
     /** 퀀타이즈 그리드. 미지정 시 detectQuantizeGrid() 로 자동 감지 */
-    quantize?: 4 | 8 | 16 | 32;
+    quantize?: 4 | 8 | 12 | 16 | 24 | 32;
 }
 
 /**
@@ -46,12 +46,50 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
     const BEATS_PER_BAR = 4.0;
     const CHORD_TOL     = 0.001; // 퀀타이즈 후 동일 박자 = 화음
 
+    // First pass: build beat groups to compute intervals and triplet flags.
+    interface BeatGroup { start: number; end: number; count: number; interval: number; }
+    const groups: BeatGroup[] = [];
+    let gi = 0;
+    while (gi < sorted.length) {
+        const cur = sorted[gi]!;
+        let gj = gi + 1;
+        while (gj < sorted.length && (sorted[gj]!.b - cur.b) <= CHORD_TOL) gj++;
+        const barIndex = Math.floor(cur.b / BEATS_PER_BAR);
+        const barEndBeat = (barIndex + 1) * BEATS_PER_BAR;
+        let nextBeat: number;
+        if (gj < sorted.length) {
+            const nextBarIdx = Math.floor(sorted[gj]!.b / BEATS_PER_BAR);
+            nextBeat = nextBarIdx === barIndex ? sorted[gj]!.b : barEndBeat;
+        } else {
+            nextBeat = barEndBeat;
+        }
+        const intervalBeats = Math.max(nextBeat - cur.b, 0.125);
+        groups.push({ start: gi, end: gj, count: gj - gi, interval: intervalBeats });
+        gi = gj;
+    }
+
+    // Triplet detection: runs of >=3 equal intervals that are triplet units.
+    const isTripletInterval = (iv: number) =>
+        [2 / 3, 1 / 3, 1 / 6].some(t => Math.abs(t - iv) < 0.01);
+    const tripletFlag = new Array<boolean>(groups.length).fill(false);
+    let k = 0;
+    while (k < groups.length) {
+        if (!isTripletInterval(groups[k]!.interval)) { k++; continue; }
+        let l = k;
+        while (l < groups.length && Math.abs(groups[l]!.interval - groups[k]!.interval) < 0.01) l++;
+        const run = l - k;
+        const complete = Math.floor(run / 3) * 3;
+        for (let m = 0; m < complete; m++) tripletFlag[k + m] = true;
+        k = l;
+    }
+
+    // Second pass: render.
     let tex          = `\\tempo ${Math.round(bpm)}\n.\n`;
     let lastBarIndex = -1;
-    let i            = 0;
-
-    while (i < sorted.length) {
-        const cur      = sorted[i]!;
+    let groupIdx     = 0;
+    gi = 0;
+    while (gi < sorted.length) {
+        const cur      = sorted[gi]!;
         const barIndex = Math.floor(cur.b / BEATS_PER_BAR);
 
         // ── 마디 경계 처리 ───────────────────────────────
@@ -64,39 +102,29 @@ export function toAlphaTex(notes: Note[], opts: AlphaTexOptions): string {
         }
         lastBarIndex = barIndex;
 
-        // ── 화음 그룹화 ──────────────────────────────────
-        let j = i + 1;
-        while (j < sorted.length && (sorted[j]!.b - cur.b) <= CHORD_TOL) j++;
-
-        // ── 간격 기반 음표값 계산 ────────────────────────
-        const barEndBeat = (barIndex + 1) * BEATS_PER_BAR;
-        let nextBeat: number;
-
-        if (j < sorted.length) {
-            const nextBarIdx = Math.floor(sorted[j]!.b / BEATS_PER_BAR);
-            nextBeat = nextBarIdx === barIndex ? sorted[j]!.b : barEndBeat;
-        } else {
-            nextBeat = barEndBeat;
-        }
-
-        const intervalBeats = Math.max(nextBeat - cur.b, 0.125);
+        // find group (already computed)
+        const g = groups[groupIdx]!;
+        const j = g.end;
+        const intervalBeats = g.interval;
         const noteVal       = beatToNoteVal(intervalBeats);
-        const count         = j - i;
+        const count         = g.count;
+        const isTrip        = tripletFlag[groupIdx]!;
 
         if (count === 1) {
-            tex += `${cur.f}.${cur.s}:${noteVal} `;
+            tex += `${cur.f}.${cur.s}:${noteVal}${isTrip ? "{tu 3}" : ""} `;
         } else {
             // 화음
             let chord = "(";
-            for (let k = i; k < j; k++) {
-                const n = sorted[k]!;
-                if (k > i) chord += " ";
+            for (let kk = gi; kk < j; kk++) {
+                const n = sorted[kk]!;
+                if (kk > gi) chord += " ";
                 chord += `${n.f}.${n.s}`;
             }
-            tex += `${chord}):${noteVal} `;
+            tex += `${chord}):${noteVal}${isTrip ? "{tu 3}" : ""} `;
         }
 
-        i = j;
+        gi = j;
+        groupIdx++;
     }
 
     tex += "|\n";

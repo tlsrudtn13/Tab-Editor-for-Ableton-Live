@@ -2,6 +2,7 @@
 import * as alphaTab from "@coderline/alphatab";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { toMusicXml } from "../../src/notation/toMusicXml.js";
+import { keyFromLiveScale } from "../../src/notation/music.js";
 import { applyGuitarVoicing } from "../../src/notation/voicing.js";
 import {
   GUITAR_6, GUITAR_7, GUITAR_8, GUITAR_12,
@@ -334,7 +335,10 @@ export function rebuildScore() {
       transpose:   state.uiTranspose,
       capo:        state.uiCapo,
       cues:        state.curTrack.live && state.curTrack.live.cues,   // Live locators → rehearsal marks
-      quantize:    state.uiQuantize === "auto" ? undefined : state.uiQuantize  // ★ v3
+      quantize:    state.uiQuantize === "auto" ? undefined : state.uiQuantize,  // ★ v3
+      key:         (state.curTrack.live && state.curTrack.live.scale && state.curTrack.live.scale.enabled)
+                    ? (keyFromLiveScale(state.curTrack.live.scale.root, state.curTrack.live.scale.name) || undefined)
+                    : undefined
     });
     state.curTrack.musicXml = xml;
     if (!state.api) createApi();

@@ -21,8 +21,8 @@ exports[`exporters > writes a MusicXML 4.0 score with tab technical data 1`] = `
       <attributes>
         <divisions>2</divisions>
         <key>
-          <fifths>4</fifths>
-          <mode>minor</mode>
+          <fifths>0</fifths>
+          <mode>major</mode>
         </key>
         <time>
           <beats>4</beats>
