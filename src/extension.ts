@@ -1,6 +1,6 @@
 // ============================================================
 // src/extension.ts  (v2 beta release - 진입점 분리 + 버그픽스)
-//   · 진입점 3종: Selection(어레인지) / Clip(단일) / Track(전체)
+//   · 진입점: Selection(어레인지) / Clip(단일) / Track(그 트랙) / All Tracks
 //   · 전체 트랙 모드는 arrangement 클립만 → session 클립 끼어듦 방지
 //   · 셋잇단 미포함 (출시 후 편집기능으로 구현 예정)
 // ============================================================
@@ -10,6 +10,7 @@ import {
     MidiClip,                          // 클립 핸들 → 실제 객체 복원용
     DataModelObject,                   // 선택 레인 핸들의 범용 복원용
     TakeLane,                          // 테이크 레인 → 부모 트랙 추적용
+    MidiTrack,                         // 트랙 우클릭 핸들 복원용
     type ActivationContext,
     type ArrangementSelection,         // 어레인지 선택영역 인자 타입
 } from "@ableton-extensions/sdk";
@@ -92,38 +93,57 @@ export function activate(activation: ActivationContext) {
     if (__TAB_DEV__) startDevHarness(context);
 
     // ──────────────────────────────────────────────────────
-    // ① 전체 트랙 모드 (트랙 이름 우클릭)
-    //    arrangement 클립만 사용 → session 클립 끼어듦 방지 (버그픽스)
+    // ① 트랙 모드
+    //    tabeditor.open    : 우클릭한 MIDI 트랙 하나 (인자 = 트랙 핸들)
+    //    tabeditor.openAll : 모든 트랙 (씬·오디오 트랙 메뉴, 인자 무시)
+    //    arrangement 클립만 사용 → session 클립 끼어듦 방지
     // ──────────────────────────────────────────────────────
-    context.commands.registerCommand("tabeditor.open", async (..._args: unknown[]) => {
-        const tempo = getTempo(context);
-        console.log(`[TAB] opening FULL editor. tempo: ${tempo}`);
+    function trackPayload(rawTrack: any, idx: number, tempo: number): TrackPayload | null {
+        const collected = collectNotes(rawTrack);
+        if (!collected) return null;
+        // arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
+        const allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
+        const trackId = String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
+        return buildPayload(trackId, rawTrack.name ?? "Unknown", allNotes, tempo);
+    }
 
+    async function openAllTracks(): Promise<void> {
+        const tempo = getTempo(context);
+        console.log(`[TAB] opening ALL tracks. tempo: ${tempo}`);
         const payloads: TrackPayload[] = [];
         let trackIdx = 0;
-
         for (const rawTrack of context.application.song.tracks) {
             if (!rawTrack) continue;
             trackIdx++;
-
-            const collected = collectNotes(rawTrack);
-            if (!collected) continue;
-
-            // ★ 버그픽스: arrangement 클립(arr)만 사용. session(ses)은 제외.
-            //   arr 노트는 이미 arrangement 절대 위치를 가지므로 마디가 정렬됨.
-            const allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
-
-            const rawTrackObj = rawTrack as any;
-            const trackId = String(
-                rawTrackObj.id ?? rawTrackObj.rawId ?? rawTrackObj._id ?? `track_${trackIdx}`
-            );
-
-            const p = buildPayload(trackId, rawTrack.name ?? "Unknown", allNotes, tempo);
+            const p = trackPayload(rawTrack, trackIdx, tempo);
             if (p) payloads.push(p);
         }
-
         await showEditor(context, payloads);
+    }
+
+    context.commands.registerCommand("tabeditor.open", async (...args: unknown[]) => {
+        let track: any = null;
+        if (args[0] != null) {
+            try {
+                track = context.getObjectFromHandle(args[0] as any, MidiTrack);
+            } catch (e) {
+                console.warn("[TAB] track resolve failed, opening all tracks:", e);
+            }
+        }
+        if (!track) { await openAllTracks(); return; }
+
+        const tempo = getTempo(context);
+        const name = safeStr(track.name, "Track");
+        const p = trackPayload(track, 1, tempo);
+        if (!p) {
+            console.warn(`[TAB] track "${name}" has no notes in Arrangement clips — editor not opened.`);
+            return;
+        }
+        console.log(`[TAB] track mode: "${name}"`);
+        await showEditor(context, [p]);
     });
+
+    context.commands.registerCommand("tabeditor.openAll", async () => { await openAllTracks(); });
 
     // ──────────────────────────────────────────────────────
     // ② 선택영역 모드 (어레인지: 클립 우클릭 or 드래그 범위)
@@ -200,14 +220,14 @@ export function activate(activation: ActivationContext) {
     // 우클릭 메뉴 등록: 스코프별로 다른 커맨드 + 구분 라벨
     //  - ArrangementSelection: 어레인지 선택영역
     //  - MidiClip: 세션/어레인지 클립 단독
-    //  - MidiTrack/AudioTrack/Scene: 트랙·씬 → 전체
+    //  - MidiTrack: 그 트랙만 / AudioTrack·Scene: 전체 트랙
     // ──────────────────────────────────────────────────────
     const menus: Array<[string, string, string]> = [
         ["MidiTrack.ArrangementSelection", "Open (Selection)", "tabeditor.openSelection"],
         ["MidiClip",                       "Open (Clip)",      "tabeditor.openClip"],
         ["MidiTrack",                      "Open (Track)",     "tabeditor.open"],
-        ["AudioTrack",                     "Open (Track)",     "tabeditor.open"],
-        ["Scene",                          "Open (Track)",     "tabeditor.open"],
+        ["AudioTrack",                     "Open (All Tracks)", "tabeditor.openAll"],
+        ["Scene",                          "Open (All Tracks)", "tabeditor.openAll"],
     ];
     for (const [loc, label, cmd] of menus) {
         try {

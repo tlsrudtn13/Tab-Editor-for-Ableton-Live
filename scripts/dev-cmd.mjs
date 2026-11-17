@@ -7,7 +7,8 @@
 //   node scripts/dev-cmd.mjs fixtures            create track "TAB-TEST" with test clips
 //   node scripts/dev-cmd.mjs payload "TT open chords" [--full]
 //   node scripts/dev-cmd.mjs open "TT open chords"   open the editor (modal) on that clip
-//   node scripts/dev-cmd.mjs openTrack           "Open (Track)" entry point
+//   node scripts/dev-cmd.mjs openTrack "TAB-TEST"  "Open (Track)" on that track
+//   node scripts/dev-cmd.mjs openAll             "Open (All Tracks)"
 //   node scripts/dev-cmd.mjs ui "return document.title"   run JS in the open editor
 //   node scripts/dev-cmd.mjs report              print the editor's latest report (no Live call)
 //   node scripts/dev-cmd.mjs close               close the editor
@@ -43,7 +44,7 @@ async function waitFor(file, timeoutMs) {
 }
 
 const [action, arg, ...rest] = process.argv.slice(2);
-if (!action) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf-8").split("\n").slice(1, 17).join("\n")); process.exit(1); }
+if (!action) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), "utf-8").split("\n").slice(1, 18).join("\n")); process.exit(1); }
 
 const devDir = findDevDir(root);
 if (!devDir) { console.error(`harness not found under ${root} (is "npm run dev" running in Live?)`); process.exit(2); }

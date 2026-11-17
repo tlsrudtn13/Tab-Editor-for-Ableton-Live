@@ -27,6 +27,9 @@ type Cmd = { action: string; clip?: string; js?: string; full?: boolean };
 
 export const DEV_PORT = 5179;
 const TEST_TRACK = "TAB-TEST";
+/** Second track with one arrangement clip, to tell "this track" from "all tracks". */
+const TEST_TRACK_2 = "TAB-TEST-BASS";
+const isTestTrack = (t: any) => t?.name === TEST_TRACK || t?.name === TEST_TRACK_2;
 
 let devDir = "";
 let tempDir = "";
@@ -89,7 +92,7 @@ function summarize(ctx: Ctx) {
 
 async function createFixtures(ctx: Ctx) {
     const song: any = ctx.application.song;
-    for (const t of [...song.tracks]) if (t.name === TEST_TRACK) await song.deleteTrack(t);
+    for (const t of [...song.tracks]) if (isTestTrack(t)) await song.deleteTrack(t);
 
     const track: any = await song.createMidiTrack();
     track.name = TEST_TRACK;
@@ -111,13 +114,20 @@ async function createFixtures(ctx: Ctx) {
         clip.notes = fx.notes;
         created.push(`arrangement @${start}: ${clip.name}`);
     }
+    const bassFx = FIXTURES.find(f => f.name === "TT bass real pitch")!;
+    const bass: any = await song.createMidiTrack();
+    bass.name = TEST_TRACK_2;
+    const bClip: any = await bass.createMidiClip(0, bassFx.length);
+    bClip.name = bassFx.name + " (arr)";
+    bClip.notes = bassFx.notes;
+    created.push(`${TEST_TRACK_2} arrangement @0: ${bClip.name}`);
     return { track: TEST_TRACK, created };
 }
 
 async function cleanup(ctx: Ctx) {
     const song: any = ctx.application.song;
     let removed = 0;
-    for (const t of [...song.tracks]) if (t.name === TEST_TRACK) { await song.deleteTrack(t); removed++; }
+    for (const t of [...song.tracks]) if (isTestTrack(t)) { await song.deleteTrack(t); removed++; }
     return { removed };
 }
 
@@ -154,8 +164,16 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             ctx.commands.executeCommand("tabeditor.openClip", f.clip.handle);
             return { opened: cmd.clip, where: f.where };
         }
-        case "openTrack":
-            ctx.commands.executeCommand("tabeditor.open");
+        case "openTrack": {
+            // Same as right-clicking the track: the track's handle is the argument.
+            const name = cmd.clip ?? "";
+            const t = ctx.application.song.tracks.find((tr: any) => tr?.name === name) as any;
+            if (!t) throw new Error(`track not found: ${name}`);
+            ctx.commands.executeCommand("tabeditor.open", t.handle);
+            return { opened: name };
+        }
+        case "openAll":
+            ctx.commands.executeCommand("tabeditor.openAll");
             return { opened: "all tracks" };
         case "ui": {
             const uiId = `${id}`;

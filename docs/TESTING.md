@@ -33,14 +33,15 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
 3. Drive it from another terminal:
    ```bash
    node scripts/dev-cmd.mjs ping
-   node scripts/dev-cmd.mjs fixtures                 # track "TAB-TEST" with test clips (src/dev/fixtures.ts)
+   node scripts/dev-cmd.mjs fixtures                 # tracks "TAB-TEST" (test clips, src/dev/fixtures.ts) and "TAB-TEST-BASS"
    node scripts/dev-cmd.mjs list
    node scripts/dev-cmd.mjs payload "TT open chords"  # notes, string/fret result (add --full for MusicXML)
    node scripts/dev-cmd.mjs open "TT open chords"     # opens the real editor through the registered command
+   node scripts/dev-cmd.mjs openTrack "TAB-TEST"      # "Open (Track)" on one track; openAll = all tracks
    node scripts/dev-cmd.mjs report                    # editor state: log, errors, TAB numbers drawn
    node scripts/dev-cmd.mjs ui "setMode('tab'); return __tabState.dispMode"
    node scripts/dev-cmd.mjs close
-   node scripts/dev-cmd.mjs cleanup                   # deletes track "TAB-TEST"
+   node scripts/dev-cmd.mjs cleanup                   # deletes tracks "TAB-TEST" and "TAB-TEST-BASS"
    ```
    Files land in `.devstore/**/dev/`. `ui-score-latest.html` holds the rendered score SVG
    and can be opened in a browser to look at it.
