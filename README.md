@@ -54,6 +54,8 @@ String choices, tuning, capo and time signature are saved per clip and restored 
 1. Download the `.ablx` file from [Releases](../../releases).
 2. In Live, open Settings → Extensions and drop the `.ablx` file on the page.
 
+> While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
+
 ## Use
 
 | Right-click | Menu item | Opens |
@@ -67,6 +69,7 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 
 ## Known limitations (beta)
 
+- While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
 - Overlapping notes are written as one voice (with a let-ring mark).
 - New notes go only into rests; use Shift + fret click for chord tones.
 - Selection view and Open (All Tracks) cannot write back. In track view a note cannot move from one clip into another.
@@ -152,6 +155,8 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 1. [Releases](../../releases)에서 `.ablx` 파일을 받습니다.
 2. Live 설정 → Extensions 페이지에 `.ablx` 파일을 끌어다 놓습니다.
 
+> Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
+
 ## 사용
 
 | 우클릭 위치 | 메뉴 | 열리는 범위 |
@@ -165,6 +170,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 
 ## 알려진 제한 (베타)
 
+- Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
 - 선택 구간 보기와 Open (All Tracks)에서는 클립에 반영할 수 없습니다. 트랙 보기에서 노트를 다른 클립으로 옮길 수는 없습니다.

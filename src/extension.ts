@@ -226,16 +226,16 @@ export function activate(activation: ActivationContext) {
     }
 
     /** Apply editor edits to every arrangement clip they touch, in one undo step. */
-    async function applyTrackEdits(rawTrack: any, editCtx: TrackEditContext, edits: any): Promise<void> {
+    async function applyTrackEdits(rawTrack: any, editCtx: TrackEditContext, edits: any): Promise<boolean> {
         const { perClip, dropped } = splitTrackEdits(edits, editCtx.refs, editCtx.spans);
-        if (!perClip.length) { await notify(context, "Nothing to apply: no valid note changes."); return; }
+        if (!perClip.length) { await notify(context, "Nothing to apply: no valid note changes."); return true; }
         const clips: any[] = rawTrack.arrangementClips ?? [];
         for (const part of perClip) {
             const clip = clips[part.cref];
             if (!clip || JSON.stringify(clip.notes ?? []) !== editCtx.snapshots.get(part.cref)) {
                 console.warn(`[TAB] Track apply skipped: clip ${part.cref} changed while the editor was open.`);
                 await notify(context, "Not applied: a clip on this track changed while the editor was open. Reopen it and try again.", 4000);
-                return;
+                return false;
             }
         }
         const total = { changed: 0, added: 0, deleted: 0, dropped };
@@ -245,10 +245,11 @@ export function activate(activation: ActivationContext) {
             total.deleted += merged.stats.deleted; total.dropped += merged.stats.dropped;
             return { clip: clips[part.cref], notes: merged.notes };
         });
-        if (total.changed + total.added + total.deleted === 0) { await notify(context, "Nothing to apply: no valid note changes."); return; }
+        if (total.changed + total.added + total.deleted === 0) { await notify(context, "Nothing to apply: no valid note changes."); return true; }
         context.withinTransaction(() => { for (const r of results) r.clip.notes = r.notes as any; });
         console.log(`[TAB] Track apply complete (${results.length} clip(s)): ${JSON.stringify(total)}`);
         await notify(context, applySummary(total).replace("Applied to clip:", `Applied to ${results.length} clip(s):`));
+        return true;
     }
 
     async function openAllTracks(): Promise<void> {
@@ -302,14 +303,18 @@ export function activate(activation: ActivationContext) {
         if (!result) return;
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
-        if (message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
-        if (message?.action !== "apply" || !message.edits) return;
-        try {
-            await applyTrackEdits(track, editCtx, message.edits);
-        } catch (e) {
-            console.warn("[TAB] Track apply failed:", e);
-            await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
+        if (message?.action === "apply" && message.edits) {
+            try {
+                const ok = await applyTrackEdits(track, editCtx, message.edits);
+                if (ok && message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
+            } catch (e) {
+                console.warn("[TAB] Track apply failed:", e);
+                await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
+            }
+            return;
         }
+        const hasEdits = !!(message?.edits && ((message.edits.changed?.length || 0) + (message.edits.added?.length || 0) + (message.edits.deleted?.length || 0)) > 0);
+        if (!hasEdits && message?.layer) saveLayer(context, message.layerKey || (p as any).layerStorageKey, message.layer);
     });
 
     register("tabeditor.openAll", async () => { await openAllTracks(); });
@@ -428,23 +433,28 @@ export function activate(activation: ActivationContext) {
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         try {
-            if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
-            if (message?.action !== "apply" || !message.edits) return;
-            const current = clip.notes;
-            if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {
-                console.warn("[TAB] Apply skipped: the clip's notes changed while the editor was open.");
-                await notify(context, "Not applied: the clip changed while the editor was open. Reopen it and try again.", 4000);
+            if (message?.action === "apply" && message.edits) {
+                const current = clip.notes;
+                if (!Array.isArray(current) || JSON.stringify(current) !== openedNotes) {
+                    console.warn("[TAB] Apply skipped: the clip's notes changed while the editor was open.");
+                    await notify(context, "Not applied: the clip changed while the editor was open. Reopen it and try again.", 4000);
+                    return;
+                }
+                const merged = mergeClipEdits(current, message.edits, regionStart);
+                if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) {
+                    console.log(`[TAB] Apply has no valid changes: ${JSON.stringify(merged.stats)}`);
+                    if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer); // clip unchanged, layer still matches
+                    await notify(context, "Nothing to apply: no valid note changes.");
+                    return;
+                }
+                context.withinTransaction(() => { clip.notes = merged.notes as any; });
+                if (message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
+                console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
+                await notify(context, applySummary(merged.stats));
                 return;
             }
-            const merged = mergeClipEdits(current, message.edits, regionStart);
-            if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) {
-                console.log(`[TAB] Apply has no valid changes: ${JSON.stringify(merged.stats)}`);
-                await notify(context, "Nothing to apply: no valid note changes.");
-                return;
-            }
-            context.withinTransaction(() => { clip.notes = merged.notes as any; });
-            console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
-            await notify(context, applySummary(merged.stats));
+            const hasEdits = !!(message?.edits && ((message.edits.changed?.length || 0) + (message.edits.added?.length || 0) + (message.edits.deleted?.length || 0)) > 0);
+            if (!hasEdits && message?.layer) saveLayer(context, message.layerKey || storageKey, message.layer);
         } catch (e) {
             console.warn("[TAB] Apply message ignored:", e);
             await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);

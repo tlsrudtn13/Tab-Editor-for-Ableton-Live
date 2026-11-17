@@ -26,8 +26,9 @@ export function sendApply() {
   window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer:currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
 }
 export function sendCancel() {
-  if (editCount() && !window.confirm("Discard your edits and close?")) return;
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action: editCount() ? "cancel" : "close", layer:currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
+  const edits = editCount();
+  if (edits && !window.confirm("Discard your edits and close?")) return;
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action: edits ? "cancel" : "close", layer: edits ? undefined : currentLayer(), layerKey:state.curTrack.layerStorageKey })] });
 }
 export function bindApply() {
   const apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");

@@ -115,3 +115,54 @@ describe("fingering robustness", () => {
         }
     });
 });
+
+describe("locked fingering always wins (T008)", () => {
+    it("keeps an infeasible locked chord exactly", () => {
+        // 65->s3f10, 52->s6f12, 64->s4f14, 78->s2f19
+        const input = [
+            n(0, 65, { s: 3, f: 10, lock: true }),
+            n(0, 52, { s: 6, f: 12, lock: true }),
+            n(0, 64, { s: 4, f: 14, lock: true }),
+            n(0, 78, { s: 2, f: 19, lock: true }),
+        ];
+        const out = assignFingering(input, GUITAR_6);
+        const byP = new Map(out.map(x => [x.p, x]));
+        expect(byP.get(65)).toMatchObject({ s: 3, f: 10, lock: true });
+        expect(byP.get(52)).toMatchObject({ s: 6, f: 12, lock: true });
+        expect(byP.get(64)).toMatchObject({ s: 4, f: 14, lock: true });
+        expect(byP.get(78)).toMatchObject({ s: 2, f: 19, lock: true });
+    });
+
+    it("keeps locked chord inside a phrase of unlocked notes", () => {
+        const chord = [
+            n(1, 65, { s: 3, f: 10, lock: true }),
+            n(1, 52, { s: 6, f: 12, lock: true }),
+            n(1, 64, { s: 4, f: 14, lock: true }),
+            n(1, 78, { s: 2, f: 19, lock: true }),
+        ];
+        const phrase = [
+            n(0, 60), n(0.5, 62),
+            ...chord,
+            n(1.5, 67), n(2, 69),
+        ];
+        const out = assignFingering(phrase, GUITAR_6);
+        const locked = out.filter(x => Math.abs(x.b - 1) < 1e-6);
+        const byP = new Map(locked.map(x => [x.p, x]));
+        expect(byP.get(65)).toMatchObject({ s: 3, f: 10 });
+        expect(byP.get(52)).toMatchObject({ s: 6, f: 12 });
+        expect(byP.get(64)).toMatchObject({ s: 4, f: 14 });
+        expect(byP.get(78)).toMatchObject({ s: 2, f: 19 });
+    });
+
+    it("keeps locked note when more notes than strings", () => {
+        // 7 notes on 6 strings at same beat, one locked
+        const input = [
+            n(0, 40), n(0, 45), n(0, 50), n(0, 55),
+            n(0, 59, { s: 2, f: 0, lock: true }),
+            n(0, 64), n(0, 67),
+        ];
+        const out = assignFingering(input, GUITAR_6);
+        const locked = out.find(x => x.p === 59)!;
+        expect(locked).toMatchObject({ s: 2, f: 0, lock: true });
+    });
+});

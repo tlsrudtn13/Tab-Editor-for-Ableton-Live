@@ -48,7 +48,8 @@ function getPositions(
  */
 export function applyGreedyVoicing(
     notes:      Note[],
-    instrument: InstrumentConfig = DEFAULT_INSTRUMENT
+    instrument: InstrumentConfig = DEFAULT_INSTRUMENT,
+    usedStringsInit?: Set<number>
 ): Note[] {
     if (notes.length === 0) return notes;
 
@@ -81,9 +82,19 @@ export function applyGreedyVoicing(
             (a, b) => sorted[b]!.p - sorted[a]!.p
         );
 
-        const usedStrings = new Set<number>();
+        const usedStrings = new Set<number>(usedStringsInit ?? []);
+
+        // Locked notes keep their string/fret in every path.
+        for (const idx of byPitch) {
+            const n = sorted[idx]!;
+            if (n.lock) {
+                result[idx] = { ...n };
+                if (typeof n.s === "number") usedStrings.add(n.s);
+            }
+        }
 
         for (const idx of byPitch) {
+            if (sorted[idx]!.lock) continue;
             const pitch     = sorted[idx]!.p;
             const positions = getPositions(pitch, instrument);
 

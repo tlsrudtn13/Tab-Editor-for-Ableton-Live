@@ -5,22 +5,37 @@ import { showSelection } from "./overlay";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
 import { saveUndo, updateEditUi } from "./keys";
+import { detectQuantizeGrid } from "../../src/notation/music.js";
 
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v4] 노트 길이 편집 — Dur −/+ (grid 단위 증감) / ⟶Next (다음 노트까지 연장)
    "⟶Next" = 기타프로의 let-ring 대용: 선택 노트를 다음 노트 머리까지 늘리면
    tie 엔진이 마디/박자 경계에서 자동으로 붙임줄을 생성하고 쉼표가 사라집니다.
    ═══════════════════════════════════════════════════════════════════════════ */
+function durLabel(beats: number) {
+  if (Math.abs(beats - 4) < 1e-6) return "1/1";
+  if (Math.abs(beats - 2) < 1e-6) return "1/2";
+  if (Math.abs(beats - 1) < 1e-6) return "1/4";
+  if (Math.abs(beats - 0.5) < 1e-6) return "1/8";
+  if (Math.abs(beats - 0.25) < 1e-6) return "1/16";
+  if (Math.abs(beats - 0.125) < 1e-6) return "1/32";
+  if (Math.abs(beats - 1/3) < 1e-6) return "1/8T";
+  if (Math.abs(beats - 1/6) < 1e-6) return "1/16T";
+  return beats.toFixed(3) + "b";
+}
+
 export function adjustDuration(mode) {
   if (!state.curTrack || !state.curTrack.edit) return;
   if (!state.curTrack || state.selectedNoteIndices.length === 0) {
     log("Dur: 먼저 노트를 선택하세요 (TAB 번호 클릭 = 단일 선택)");
     status("Select a note first"); return;
   }
-  var unit  = 4 / (state.uiQuantize === "auto" ? 16 : state.uiQuantize);  // grid 1단위(박)
   var notes = state.curTrack.notes;
+  var grid = state.uiQuantize === "auto" ? detectQuantizeGrid(notes) : (state.uiQuantize as number);
+  var unit  = 4 / (grid || 16);  // grid 1단위(박)
   var changed = 0;
   var before = notes.map(function(n) { return Object.assign({}, n); });
+  var lastLabel = "";
 
   for (var i = 0; i < state.selectedNoteIndices.length; i++) {
     var n = notes[state.selectedNoteIndices[i]];
@@ -35,12 +50,12 @@ export function adjustDuration(mode) {
         var o = notes[k];
         if ((o.b || 0) > (n.b || 0) + 0.001 && o.b < next) next = o.b;
       }
-      if (next !== Infinity && next - n.b > n.d) { n.d = next - n.b; changed++; }
+      if (next !== Infinity && next - n.b > n.d) { var od = n.d; n.d = next - n.b; n.de = true; changed++; lastLabel = durLabel(od) + " → " + durLabel(n.d); }
       else log("Dur: 이미 다음 노트에 닿아 있음");
     } else {
       var delta = (mode === "+1") ? unit : -unit;
       var nd = Math.max(unit, (n.d || unit) + delta);
-      if (Math.abs(nd - n.d) > 0.001) { n.d = nd; changed++; }
+      if (Math.abs(nd - n.d) > 0.001) { var od2 = n.d; n.d = nd; n.de = true; changed++; lastLabel = durLabel(od2) + " → " + durLabel(n.d); }
     }
   }
 
@@ -52,15 +67,21 @@ export function adjustDuration(mode) {
     updateEditUi();
     log("Duration " + (mode === "next" || mode === "Auto" ?"⟶ next note" : mode) +
         " (" + changed + " note(s))");
+    status("Duration: " + (lastLabel || ((mode === "next" || mode === "Auto") ? "⟶ next" : mode)));
     rebuildScore();
     renderInspector(state.curTrack);
-    // 선택 유지 점등
+    // 선택 유지 점등 (highlight via keys state is enough on rebuild, but keep consistent)
     clearFretboard();
     var sel: any[] = [];
-    for (var i = 0; i < state.selectedNoteIndices.length; i++) {
-      var n = state.curTrack.notes[state.selectedNoteIndices[i]];
-      if (n) { lightFret(n.s, n.f); sel.push({ f: n.f, s: n.s, p: n.p }); }
+    var selNotes = state.selectedNoteIndices.map(function(ii){ return notes[ii]; }).filter(Boolean);
+    if (selNotes.length === 1) {
+      var s0 = selNotes[0];
+      notes.forEach(function(n:any){ if (Math.abs((n.b||0)-(s0.b||0)) < 1e-3) lightFret(n.s,n.f,undefined,{beat:true,p:n.p}); });
+      lightFret(s0.s,s0.f,undefined,{p:s0.p});
+    } else {
+      selNotes.forEach(function(n:any){ lightFret(n.s,n.f,undefined,{p:n.p}); });
     }
+    for (var i = 0; i < selNotes.length; i++) { var sn = selNotes[i]; if (sn) sel.push({ f: sn.f, s: sn.s, p: sn.p }); }
     showSelection(sel, sel.length === 1);
   }
 }

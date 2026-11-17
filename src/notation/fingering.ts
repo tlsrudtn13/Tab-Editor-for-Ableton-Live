@@ -58,16 +58,45 @@ function makeCandidates(indices: number[], sorted: Note[], instrument: Instrumen
         beam = next.slice(0, MAX_CANDIDATES);
         if (!beam.length) return [];
     }
+    const hasLocked = indices.some(i => sorted[i]!.lock);
     // Drop shapes no hand position can play (e.g. a high note over two open-position bass notes):
     // they would break the Viterbi chain. If none is left, the caller falls back to greedy voicing.
-    return beam.map(item => ({
-        positions: item.positions,
-        costs: Array.from({ length: POSITION_COUNT }, (_, p) => candidateCost(item.positions, p + 1)),
-    })).filter(c => c.costs.some(v => Number.isFinite(v)));
+    // If the group has locked notes, keep candidates with a large finite cost instead of dropping them.
+    return beam.map(item => {
+        let costs = Array.from({ length: POSITION_COUNT }, (_, p) => candidateCost(item.positions, p + 1));
+        if (hasLocked && !costs.some(v => Number.isFinite(v))) costs = costs.map(() => 1e6);
+        return { positions: item.positions, costs };
+    }).filter(c => c.costs.some(v => Number.isFinite(v)));
 }
 
 /** Fixed cost of any hand shift, on top of `scale` per fret moved. */
 const SHIFT_BASE = 1.5;
+
+function fallbackWithLocks(groupNotes: Note[], instrument: InstrumentConfig): Note[] {
+    const result = groupNotes.map(n => ({ ...n }));
+    const used = new Set<number>();
+    const lockedIdx = result.map((n, i) => n.lock ? i : -1).filter(i => i >= 0);
+    const unlockedIdx = result.map((n, i) => !n.lock ? i : -1).filter(i => i >= 0);
+    for (const i of lockedIdx) {
+        const n = result[i]!;
+        if (typeof n.s === "number") used.add(n.s);
+        if (n.oor === undefined) n.oor = undefined;
+    }
+    const unlocked = unlockedIdx.map(i => result[i]!);
+    const voiced = applyGreedyVoicing(unlocked, instrument, used);
+    unlockedIdx.forEach((i, j) => {
+        const v = voiced[j]!;
+        result[i] = { ...v, lock: result[i]!.lock };
+    });
+    // ensure locked notes keep exact s/f even if something odd happened
+    for (const i of lockedIdx) {
+        const orig = groupNotes[i]!;
+        result[i] = { ...result[i]!, s: orig.s, f: orig.f, lock: true };
+        if (orig.oor !== undefined) result[i]!.oor = orig.oor;
+        else if (result[i]!.oor === undefined) delete result[i]!.oor;
+    }
+    return result;
+}
 
 function l1(values: number[], scale: number): { costs: number[]; sources: number[] } {
     const costs = values.slice();
@@ -107,22 +136,23 @@ export function assignFingering(notes: Note[], instrument: InstrumentConfig): No
         groups.push({ indices, beat, candidates: [] }); i = j;
     }
     for (const group of groups) {
+        const original = group.indices.slice();
         const valid = group.indices.filter(i => positions(sorted[i]!.p, instrument).length > 0);
         if (valid.length !== group.indices.length) {
-            const legacy = applyGreedyVoicing(group.indices.map(i => sorted[i]!), instrument);
-            group.indices.forEach((i, j) => { if (legacy[j]!.oor !== undefined) result[i] = legacy[j]!; });
+            const placed = fallbackWithLocks(group.indices.map(i => sorted[i]!), instrument);
+            group.indices.forEach((i, j) => { result[i] = placed[j]!; });
         }
-        if (!valid.length) continue;
+        if (!valid.length) { group.indices = []; group.candidates = []; continue; }
         if (valid.length > instrument.stringCount) {
-            const legacy = applyGreedyVoicing(valid.map(i => sorted[i]!), instrument);
-            valid.forEach((i, j) => { result[i] = legacy[j]!; });
-            continue;
+            const placed = fallbackWithLocks(valid.map(i => sorted[i]!), instrument);
+            valid.forEach((i, j) => { result[i] = placed[j]!; });
+            group.indices = []; group.candidates = []; continue;
         }
         group.indices = valid; // candidates cover only the playable notes
         group.candidates = makeCandidates(valid, sorted, instrument);
         if (!group.candidates.length) {
-            const legacy = applyGreedyVoicing(valid.map(i => sorted[i]!), instrument);
-            valid.forEach((i, j) => { result[i] = legacy[j]!; });
+            const placed = fallbackWithLocks(valid.map(i => sorted[i]!), instrument);
+            valid.forEach((i, j) => { result[i] = placed[j]!; });
         }
     }
 

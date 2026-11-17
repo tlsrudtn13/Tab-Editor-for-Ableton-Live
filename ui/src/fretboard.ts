@@ -50,16 +50,32 @@ export function buildFretboard() {
 }
 
 export function clearFretboard() {
-  var lit = document.querySelectorAll(".fc.lit");
-  for (var i = 0; i < lit.length; i++) lit[i].classList.remove("lit");
-  document.getElementById("fb-note-label")!.textContent = "";
+  var cells = document.querySelectorAll(".fc.lit, .fc.beat");
+  for (var i = 0; i < cells.length; i++) {
+    cells[i].classList.remove("lit");
+    cells[i].classList.remove("beat");
+    var nd = cells[i].querySelector(".nd");
+    if (nd) nd.textContent = String(cells[i].getAttribute("data-f") || "");
+  }
+  var lbl = document.getElementById("fb-note-label");
+  if (lbl) lbl.textContent = "";
 }
 
-export function lightFret(s: any, f: any, label?: any) {
+export function lightFret(s: any, f: any, label?: any, opts?: { beat?: boolean; p?: number }) {
   var cell = document.getElementById("fc-" + s + "-" + f);
   if (cell) {
-    cell.classList.add("lit");
-    if (label) document.getElementById("fb-note-label")!.textContent = label;
+    var beat = !!(opts && opts.beat);
+    cell.classList.toggle("lit", !beat);
+    cell.classList.toggle("beat", beat);
+    var nd = cell.querySelector(".nd");
+    if (nd) {
+      var p = opts && typeof opts.p === "number" ? opts.p : ((getOpenStrings()[s] || 40) + f);
+      nd.textContent = NOTE_NAMES[((p % 12) + 12) % 12];
+    }
+    if (label) {
+      var lbl = document.getElementById("fb-note-label");
+      if (lbl) lbl.textContent = label;
+    }
   }
 }
 
@@ -75,15 +91,16 @@ export function updateScaleOverlay() {
     c.classList.remove("scale", "scale-root");
     var pitch = (OPEN[s] || 40) + f;
     var pc    = ((pitch % 12) + 12) % 12;
+    var active = c.classList.contains("lit") || c.classList.contains("beat");
     if (ivs) {
       var iv = ((pc - state.uiScaleRoot) + 12) % 12;
       if (ivs.indexOf(iv) !== -1) {
         c.classList.add("scale");
         if (iv === 0) c.classList.add("scale-root");
       }
-      if (nd) nd.textContent = (iv === 0) ? NOTE_NAMES[pc] : "";   // 스케일 모드: 루트만 음이름
+      if (nd && !active) nd.textContent = (iv === 0) ? NOTE_NAMES[pc] : "";   // 스케일 모드: 루트만 음이름
     } else {
-      if (nd) nd.textContent = String(f);        // 기본 모드: fret 번호
+      if (nd && !active) nd.textContent = String(f);        // 기본 모드: fret 번호
     }
   }
 }

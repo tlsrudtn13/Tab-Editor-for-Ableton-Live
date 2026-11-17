@@ -192,7 +192,12 @@ function buildTimeline(
         let dur = Math.min(g.dur, next - g.start);  // 다음 onset 침범 컷
         // ★ Auto-Legato: 남는 미세 갭(≤ legatoUnits)은 노트를 늘려 흡수
         const gap = next === Infinity ? 0 : next - (g.start + dur);
-        if (gap > 0 && gap <= legatoUnits) dur += gap;
+        const userDur = g.notes.some(n => (n as any).de);
+        if (!userDur && gap > 0 && gap <= legatoUnits) dur += gap;
+        if (userDur) {
+            const deDur = Math.max(...g.notes.filter(n => (n as any).de).map(n => Math.max(1, Math.round(n.d * divisions))));
+            dur = Math.min(deDur, next - g.start);
+        }
 
         dur = Math.max(1, dur);
         elems.push({

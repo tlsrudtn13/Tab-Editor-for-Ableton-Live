@@ -26,6 +26,8 @@ export type Note = {
     bend?: BendAmount;
     oor?: number;  // 음역 밖 표시: 1=고음(가상프렛>24), 2=저음(옥타브 폴딩)
     lock?: boolean;
+    /** Duration was set by the user (skip auto-legato, preserve exact duration). */
+    de?: true;
     oid?: number;
     /** Track view: index of the arrangement clip the note comes from (see TrackClipSpan). */
     cref?: number;

@@ -33,7 +33,15 @@ function render() {
 function highlightSelection() {
   clearFretboard();
   const ns = state.selectedNoteIndices.map(i => state.curTrack.notes[i]).filter(Boolean);
-  ns.forEach(n => lightFret(n.s, n.f));
+  if (ns.length === 1 && state.curTrack && Array.isArray(state.curTrack.notes)) {
+    const sel = ns[0];
+    state.curTrack.notes.forEach((n: any) => {
+      if (Math.abs((n.b || 0) - (sel.b || 0)) < 1e-3) lightFret(n.s, n.f, undefined, { beat: true, p: n.p });
+    });
+    lightFret(sel.s, sel.f, undefined, { p: sel.p });
+  } else {
+    ns.forEach(n => lightFret(n.s, n.f, undefined, { p: n.p }));
+  }
   showSelection(ns.map(n => ({ f:n.f, s:n.s, p:n.p })), ns.length === 1);
   document.querySelectorAll("#note-tbody tr.sel").forEach(r => r.classList.remove("sel"));
   state.selectedNoteIndices.forEach(i => { const r=document.getElementById("nr-"+i); if(r) r.classList.add("sel"); });
@@ -62,7 +70,7 @@ function pitchChange(delta) {
   state.selectedNoteIndices.forEach(i=>{ const n=notes[i]; if(!n)return; const p=n.p+delta; if(p<0||p>127)return;
     let f=p-(open[n.s]||40), s=n.s;
     if(f<0||f>24){ f=Infinity; for(let st=1;st<=count;st++){const x=p-(open[st]||40);if(x>=0&&x<=24&&x<f){f=x;s=st;}} if(!Number.isFinite(f))return; }
-    n.p=p;n.s=s;n.f=f;if(n.oid!==undefined)n.dirty=true;touched=true;
+    n.p=p;n.s=s;n.f=f;n.lock=true;if(n.oid!==undefined)n.dirty=true;touched=true;
   }); if(touched){saveUndo(before);render();}
 }
 /** Put the insert cursor on a rest (b, d in beats from the score start). */
