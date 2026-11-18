@@ -290,7 +290,7 @@ export function refreshAnnUi() {
   const sel = document.getElementById("ui-key") as HTMLSelectElement | null;
   if (sel) {
     const live = scoreKeyLiveLabel();
-    const first = sel.options[0]; if (first) first.textContent = "Live: " + (live || "auto");
+    const first = sel.options[0]; if (first) first.textContent = "Key: " + (live ? live + " (Live)" : "auto");
     const k = t && t.ann && t.ann.key;
     sel.value = k ? k.fifths + ":" + (k.minor ? "min" : "maj") : "live";
     sel.classList.toggle("fixed", !!k);

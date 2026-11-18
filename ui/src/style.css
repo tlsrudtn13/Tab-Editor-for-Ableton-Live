@@ -104,13 +104,13 @@ body { display:flex; flex-direction:row; }
 
 /* ── Toolbar ── */
 #toolbar {
-  height:32px; display:flex; align-items:center; gap:3px; padding:0 8px;
+  min-height:32px; display:flex; align-items:center; gap:3px; padding:3px 8px;
   background:var(--p-live-input-bg);
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
-  flex-wrap:nowrap;
+  flex-wrap:wrap; row-gap:4px;   /* at a large zoom the right group wraps instead of hiding Close (designer D015) */
 }
 #edit-toolbar {
-  height:28px; display:flex; align-items:center; gap:4px; padding:0 8px;
+  min-height:28px; flex-wrap:wrap; row-gap:4px; display:flex; align-items:center; gap:4px; padding:3px 8px;
   background:var(--p-live-input-bg);
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
 }
@@ -140,6 +140,10 @@ body { display:flex; flex-direction:row; }
 }
 .btn:hover { background:rgba(255,255,255,.08); }
 .btn.on    { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
+/* secondary tools (Data, Log): quieter than the main actions (designer D015) */
+.btn.quiet { background:transparent; border-color:transparent; color:var(--p-live-text-secondary); font-weight:500; }
+.btn.quiet:hover { border-color:var(--p-live-control-border); color:var(--p-live-text-primary); }
+.btn.quiet.on { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
 /* PDF: a neutral toolbar button like ATex / Data / Log (designer D014: the blue broke Live's monochrome toolbar) */
 .tn2 { font-size:9px; color:var(--p-live-text-secondary); font-style:italic; user-select:none; white-space:nowrap; }
 
@@ -209,6 +213,8 @@ body { display:flex; flex-direction:row; }
 #keys-popover.hidden { display:none; }
 .kp-title { font-weight:700; margin-bottom:4px; }
 .kp-table { border-collapse:collapse; }
+.kp-about { margin-top:8px; padding-top:6px; border-top:1px solid var(--p-live-control-border); font-size:9.5px; line-height:1.5; color:var(--p-live-text-secondary); max-width:520px; }
+.kp-about b { color:var(--p-live-text-primary); }
 .kp-table td { padding:2px 6px; vertical-align:top; border-bottom:1px solid var(--p-live-control-border); }
 .kp-table td:first-child { white-space:nowrap; color:#00c8ff; font-weight:600; }
 
@@ -409,7 +415,8 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 /* ── Annotations: key, title, chord picker (ui/src/annotate.ts) ── */
 #ui-key { min-width:92px; max-width:132px; padding:0 6px; }
 #ui-key.fixed { border-color:#ff764d; color:var(--p-live-text-primary); }
-.ui-title-label { margin-left:auto; margin-right:6px; font-size:10px; color:#999999; }
+.ui-title-wrap { margin-left:auto; display:flex; align-items:center; white-space:nowrap; }   /* label + field wrap together */
+.ui-title-label { margin-right:6px; font-size:10px; color:#999999; }
 #ui-zoom { width:58px; flex-shrink:0; }
 /* Splitter above a bottom panel (ui/src/panelSize.ts): drag = resize, like the line above Live's Clip view */
 .panel-splitter { flex-shrink:0; height:6px; margin:-3px 0; position:relative; z-index:6; cursor:ns-resize; }

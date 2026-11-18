@@ -270,11 +270,16 @@ async function showEditor(
     //   (encodeURI는 슬래시 ':' 등 URL 구조 문자는 보존하고 공백만 %20 처리)
     const fwdPath = htmlPath.split(path.sep).join("/");
     const fileUrl = encodeURI("file:///" + fwdPath);
-    console.log(`[TAB] loading from file: ${fileUrl}`);
+    if (__TAB_DEV__) console.log(`[TAB] loading from file: ${fileUrl}`);
     
     // dev build: load through the harness server so the editor can report back
     const url = (__TAB_DEV__ && devEditorUrl(htmlPath)) || fileUrl;
-    return await context.ui.showModalDialog(url, 1400, 900) as string | undefined;
+    try {
+        return await context.ui.showModalDialog(url, 1400, 900) as string | undefined;
+    } finally {
+        // the page is ~5 MB; do not leave one behind per open
+        try { fs.unlinkSync(htmlPath); } catch { /* already gone or locked */ }
+    }
 }
 
 // ============================================================

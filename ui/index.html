@@ -43,9 +43,9 @@
       <option value="16">1/16</option>
       <option value="24">1/16T</option>
       <option value="32">1/32</option>
-      <option value="auto" selected>Auto</option>
+      <option value="auto" selected>Grid: auto</option>
     </select>
-    <select id="ui-key" class="tsel" title="Key signature: follow Live's scale, or fix one for this clip"><option value="live">Live: auto</option></select>
+    <select id="ui-key" class="tsel" title="Key signature: follow Live's scale, or fix one for this clip"><option value="live">Key: auto</option></select>
     <select id="ui-timesig" class="tsel" title="Time signature"><option>4/4</option><option>3/4</option><option>2/4</option><option>5/4</option><option>6/8</option><option>7/8</option><option>9/8</option><option>12/8</option></select>
     <label class="numlab">Trans
       <input type="number" id="ui-transpose" value="0" min="-24" max="24" />
@@ -57,15 +57,15 @@
 
     <!-- Group 4: Panels & Export -->
     <button class="btn pdf" onclick="exportPDF()" title="Save as PDF">&#x1F5B6; PDF</button>
-    <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex">&#128194; ATex</button>
-    <button class="btn" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
-    <button class="btn" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
+    <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex (text tab format)">AlphaTex</button>
+    <button class="btn quiet" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
+    <button class="btn quiet" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
     <select class="tsel" id="ui-zoom" title="Zoom: text, toolbars and score (Ctrl + / Ctrl - / Ctrl 0)"></select>
     <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark / light theme">&#9728;</button>
 
     <span class="tn2" id="status">&ndash;</span>
     <span id="edit-count" class="hidden">* 0 edits</span>
-    <button class="btn" id="btn-refinger" title="Clear saved fingering and re-run auto fingering">Re-finger</button>
+    <button class="btn" id="btn-refinger" title="Clear saved fingering and re-run auto fingering">Refinger</button>
     <button class="btn edit-cancel" id="btn-cancel">Cancel</button>
     <button class="btn edit-apply" id="btn-apply">Apply to Clip</button>
   </div>
@@ -83,14 +83,14 @@
     <button class="btn rb" id="rb-tie"     title="Tie (L)">⌒</button>
     <button class="btn rb" id="rb-rest"    title="Rest (R)">𝄽</button>
     <div class="sp"></div>
-    <button class="btn rb" id="rb-ins" title="Insert beat (Ctrl+Insert)">Ins beat</button>
-    <button class="btn rb" id="rb-del" title="Delete beat (Shift+Delete)">Del beat</button>
+    <button class="btn rb" id="rb-ins" title="Insert beat (Ctrl+Insert)">+ Beat</button>
+    <button class="btn rb" id="rb-del" title="Delete beat (Shift+Delete)">&#8722; Beat</button>
     <div class="sp"></div>
     <button class="btn rb" id="btn-chord" title="Chord name at the cursor or selection (K): suggestions from the notes">Chord</button>
     <button class="btn rb" id="btn-autochords" title="Auto-detect chords (Shift+click clears auto)">Auto chords</button>
     <button class="btn rb" id="btn-lyrics" title="Lyrics (Ctrl+L): one syllable per note; Space / Tab next, - hyphen, Enter done">Lyrics</button>
-    <label for="ui-title" class="ui-title-label">Title</label>
-    <input type="text" id="ui-title" class="ui-title" maxlength="120" placeholder="Title" title="Title above the score and in the PDF (empty = tab name)" />
+    <span class="ui-title-wrap"><label for="ui-title" class="ui-title-label">Title</label>
+    <input type="text" id="ui-title" class="ui-title" maxlength="120" placeholder="Title" title="Title above the score and in the PDF (empty = tab name)" /></span>
   </div>
 
   <div id="viewer"><div id="alphaTab"></div></div>
@@ -112,7 +112,7 @@
     <div class="sp"></div>
     <span class="tl">Tech</span>
     <span id="tech-palette">
-      <button class="btn" data-tech="lr" onclick="toggleTech('lr')" title="Let ring (I)">LR</button>
+      <button class="btn" data-tech="lr" onclick="toggleTech('lr')" title="Let ring (I)">Ring</button>
       <button class="btn" data-tech="pm" onclick="toggleTech('pm')" title="Palm mute (P)">PM</button>
       <button class="btn" data-tech="hp" onclick="toggleTech('hp')" title="Hammer-on / pull-off (H)">H/P</button>
       <button class="btn" data-tech="sl" onclick="toggleTech('sl')" title="Slide (S)">SL</button>
@@ -151,6 +151,12 @@
         <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
         <tr><td>Ctrl+Enter</td><td>Apply</td></tr>
       </table>
+      <div class="kp-about">
+        <div><b>Tab Editor</b> <span id="kp-version"></span> · an extension for Ableton Live · MIT licence</div>
+        <div>Score rendering and playback: alphaTab (MPL-2.0, alphatab.net) · Music font: Bravura (SIL OFL 1.1, Steinberg)
+          · Sounds: SONiVOX soundfont (Apache-2.0) · PDF: jsPDF (MIT). Full texts in THIRD_PARTY_NOTICES.md inside the package.</div>
+        <div>Ableton and Live are trademarks of Ableton AG. Tab Editor is an independent project, not affiliated with or endorsed by Ableton.</div>
+      </div>
     </div>
   </div>
 

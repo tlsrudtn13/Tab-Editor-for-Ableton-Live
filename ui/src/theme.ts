@@ -77,8 +77,6 @@ export function getAtRes() {
 
 export function toggleTheme() {
   try {
-    console.log("toggleTheme called");
-
     state.isLight = !state.isLight;
     document.documentElement.classList.toggle("light", state.isLight);
 

@@ -1,10 +1,19 @@
-# Tab Editor for Ableton Live
+# Tab Editor
+
+*An extension for Ableton Live:* Guitar Pro–style TAB, staff and drum notation for your MIDI clips.
 
 A guitar/bass tablature and standard-notation editor that runs inside Ableton Live 12.
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.17.6). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Version 1.0.0. Runs on Ableton Live 12 Suite beta with Extensions. Extensions are still a public beta
+> (SDK 1.0.0-beta.1), so a Live update may need a matching Tab Editor build; check [Releases](../../releases).
+
+## Requirements
+
+- Ableton Live 12 **Suite**, beta 12.4.5 or later, with Extensions (not Standard, Intro or Lite).
+  Extensions come with Live's public beta: see [ableton.com/live/extensions](https://www.ableton.com/en/live/extensions/).
+- Windows 11 (tested). macOS should work but is not tested yet.
 
 ## Features
 
@@ -71,22 +80,26 @@ Overlapping arpeggio notes are marked let ring automatically.
 editor was open, nothing is written and Live shows a message.
 
 String choices, tuning, capo and time signature are saved per clip and restored when you open it again.
-Edited fingering is kept per clip, also after renaming or moving the clip; Re-finger clears it.
+Edited fingering is kept per clip, also after renaming or moving the clip; Refinger clears it.
 
 **Drums.** A track with a Drum Rack (or a drum-named track playing GM drum keys) opens as a drum staff
 with a drum map table underneath (Note | Pad | Notation | Voice, one row per pad). In Open (Clip) - Edit and Open (Track) - Edit the cursor moves over beats
 (Left/Right) and drum pieces (Up/Down, top of the staff first; the dim **+ piece** rows in the drum map
 are pieces the clip does not use yet). **Enter** adds or removes a hit, **Delete** removes it,
 **Alt+Up/Down** changes its piece (closed to open hi-hat, snare to side stick ...), **G / A / N** set
-ghost (velocity 35), accent (127) or normal (100). The Value buttons, dot, triplet and Ins/Del beat work
+ghost (velocity 35), accent (127) or normal (100). The Value buttons, dot, triplet and + Beat / − Beat work
 as on guitar. Apply writes only new and changed hits; untouched hits keep their exact timing and velocity.
 
 ## Install
 
 1. Download the `.ablx` file from [Releases](../../releases).
 2. In Live, open Settings → Extensions and drop the `.ablx` file on the page.
+3. Right-click a MIDI clip: the **Open (Clip) - Edit** entry appears. If not, restart Live, and check that
+   Developer Mode is off (with Developer Mode on, Live does not load installed extensions).
 
-> While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
+Settings that belong to a clip (fingering, techniques, chord names, lyrics, title) are saved in the
+extension's storage folder in Live, not in the Live Set; the MIDI itself only changes when you Apply.
+Report bugs and ideas in [Issues](../../issues).
 
 ## Use
 
@@ -105,9 +118,8 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 
 **Several tabs.** Live writes back only when the editor closes, so each tab keeps its own edits while you switch tabs. A tab with edits gets an **Apply** button in the track list: click it (it turns orange, ✓ Apply) to have that tab written to its clip(s). **Close & Apply** then writes every marked tab in one Live undo step; edits in unmarked tabs are discarded after a confirm. Use the editor's Close button: closing the window with its own × applies nothing.
 
-## Known limitations (beta)
+## Known limitations
 
-- While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
 - Overlapping notes are written as one voice (with a let-ring mark).
 - New notes go only into rests; use Shift + fret click for chord tones.
 - In track and selection views a note cannot move from one clip into another; a new note outside every clip is dropped. Applying a selection keeps the clips' saved fingering for the notes outside the selection.
@@ -124,7 +136,7 @@ npm run dev        # build with the dev harness and attach to Live (see docs/TES
 npm run package    # create the .ablx package
 ```
 
-How the work is split between people and agents is in [AGENTS.md](AGENTS.md).
+See [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## License
 
@@ -134,16 +146,31 @@ MIT, see [LICENSE](LICENSE).
 
 - Score rendering and playback: [alphaTab](https://alphatab.net) (MPL-2.0)
 - Sound: Sonivox soundfont bundled with alphaTab, Copyright (c) 2004-2006 Sonic Network Inc. (Apache-2.0)
+- Music font: Bravura by Steinberg (SIL Open Font License 1.1)
+- 악보 글꼴: Steinberg의 Bravura (SIL Open Font License 1.1)
 - PDF: [jsPDF](https://github.com/parallax/jsPDF) (MIT)
+
+Ableton과 Live는 Ableton AG의 상표입니다. Tab Editor는 Ableton과 제휴하거나 승인받지 않은 독립 프로젝트입니다.
+
+Licence texts of these components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) (also inside the `.ablx`).
+
+Ableton and Live are trademarks of Ableton AG. Tab Editor is an independent project, not affiliated with
+or endorsed by Ableton.
 
 ---
 
-# Tab Editor for Ableton Live (한국어)
+# Tab Editor (한국어)
 
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.17.6). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 버전 1.0.0. Extensions가 들어 있는 Ableton Live 12 Suite 베타에서 동작합니다. Extensions 자체가 아직 공개 베타(SDK
+> 1.0.0-beta.1)라서 Live가 업데이트되면 맞는 빌드가 필요할 수 있습니다. [Releases](../../releases)를 확인하세요.
+
+## 요구 사항
+
+- Ableton Live 12 **Suite** 베타 12.4.5 이상, Extensions 포함 (Standard, Intro, Lite는 안 됨).
+- Windows 11에서 테스트했습니다. macOS는 아직 테스트하지 않았습니다.
 
 ## 기능
 
@@ -211,7 +238,7 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 아무것도 쓰지 않고 안내 메시지를 띄웁니다.
 
 고른 줄, 튜닝, 카포, 박자표는 클립마다 저장되어 다시 열 때 복원됩니다.
-편집한 운지는 클립 이름을 바꾸거나 옮긴 뒤에도 클립별로 유지되며, Re-finger는 이를 지웁니다.
+편집한 운지는 클립 이름을 바꾸거나 옮긴 뒤에도 클립별로 유지되며, Refinger는 이를 지웁니다.
 
 **드럼.** Drum Rack이 있는 트랙(또는 이름이 드럼이고 GM 드럼 키를 쓰는 트랙)은 드럼 악보와 그 아래 드럼 맵
 표(노트 | 패드 | 악보 기호 | 손·발, 패드마다 한 줄)로 열립니다. Open (Clip) - Edit과 Open (Track) - Edit에서는 커서가 박(←/→)과 드럼 악기(↑/↓, 오선
@@ -224,8 +251,10 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 
 1. [Releases](../../releases)에서 `.ablx` 파일을 받습니다.
 2. Live 설정 → Extensions 페이지에 `.ablx` 파일을 끌어다 놓습니다.
+3. MIDI 클립을 우클릭하면 **Open (Clip) - Edit**이 보입니다. 안 보이면 Live를 다시 켜고, Developer Mode가 꺼져 있는지
+   확인하세요(Developer Mode가 켜져 있으면 설치한 익스텐션을 불러오지 않습니다).
 
-> Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
+버그와 제안은 [Issues](../../issues)에 남겨 주세요.
 
 ## 사용
 
@@ -244,9 +273,8 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 
 **탭이 여러 개일 때.** Live에는 에디터를 닫을 때만 반영되므로, 탭을 옮겨 다녀도 탭마다 편집 내용이 남아 있습니다. 편집한 탭은 왼쪽 트랙 목록에 **Apply** 버튼이 켜집니다. 눌러 두면(주황색 ✓ Apply) 그 탭이 클립에 반영 대상이 됩니다. **Close & Apply**를 누르면 표시한 탭이 모두 Live 실행 취소 한 번으로 묶여 반영되고, 표시하지 않은 탭의 편집은 확인 후 버려집니다. 창의 × 버튼으로 닫으면 아무것도 반영되지 않으니 에디터의 Close 버튼을 쓰세요.
 
-## 알려진 제한 (베타)
+## 알려진 제한
 
-- Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
 - 트랙 보기와 선택 구간 보기에서 노트를 다른 클립으로 옮길 수는 없고, 어느 클립에도 속하지 않는 새 노트는 버려집니다. 선택 구간을 반영해도 선택 밖 노트의 저장된 운지는 그대로 둡니다.

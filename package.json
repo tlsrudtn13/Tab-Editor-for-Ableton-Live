@@ -1,13 +1,16 @@
 {
   "name": "tab-editor-for-ableton-live",
-  "version": "0.17.6",
+  "version": "1.0.0",
   "type": "module",
+  "private": true,
+  "license": "MIT",
+  "description": "Guitar/bass tablature, staff and drum notation editor for MIDI clips, as an extension for Ableton Live",
   "main": "dist/extension.js",
   "scripts": {
     "build:ui": "vite build",
     "build": "npm run build:ui && tsc --noEmit && tsx build.ts",
     "start": "npm run build:ui && tsx build.ts && extensions-cli run",
-    "package": "npm run build && extensions-cli package -i dist-ui/index.html",
+    "package": "npm run build && extensions-cli package -i LICENSE -i THIRD_PARTY_NOTICES.md",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "typecheck:ui": "tsc -p ui",

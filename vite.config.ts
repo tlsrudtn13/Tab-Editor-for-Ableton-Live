@@ -3,13 +3,16 @@
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 import path from "path";
+import fs from "fs";
+
+const version = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
 
 
 export default defineConfig(({ mode }) => ({
   root: "ui",
 
   // `vite build --mode dev` turns on ui/src/devReporter.ts (test harness only)
-  define: { __TAB_DEV__: JSON.stringify(mode === "dev") },
+  define: { __TAB_DEV__: JSON.stringify(mode === "dev"), __APP_VERSION__: JSON.stringify(version) },
 
   build: {
     outDir: "../dist-ui",

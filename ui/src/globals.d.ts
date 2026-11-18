@@ -1,5 +1,7 @@
 /** true only in dev builds (`vite build --mode dev`); see vite.config.ts. */
 declare const __TAB_DEV__: boolean;
+/** package.json version, set at build time (vite.config.ts). */
+declare const __APP_VERSION__: string;
 
 interface Window {
   tracks?: any;

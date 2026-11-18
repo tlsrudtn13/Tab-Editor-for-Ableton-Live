@@ -97,7 +97,7 @@ from display pitches, so AlphaTex gives the GP7 noteheads, positions and playbac
 in one step. Playback uses alphaTab's percussion channel (MIDI channel 10).
 
 In drum mode the editor hides the fretboard, Staff/TAB buttons, instrument menu,
-transpose/capo, the selection/technique bar, Re-finger and Tie; it shows the pad legend.
+transpose/capo, the selection/technique bar, Refinger and Tie; it shows the pad legend.
 Guitar tracks are unchanged.
 
 ## 5. Editing — `src/notation/drumEdit.ts`, `ui/src/drums.ts`
@@ -115,10 +115,10 @@ one Live undo step, nothing written when the clip changed while the editor was o
 - **Keys.** Left/Right beat (both voices: a kick-only beat is a stop), Ctrl+Left/Right bar,
   Up/Down lane, **Enter** add / remove the hit, **Delete** / Backspace remove, **Alt+Up/Down**
   move the hit to the next lane (= new pitch), **G / A / N** velocity 35 / 127 / 100 (ghost,
-  accent, normal). Value 1/1–1/32 (Ctrl+1..6), dot, triplet, Rest (R) and Ins/Del beat as on
+  accent, normal). Value 1/1–1/32 (Ctrl+1..6), dot, triplet, Rest (R) and + Beat / − Beat as on
   guitar. Digits, technique letters and Tie do nothing on drums.
 - **Write-back.** Untouched hits are not sent. A changed hit sends only pitch and velocity
-  unless it moved (Ins/Del beat) or its length was set, so humanized timing stays exact. New
+  unless it moved (+ Beat / − Beat) or its length was set, so humanized timing stays exact. New
   hits sit on the grid slot of the cursor. The kit map goes back with Apply or Close when it
   changed.
 

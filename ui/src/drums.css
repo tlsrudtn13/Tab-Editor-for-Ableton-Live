@@ -19,7 +19,7 @@ body.drum-mode #tech-palette { display:none !important; }
 :root.light #drum-legend {
   --dl-line: hsl(0,0%,80%); --dl-alt: rgba(0,0,0,.03); --dl-hover: rgba(0,0,0,.05);
   --dl-sel: #008ca8; --dl-sel-bg: rgba(0,140,168,.14); --dl-sel-text: #005f75;
-  --dl-line: #cfcfcf; --dl-block: #a8a8a8; --dl-th-bg: #dcdcdc; --dl-th-text: #585858; --dl-th-line: #b4b4b4; --dl-dim: #6e6e6e;
+  --dl-line: #cfcfcf; --dl-block: #a8a8a8; --dl-th-bg: #dcdcdc; --dl-th-text: #585858; --dl-th-line: #b4b4b4; --dl-dim: #5e5e5e;
   --dl-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0h8L4 5z' fill='%23555555'/%3E%3C/svg%3E");
 }
 #drum-legend .dl-head { display:flex; align-items:center; gap:8px; position:sticky; top:0; z-index:2; }

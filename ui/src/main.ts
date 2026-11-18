@@ -72,6 +72,7 @@ if (__TAB_DEV__) { window.__tabState = state; startDevReporter(); }
 
 /* ── Init & start-up (same order as today) ────────────────────────────────── */
 var txtColor = initTheme();
+try { const v = document.getElementById("kp-version"); if (v) v.textContent = "v" + __APP_VERSION__; } catch {}
 initZoom();   // saved editor zoom (toolbar menu, Ctrl + / - / 0)
 initFretboardSplitter();   // drag the fretboard's top edge to resize it
 initLog();
