@@ -4,7 +4,7 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.14.0). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.14.1). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
@@ -135,7 +135,7 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.14.0). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.14.1). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 

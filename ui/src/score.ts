@@ -1,5 +1,7 @@
 import * as alphaTab from "@coderline/alphatab";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
+import { installInlineWorker } from "./synthWorker";
+installInlineWorker();   // before any AlphaTabApi: the synth needs a worker in the single-file page
 import { toMusicXml } from "../../src/notation/toMusicXml.js";
 import { keyFromLiveScale } from "../../src/notation/music.js";
 import { applyGuitarVoicing } from "../../src/notation/voicing.js";
