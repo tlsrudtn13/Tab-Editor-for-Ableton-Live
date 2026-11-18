@@ -5,6 +5,7 @@ import {
     parseDrumLayer, resolveDrumPiece, UNMAPPED_ARTICULATION,
 } from "../drumMap.js";
 import { toDrumAlphaTex } from "../toDrumAlphaTex.js";
+import { DRUM_VELOCITY, drumDynamic, drumLanes, lanePitch, laneRow } from "../drumEdit.js";
 import { buildDrumPayload, isDrumPayload, looksLikeDrums } from "../drumPayload.js";
 import { buildPayload } from "../payload.js";
 import type { Note } from "../types.js";
@@ -156,5 +157,55 @@ describe("drum payload", () => {
         expect(looksLikeDrums("Drums", rock)).toBe(true);
         expect(looksLikeDrums("Lead Guitar", rock)).toBe(false);
         expect(looksLikeDrums("Drums", [40, 45, 50, 55, 59, 64].map((p, i) => n(p + 12, i)))).toBe(false);
+    });
+});
+
+describe("drum editing model", () => {
+    it("lanes = used pieces + core kit, top of the staff first", () => {
+        const lanes = drumLanes(rock.map(x => x.p));
+        expect(lanes.map(l => l.art)).toEqual([49, 42, 46, 51, 50, 48, 38, 47, 45, 43, 36, 44]);
+        expect(lanes.find(l => l.art === 38)).toMatchObject({ pitch: 38, empty: false, limb: "hand" });
+        expect(lanes.find(l => l.art === 49)).toMatchObject({ pitch: 49, empty: true });
+        expect(laneRow(lanes, 36)).toBe(11);
+        expect(laneRow(lanes, 100)).toBe(0);           // unmapped pitch: no lane until used
+    });
+    it("a new hit uses the clip's own pitch for that piece, then a Drum Rack pad, then GM", () => {
+        // the kit puts the snare on pitch 40 (kit map) and the clip plays it there
+        expect(lanePitch(38, [40, 40, 36], { 40: 38 })).toBe(40);
+        expect(lanePitch(46, [36], {}, [70, 46])).toBe(46);
+        expect(lanePitch(46, [36], { 60: 46 }, [60])).toBe(60);
+        expect(lanePitch(42, [])).toBe(42);
+        // GM key 42 moved to another piece by the kit map, no other pitch plays a closed hi-hat
+        expect(lanePitch(42, [], { 42: 46 })).toBeUndefined();
+        expect(drumLanes([100]).map(l => l.art)).toContain(UNMAPPED_ARTICULATION);
+    });
+    it("dynamics are relative to the clip's median velocity", () => {
+        expect(drumDynamic(DRUM_VELOCITY.ghost, 100)).toBe("ghost");
+        expect(drumDynamic(DRUM_VELOCITY.accent, 100)).toBe("accent");
+        expect(drumDynamic(127, 127)).toBeUndefined();
+        expect(drumDynamic(40, 50)).toBeUndefined();
+    });
+    it("an accent set on a flat-velocity clip shows; ghosts stay off cymbals", () => {
+        const notes = [n(38, 0, 127), n(38, 1), n(38, 2), n(42, 0, 35), n(38, 3, 35)];
+        const beats = parse(toDrumAlphaTex(notes, { bpm: 120 }).tex).staff.bars[0].voices[0].beats;
+        expect(beats[0].notes.find((x: any) => !x.isGhost && x.accentuated > 0)).toBeTruthy();
+        expect(beats[0].notes.some((x: any) => x.isGhost)).toBe(false);             // hi-hat at 35: no ghost
+        expect(beats[beats.length - 1].notes[0].isGhost).toBe(true);                 // snare at 35
+    });
+    it("a length set in the editor is drawn as set (no beat-end cut)", () => {
+        const half = { ...n(38, 0), d: 2, de: true } as Note;
+        const s = parse(toDrumAlphaTex([half, n(38, 3)], { bpm: 120 }).tex).staff;
+        expect(s.bars[0].voices[0].beats.map((b: any) => (b.isRest ? "r" : "") + b.duration)).toEqual(["2", "r4", "4"]);
+        const plain = parse(toDrumAlphaTex([n(38, 0, 100, 2), n(38, 3)], { bpm: 120 }).tex).staff;
+        expect(plain.bars[0].voices[0].beats[0].duration).toBe(4);
+    });
+});
+
+describe("drum dynamics reference", () => {
+    it("a fixed median keeps other hits' marks when a hit is added", () => {
+        const base = [n(36, 0, 118), n(38, 1, 100), n(38, 2, 110), n(38, 3, 110)];
+        const accents = (notes: Note[], median?: number) => parse(toDrumAlphaTex(notes, { bpm: 120, median }).tex).staff.bars[0].voices[1].beats[0].notes[0].accentuated;
+        expect(accents(base, 100)).toBeGreaterThan(0);
+        expect(accents([...base, n(42, 0, 100), n(42, 1, 100)], 100)).toBeGreaterThan(0);
     });
 });

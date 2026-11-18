@@ -1,6 +1,7 @@
 import { state } from "./state";
 import { layerV2FromNotes } from "../../src/notation/tabLayer.js";
 import { instrumentKeyOf } from "./score";
+import { drumLayerIfChanged, isDrumTrack } from "./drums";
 
 function spanForBeat(b: number): any | undefined {
   const e = state.curTrack && state.curTrack.edit;
@@ -49,8 +50,11 @@ export function sendApply() {
     added: notes.filter(n => n.oid === undefined).map(n => ({ pitch:n.p, start:n.b, duration:n.d, velocity:n.v })),
     deleted: state.deletedOids.slice(),
   };
-  const layer = currentLayer(true);
-  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer, layerKey:state.curTrack.layerStorageKey, layerV2Id:state.curTrack.layerV2Id, sessionChanged:true })] });
+  // drums: no TAB layer; the kit map goes back when it changed
+  const drum = isDrumTrack(state.curTrack);
+  const layer = drum ? undefined : currentLayer(true);
+  const drumLayer = drum ? drumLayerIfChanged() : undefined;
+  window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer, drumLayer, layerKey:state.curTrack.layerStorageKey, layerV2Id:state.curTrack.layerV2Id, sessionChanged:true })] });
 }
 export function sendCancel() {
   const edits = editCount();

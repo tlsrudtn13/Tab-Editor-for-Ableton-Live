@@ -8,7 +8,8 @@ import { moveString } from "./editing";
 import { detectQuantizeGrid } from "../../src/notation/music.js";
 import { log, status } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
-import { barEndSlot, barStartSlot, ensureCursor, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
+import { drumKey } from "./drums";
+import { barEndSlot, barStartSlot, ensureCursor, rowCount, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
 import { clampDurToSpan, deleteBeatShift, durFromValue, durName, insertBeatShift, tieDecision, valueFromDur } from "./rhythm";
 
 function active() { return !!(state.curTrack && state.curTrack.edit); }
@@ -554,6 +555,8 @@ function onKey(e: KeyboardEvent) {
   if (e.target instanceof Element && (e.target.matches("input,select,textarea") || (e.target as HTMLElement).isContentEditable)) return;
   const k = keyId(e);
   const kl = String(k).toLowerCase();
+  // drum tracks: Enter / Alt+Up/Down / G A N, and guitar-only keys switched off (ui/src/drums.ts)
+  if (drumKey(e, k as string, kl, { saveUndo, render })) return;
   if(e.ctrlKey && kl === "enter"){e.preventDefault();window.applyClipEdits&&window.applyClipEdits();return;}
   if(e.ctrlKey && kl === "d" && active() && state.selectedNoteIndices.length){
     e.preventDefault();
@@ -618,7 +621,7 @@ function onKey(e: KeyboardEvent) {
       return;
     }
     if (e.shiftKey) { selectAllNotesAtSlot(c!.b); return; }
-    const nS = getStringCount();
+    const nS = rowCount();
     setCursor(c!.b, Math.max(1, Math.min(nS, c!.s + (k==="ArrowUp"?-1:1))));
     state.selectionAnchor = c!.b;
     syncFromCursor();

@@ -1,8 +1,9 @@
-# Drum notation (view only)
+# Drum notation and editing
 
 Drum MIDI opens as a standard **drum staff** (no TAB: there is no drum tablature
 standard worth following, and alphaTab disables tablature for percussion).
-Drum editing is a later round; this mode only reads.
+Open (Clip) - Edit and Open (Track) - Edit can edit it (§5); the multi-open views
+(Selection, All Tracks, Scene, Selected Clips) stay view only.
 
 ## 1. Standard we follow
 
@@ -41,9 +42,12 @@ Rhythm rules (drum-chart practice):
 - Same drum twice at one instant (two pads mapped to one drum) = one notehead.
 - Rests in the feet voice are not drawn (they keep their time). alphaTab lifts colliding
   second-voice rests above the staff, and many drum charts omit lower-voice rests anyway.
-- Velocity → ghost note (snare, velocity ≤ 45) and accent (velocity ≥ 115) only when the
-  clip's velocities vary (median < 100 for accents, > 60 for ghosts), so programmed
-  flat-velocity MIDI stays clean.
+- Velocity → ghost note (velocity ≤ 45 and at least 20 below the clip's median; snare,
+  toms and percussion only, never cymbals or hi-hat) and accent (velocity ≥ 115 and at least
+  15 above the median), so programmed flat-velocity MIDI stays clean. The editor fixes the
+  median as the clip was opened, so adding a hit never changes another hit's marks.
+- A length set in the editor (Value buttons) is drawn as set, up to the next hit; other hits
+  follow the rule above.
 - Grid and triplets: same auto grid as the guitar view (Quantize menu works).
 
 ## 2. Mapping (bridge) — `src/notation/drumMap.ts`
@@ -74,6 +78,12 @@ switches by the name rule; both open as a percussion staff with the legend, and 
 change saved on Close is applied on reopen. Playback could not be checked in the dev
 harness (the player does not get ready there, for guitar clips too).
 
+Live check of editing (0.14.0, 2026-11-18): on the humanized clip "TT drums human" a new
+snare, closed -> open hi-hat (Alt+Down) and an accent were applied in one step; the 32
+untouched hits kept their exact off-grid starts and velocities, the changed ones kept their
+start. Open (Track) - Edit added a crash, removed a kick and a snare in the arrangement clip,
+and saved the kit map changed in the same session. Open (Scene) - View stays view only.
+
 Fallback, deliberately narrow: no Drum Rack, but the **track name** says drums
 (`drum(s)`, `kit`, `beat`, `perc`, `808`, `909`, `드럼`) **and** ≥ 80 % of notes sit on core
 GM kit keys (35–53, 55, 57, 59). Guitar/bass tracks never switch by accident.
@@ -87,8 +97,30 @@ from display pitches, so AlphaTex gives the GP7 noteheads, positions and playbac
 in one step. Playback uses alphaTab's percussion channel (MIDI channel 10).
 
 In drum mode the editor hides the fretboard, Staff/TAB buttons, instrument menu,
-transpose/capo, the selection/technique bar and Apply; it shows the pad legend.
+transpose/capo, the selection/technique bar, Re-finger and Tie; it shows the pad legend.
 Guitar tracks are unchanged.
+
+## 5. Editing — `src/notation/drumEdit.ts`, `ui/src/drums.ts`
+
+Same edit model and Apply path as guitar (`payload.edit`, `mergeClipEdits` / `applyTrackEdits`:
+one Live undo step, nothing written when the clip changed while the editor was open).
+
+- **Lanes.** The cursor's row is a drum piece: the pieces the clip uses plus a core kit
+  (crash, hi-hat closed/open, ride, toms, snare, kick, hi-hat pedal), ordered top of the staff
+  first. Pieces that share a staff position (snare / side stick, closed / open hi-hat) are
+  separate lanes; a tag on the cursor and the highlighted legend row name the lane. Core-kit
+  pieces the clip does not use are dashed **+ piece** chips in the legend (click = go there).
+- **Pitch of a new hit** on a lane: the pitch the clip already uses for that piece, else a
+  Drum Rack pad mapped to it, else its GM key (`lanePitch`). A piece no pad plays is left out.
+- **Keys.** Left/Right beat (both voices: a kick-only beat is a stop), Ctrl+Left/Right bar,
+  Up/Down lane, **Enter** add / remove the hit, **Delete** / Backspace remove, **Alt+Up/Down**
+  move the hit to the next lane (= new pitch), **G / A / N** velocity 35 / 127 / 100 (ghost,
+  accent, normal). Value 1/1–1/32 (Ctrl+1..6), dot, triplet, Rest (R) and Ins/Del beat as on
+  guitar. Digits, technique letters and Tie do nothing on drums.
+- **Write-back.** Untouched hits are not sent. A changed hit sends only pitch and velocity
+  unless it moved (Ins/Del beat) or its length was set, so humanized timing stays exact. New
+  hits sit on the grid slot of the cursor. The kit map goes back with Apply or Close when it
+  changed.
 
 ## Sources
 - General MIDI Level 1 (MMA0007 / RP003, 1991), percussion key map: <https://en.wikipedia.org/wiki/General_MIDI#Percussion>,

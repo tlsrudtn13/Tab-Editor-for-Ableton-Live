@@ -145,7 +145,7 @@ function drumPayloadFor(context: any, track: any, id: string, name: string, note
     const trackName = String(track?.name ?? "");
     if (!rack && !looksLikeDrums(trackName, notes)) return null;
     const layer = readDrumLayer(context, storageKey);
-    const p = buildDrumPayload(id, name, notes, tempo, live, { timeSig, override: layer?.map, hints: rack?.hints, source: rack ? "drum-rack" : "heuristic" });
+    const p = buildDrumPayload(id, name, notes, tempo, live, { timeSig, override: layer?.map, hints: rack?.hints, pads: rack?.pads, source: rack ? "drum-rack" : "heuristic" });
     if (p) (p as any).layerStorageKey = storageKey;
     console.log(`[TAB] drum track "${trackName}" (${rack ? `Drum Rack, ${rack.pads.length} pads` : "name heuristic"})`);
     return p;
@@ -321,9 +321,12 @@ export function activate(activation: ActivationContext) {
             allNotes = allNotes.map((n, gid) => ({ ...n, oid: gid }));
         }
         const storageKey = layerKey(trackName, "");
-        // Drum tracks are view only: no fingering, no TAB layer, no write-back.
+        // Drum tracks: no fingering, no TAB layer; editable like guitar (docs/DRUMS.md §5).
         const drum = drumPayloadFor(context, rawTrack, trackId, trackName, allNotes, tempo, live, storageKey);
-        if (drum) return drum;
+        if (drum) {
+            if (editCtx) drum.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+            return drum;
+        }
         const layer = readLayer(context, storageKey);
         const p = buildPayload(trackId, trackName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
         if (p) {
@@ -635,16 +638,12 @@ export function activate(activation: ActivationContext) {
             const beats = Number(scene?.signatureNumerator), type = Number(scene?.signatureDenominator);
             if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
         } catch { /* default to 4/4 */ }
+        // Drum clips: percussion staff, no TAB layer; the kit map comes back with Close / Apply.
         const drum = drumPayloadFor(context, where?.track, "clip_0", clipName, regioned, tempo, live, storageKey, timeSig);
-        if (drum) {
-            // Drum clips are view only (editing is a later round): no edit field, only the kit map comes back.
-            const result = await showEditor(context, [drum]);
-            try { const message = JSON.parse(result || "null"); if (message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer); }
-            catch (e) { console.warn("[TAB] drum message ignored:", e); }
-            return;
-        }
         let p: TrackPayload | null;
-        if (foundV2.layer) {
+        if (drum) {
+            p = drum;
+        } else if (foundV2.layer) {
             const inst = INSTRUMENT_BY_KEY[foundV2.layer.instrument] || DEFAULT_INSTRUMENT;
             regioned = applyLayerV2(regioned, foundV2.layer, inst);
             p = buildPayload("clip_0", clipName, regioned, tempo, live, { instrument: inst, capo: foundV2.layer.capo, timeSig });
@@ -667,9 +666,10 @@ export function activate(activation: ActivationContext) {
         if (!result) return;
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
+        if (drum && message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer);
         try {
             const saveV2 = () => {
-                if (message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint);
+                if (!drum && message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint);
             };
             if (message?.action === "apply" && message.edits) {
                 const current = clip.notes;

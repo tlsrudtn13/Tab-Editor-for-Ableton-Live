@@ -33,6 +33,8 @@ export const state: {
   defaultInsertDur: number;
   /** Copied notes (relative to earliest b). */
   clipboard: { notes: any[] } | null;
+  /** Drum edit lanes (one per drum piece, top of the staff first); the cursor's s is the 1-based lane. */
+  drumLanes: import("../../src/notation/drumEdit.js").DrumLane[];
 } = {
   api: null,
   curTrack: null,
@@ -63,4 +65,5 @@ export const state: {
   sessionChanged: false,
   defaultInsertDur: 0.25,
   clipboard: null,
+  drumLanes: [],
 };

@@ -7,10 +7,12 @@
 //   voice 1 = hands (stems up), voice 2 = feet (stems down)
 //   drum rhythm: a hit lasts until the next hit in its voice, cut at the end
 //   of its beat (no ties, no sustain); gaps become rests split per beat.
+//   A length set in the editor (note.de) is drawn as set, up to the next hit.
 // ============================================================
 import type { Note, TimeSig, QuantizeGrid } from "./types.js";
 import { detectQuantizeGrid } from "./music.js";
-import { resolveDrumPiece, type DrumOverride, type DrumPiece, type PadHints } from "./drumMap.js";
+import { drumArticulation, resolveDrumPiece, type DrumOverride, type DrumPiece, type PadHints } from "./drumMap.js";
+import { drumDynamic } from "./drumEdit.js";
 
 export type DrumTexOptions = {
     bpm: number;
@@ -20,6 +22,8 @@ export type DrumTexOptions = {
     hints?: PadHints;
     cues?: { beat: number; name: string }[];
     title?: string;
+    /** reference velocity for ghost/accent (the editor passes the clip's median as opened, so adding a hit never flips other hits) */
+    median?: number;
 };
 
 type Val = { dur: number; dots: 0 | 1; units: number; triplet: boolean };
@@ -54,10 +58,11 @@ function decompose(units: number, table: Val[]): Val[] {
 const texDur = (v: Val) => `.${v.dur}` + (v.dots || v.triplet ? `{${[v.dots ? "d" : "", v.triplet ? "tu 3" : ""].filter(Boolean).join(" ")}}` : "");
 const texStr = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, "'")}"`;
 
-type Hit = { art: number; v: number; snare: boolean };
+/** len: user-set length in units (note.de), else undefined. ghostOk: drums, not cymbals / hi-hat. */
+type Hit = { art: number; v: number; ghostOk: boolean; len?: number };
 
 /** Median velocity, used so programmed (flat) velocities give no accents/ghosts. */
-function median(xs: number[]): number {
+export function median(xs: number[]): number {
     if (!xs.length) return 100;
     const s = [...xs].sort((a, b) => a - b);
     return s[Math.floor(s.length / 2)]!;
@@ -83,7 +88,7 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
         if (!x) { x = resolveDrumPiece(p, opts.override, opts.hints); pieceOf.set(p, x); }
         return x;
     };
-    const med = median(notes.map(n => n.v));
+    const med = opts.median ?? median(notes.map(n => n.v));
 
     // voice -> start unit -> hits (one per articulation, loudest wins)
     const voices: [Map<number, Map<number, Hit>>, Map<number, Map<number, Hit>>] = [new Map(), new Map()];
@@ -98,7 +103,10 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
         let at = vm.get(start);
         if (!at) { at = new Map(); vm.set(start, at); }
         const prev = at.get(pc.articulation);
-        if (!prev || n.v > prev.v) at.set(pc.articulation, { art: pc.articulation, v: n.v, snare: [37, 38, 40, 91].includes(pc.articulation) });
+        const group = drumArticulation(pc.articulation)?.group;
+        const len = n.de && n.d > 0 ? Math.max(step, Math.round(n.d * divisions / step) * step) : undefined;
+        if (!prev || n.v > prev.v) at.set(pc.articulation, { art: pc.articulation, v: n.v, ghostOk: group === "snare" || group === "tom" || group === "perc", len: len ?? prev?.len });
+        else if (len !== undefined && prev.len === undefined) prev.len = len;
         lastUnit = Math.max(lastUnit, start + 1);
     }
     const measures = Math.max(1, Math.ceil(lastUnit / upm));
@@ -128,8 +136,9 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
     };
     const hitTex = (h: Hit) => {
         const fx: string[] = [];
-        if (h.snare && h.v <= 45 && med > 60) fx.push("g");
-        else if (h.v >= 115 && med < 100) fx.push("ac");
+        const dyn = drumDynamic(h.v, med);
+        if (dyn === "ghost" && h.ghostOk) fx.push("g");
+        else if (dyn === "accent") fx.push("ac");
         return `k${h.art}` + (fx.length ? `{${fx.join(" ")}}` : "");
     };
 
@@ -146,7 +155,8 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
                 const next = si + 1 < starts.length ? Math.min(starts[si + 1]!, barEnd) : barEnd;
                 restRun(cursor, s, out);
                 const beatEnd = barStart + (Math.floor((s - barStart) / beatLen) + 1) * beatLen;
-                const len = Math.min(next, beatEnd) - s;
+                const userLen = Math.max(0, ...[...vm.get(s)!.values()].map(h => h.len ?? 0));
+                const len = userLen > 0 ? Math.min(next - s, userLen) : Math.min(next, beatEnd) - s;
                 const v = decompose(len, table)[0] ?? table[table.length - 1]!;
                 const hits = [...vm.get(s)!.values()].sort((a, b) => a.art - b.art).map(hitTex);
                 out.push((hits.length > 1 ? `(${hits.join(" ")})` : hits[0]!) + texDur(v));

@@ -4,6 +4,7 @@ import { detectChord, pitchToName } from "./musicUi";
 import { updateTechPalette } from "./techUi";
 import { getStringCount } from "./fretboard";
 import { slotAt } from "./cursor";
+import { drumHooks } from "./drumHooks";
 
 /* ════════════════════════════════════════════════════════════════════════════
    악보 위 선택 노트 / 커서 강조 오버레이
@@ -161,6 +162,7 @@ export function stringAtY(bar: any, y: number): number | null {
 /** Draw the edit cursor box on the TAB staff at cursor beat/string. */
 export function overlayCursor() {
   try {
+    if (drumHooks.drawCursor()) return;   // drum staff: lane cursor (ui/src/drums.ts)
     const c = state.cursor; if (!c) return;
     const host = document.getElementById("alphaTab"); if (!host) return;
     const fb = findBeatBoundsAt(c.b);
@@ -236,6 +238,7 @@ export function overlaySelectedNotes() {
               var tn = sel[k];
               // beat position gate
               if (bp !== null && tn.b !== undefined && Math.abs(tn.b - bp) > 0.03) continue;
+              if (drumHooks.noteMatches && state.curTrack && state.curTrack.drum) { if (drumHooks.noteMatches(an, tn)) { matched = true; break; } continue; }
               // precise fret/string
               if (an.fret !== undefined && an.string !== undefined && tn.f !== undefined && tn.s !== undefined) {
                 if (an.string === nS + 1 - tn.s && an.fret === tn.f - capo) { matched = true; break; }

@@ -44,13 +44,21 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    node scripts/dev-cmd.mjs ui "setMode('tab'); return __tabState.dispMode"
    node scripts/dev-cmd.mjs close
    node scripts/dev-cmd.mjs bigFixture 2000           # track "TAB-TEST-BIG" with a 2000-note clip (performance)
-   node scripts/dev-cmd.mjs drumFixture               # "TAB-TEST-DRUMS" (Drum Rack inside an Instrument Rack) + "TAB-TEST Drums" (no rack)
+   node scripts/dev-cmd.mjs drumFixture               # "TAB-TEST-DRUMS" (Drum Rack inside an Instrument Rack; clips rock / shuffle / human) + "TAB-TEST Drums" (no rack)
    node scripts/dev-cmd.mjs drumInfo                  # Drum Rack detection for every track (pads, pad labels)
    node scripts/dev-cmd.mjs payload "TT drums rock" --full   # drum payload: pieces + AlphaTex
+   node scripts/dev-cmd.mjs rawNotes "TT drums human"        # the clip's notes exactly as Live holds them (write-back checks)
    node scripts/dev-cmd.mjs cleanup                   # deletes the TAB-TEST* test tracks
    ```
    Files land in `.devstore/**/dev/`. `ui-score-latest.html` holds the rendered score SVG
    and can be opened in a browser to look at it.
+
+Drum edit check (docs/DRUMS.md §5): `drumFixture`, save `rawNotes "TT drums human"`,
+`open "TT drums human"`, then in `ui`: `__editKeys.setCursor(beat, lane)` (lane = 1-based index in
+`__tabState.drumLanes`) and key events (`Enter`, `Alt+ArrowDown`, `a`), click `#btn-apply`, and
+compare `rawNotes` again: only the edited hits may differ, every other hit keeps its exact
+start and velocity. `openTrack "TAB-TEST-DRUMS"` does the same through Apply to Clips.
+The harness `close` does not close the editor; click `#btn-cancel` through `ui` instead.
 
 How it works: `dev-cmd.mjs` writes `trigger-<id>.json`; the harness polls for it, runs
 the action in Live, and writes `result-<id>.json`. In dev builds the editor modal loads

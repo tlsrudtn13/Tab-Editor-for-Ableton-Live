@@ -4,7 +4,6 @@ body.drum-mode #selection-bar,
 body.drum-mode #ui-instrument,
 body.drum-mode #toolbar .seg,
 body.drum-mode #toolbar .numlab,
-body.drum-mode #btn-apply,
 body.drum-mode #tech-palette { display:none !important; }
 
 #drum-legend {
@@ -29,3 +28,24 @@ body.drum-mode #tech-palette { display:none !important; }
 #drum-legend .dl-row.custom .dl-key { color:var(--p-live-accent-primary); }
 #drum-legend .dl-row.unmapped .dl-key { color:#e5c07b; }
 #drum-legend .dl-row.unmapped .dl-key::after { content:" ?"; }
+
+/* Drum editing: Apply shows (disabled when view only, as on guitar); tie means nothing on drums. */
+body.drum-mode #rb-tie, body.drum-mode #btn-refinger { display:none !important; }
+.cursor-overlay.drum { overflow:visible; }
+/* lane name to the right of the box, centred on it: never covers noteheads above or below */
+.drum-lane-tag {
+  position:absolute; left:calc(100% + 4px); top:50%; transform:translateY(-50%); white-space:nowrap;
+  font-size:9px; font-weight:600; line-height:1.2; padding:1px 4px; border-radius:2px;
+  max-width:76px; overflow:hidden; text-overflow:ellipsis;
+  background:rgba(18,22,28,0.80); color:#fff; border:1px solid #00c8ff; pointer-events:none;
+}
+.drum-lane-tag.left { left:auto; right:calc(100% + 4px); }
+#drum-legend .dl-row, #drum-legend .dl-chip { border:1px solid transparent; border-radius:3px; padding:2px 6px; }
+#drum-legend .dl-row.active, #drum-legend .dl-chip.active { border-color:#00c8ff; background:rgba(0,200,255,0.14); opacity:1; }
+#drum-legend .dl-row.active .dl-key { font-weight:700; color:#0088b3; }
+html:not(.light) #drum-legend .dl-row.active .dl-key { color:#00c8ff; }
+#drum-legend .dl-chip {
+  opacity:0.55; border:1px dashed var(--p-live-control-border, rgba(128,128,128,0.45));
+  font-size:11px; background:transparent; color:var(--p-live-text-primary); cursor:pointer;
+}
+#drum-legend .dl-chip:hover { opacity:0.85; border-color:#00c8ff; }

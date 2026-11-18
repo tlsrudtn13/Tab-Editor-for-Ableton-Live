@@ -47,8 +47,13 @@ const tracks = [
     payload("t1", "Riff", riff, 120),
     payload("t2", "Chords", chords, 120),
     payload("t3", "Melody", melody, 96),
-    ...DRUM_FIXTURES.map((fx, i) => buildDrumPayload("d" + i, fx.name, fx.notes.map(x => n(x.startTime, x.pitch, x.duration, x.velocity)), 110,
-        undefined, { hints: { 36: "Kick 808", 38: "Snare Tight" } })!),
+    ...DRUM_FIXTURES.map((fx, i) => {
+        // editable like Open (Clip) - Edit on a drum track (Apply only logs here)
+        const notes = fx.notes.map((x, oid) => ({ ...n(x.startTime, x.pitch, x.duration, x.velocity), oid }));
+        const p = buildDrumPayload("d" + i, fx.name, notes, 110, undefined, { hints: { 36: "Kick 808", 38: "Snare Tight" }, pads: [36, 37, 38, 42, 44, 46, 49, 51] })!;
+        p.edit = { mode: "clip", regionStart: 0, regionLength: fx.length, noteCount: notes.length };
+        return p;
+    }),
 ];
 
 const html = fs.readFileSync("dist-ui/index.html", "utf-8");

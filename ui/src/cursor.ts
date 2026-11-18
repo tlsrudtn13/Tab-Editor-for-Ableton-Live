@@ -81,8 +81,15 @@ export function nextBarSlot(slots: Slot[], b: number): Slot | null {
   return s || lastBarSlot(slots);
 }
 
-/** Build slots from the shown track's first staff, first voice. */
-export function buildSlots(score: any, trackIndex = 0): Slot[] {
+/** Rows the cursor moves over: TAB strings, or drum lanes (ui/src/drums.ts). */
+export function rowCount(): number {
+  const t = state.curTrack;
+  if (t && t.drum) return Math.max(1, (state.drumLanes || []).length);
+  return t && t.instrument && typeof t.instrument.stringCount === "number" ? t.instrument.stringCount : 6;
+}
+
+/** Build slots from the shown track's first staff, first voice (every voice for drums: feet-only beats count). */
+export function buildSlots(score: any, trackIndex = 0, allVoices = false): Slot[] {
   const out: Slot[] = [];
   const seen = new Set<number>();
   try {
@@ -91,8 +98,9 @@ export function buildSlots(score: any, trackIndex = 0): Slot[] {
     const bars = staff && staff.bars ? staff.bars : [];
     for (let bi = 0; bi < bars.length; bi++) {
       const bar = bars[bi];
-      const voice = bar && bar.voices && bar.voices[0];
-      const beats = voice && voice.beats ? voice.beats : [];
+      const voices = bar && bar.voices ? (allVoices ? bar.voices : bar.voices.slice(0, 1)) : [];
+      const beats: any[] = [];
+      for (const voice of voices) if (voice && voice.beats) beats.push(...voice.beats);
       for (const bt of beats) {
         let b = 0, d = 0.25;
         try { b = (bar.masterBar.start + bt.playbackStart) / 960; } catch {}
@@ -110,7 +118,7 @@ export function buildSlots(score: any, trackIndex = 0): Slot[] {
 
 export function rebuildSlotsFromApi() {
   const api = state.api;
-  state.slots = api && api.score ? buildSlots(api.score, 0) : [];
+  state.slots = api && api.score ? buildSlots(api.score, 0, !!(state.curTrack && state.curTrack.drum)) : [];
   return state.slots;
 }
 
@@ -137,8 +145,7 @@ export function slotAt(b: number): Slot | null {
 }
 
 export function setCursor(b: number, s: number) {
-  const t = state.curTrack;
-  const nS = t && t.instrument && typeof t.instrument.stringCount === "number" ? t.instrument.stringCount : 6;
+  const nS = rowCount();
   const ss = Math.max(1, Math.min(nS, Math.round(s)));
   state.cursor = { b, s: ss };
 }
@@ -146,10 +153,12 @@ export function setCursor(b: number, s: number) {
 export function ensureCursor() {
   const t = state.curTrack;
   if (!t) { state.cursor = null; return null; }
-  const nS = t.instrument && typeof t.instrument.stringCount === "number" ? t.instrument.stringCount : 6;
+  const nS = rowCount();
   if (!state.cursor) {
     const first = (state.slots || [])[0];
-    state.cursor = { b: first ? first.b : 0, s: 1 };
+    // drums start on the snare lane (else the first lane)
+    const snare = t.drum ? (state.drumLanes || []).findIndex((l: any) => l.art === 38) + 1 : 0;
+    state.cursor = { b: first ? first.b : 0, s: snare > 0 ? snare : 1 };
   } else {
     state.cursor.s = Math.max(1, Math.min(nS, state.cursor.s));
   }

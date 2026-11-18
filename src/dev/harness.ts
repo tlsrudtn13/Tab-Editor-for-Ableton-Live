@@ -274,6 +274,11 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));
         }
         case "payload":  return payloadFor(ctx, cmd.clip ?? "", !!cmd.full);
+        case "rawNotes": {   // the clip's notes exactly as Live holds them (write-back checks)
+            const f = findClip(ctx, cmd.clip ?? "");
+            if (!f) throw new Error(`clip not found: ${cmd.clip}`);
+            return { clip: cmd.clip, where: f.where, notes: (f.clip.notes as any[]).map(n => ({ p: n.pitch, t: n.startTime, d: n.duration, v: n.velocity })) };
+        }
         case "open": {
             const f = findClip(ctx, cmd.clip ?? "");
             if (!f) throw new Error(`clip not found: ${cmd.clip}`);

@@ -1,5 +1,5 @@
 // ============================================================
-// src/notation/drumPayload.ts — Note[] -> drum TrackPayload (view only).
+// src/notation/drumPayload.ts — Note[] -> drum TrackPayload.
 // Skips guitar instrument choice, fingering and the TAB layer.
 // Pure; shared by extension.ts, the dev harness and scripts/preview.ts.
 // ============================================================
@@ -15,6 +15,8 @@ export type DrumInfo = {
     pieces: DrumPiece[];
     override: DrumOverride;
     hints: PadHints;
+    /** Drum Rack pads (receiving notes), for the pitch of a hit on a piece the clip does not use yet */
+    pads?: number[];
     /** how the track was recognised as drums */
     source: "drum-rack" | "heuristic";
 };
@@ -28,6 +30,7 @@ export type DrumPayloadOptions = {
     timeSig?: TimeSig;
     override?: DrumOverride;
     hints?: PadHints;
+    pads?: number[];
     source?: DrumInfo["source"];
 };
 
@@ -52,7 +55,7 @@ export function buildDrumPayload(
         bpm: tempo,
         alphaTex: score.tex,
         live,
-        drum: { tex: score.tex, pieces: drumLegend(notes.map(n => n.p), override, hints), override, hints, source: options.source ?? "drum-rack" },
+        drum: { tex: score.tex, pieces: drumLegend(notes.map(n => n.p), override, hints), override, hints, ...(options.pads ? { pads: options.pads } : {}), source: options.source ?? "drum-rack" },
     };
 }
 

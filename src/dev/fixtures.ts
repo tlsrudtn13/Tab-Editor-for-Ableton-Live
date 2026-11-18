@@ -65,7 +65,16 @@ for (let beat = 0; beat < 8; beat++) {
     if (beat % 2 === 0) drumShuffle.push(note(36, beat, 0.33, 110));
 }
 
+// played (humanized) rock beat: off-grid starts and uneven velocities, for the edit round's
+// "untouched hits keep their exact time and velocity" check
+const drumHuman: FixtureNote[] = drumRockClean.map((x, i) => ({
+    ...x,
+    startTime: Math.max(0, Math.round((x.startTime + ((i * 37) % 7 - 3) * 0.006) * 1000) / 1000),
+    velocity: Math.max(1, Math.min(127, x.velocity + ((i * 53) % 11) - 5)),
+}));
+
 export const DRUM_FIXTURES: Fixture[] = [
     { name: "TT drums rock", length: 8, purpose: "rock beat: hats, snare + ghost, kick, pedal hat, crash, tom fill", notes: drumRockClean },
     { name: "TT drums shuffle", length: 8, purpose: "triplet ride shuffle, two voices", notes: drumShuffle },
+    { name: "TT drums human", length: 8, purpose: "rock beat played by hand: off-grid starts, uneven velocities (edit write-back)", notes: drumHuman },
 ];
