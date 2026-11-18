@@ -6,6 +6,7 @@ import { log, status } from "./log";
 import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi, numberEveryFourBars } from "./score";
 import { isDrumTrack, prepareDrumScore } from "./drums";
 import { scoreFonts } from "./theme";
+import { hideAlphaTabNotice } from "./alphaTabNotice";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
 export var PDF_RENDER_W = 1406;
@@ -25,6 +26,7 @@ export function exportPDF() {
   }
   pc!.innerHTML = "";
 
+  hideAlphaTabNotice();
   var printApi = new alphaTab.AlphaTabApi(pc, {
      core: {
       engine: "html5", useWorker: false,
@@ -92,7 +94,7 @@ export function buildPdf(pc: HTMLElement) {
   });
   if (canvases.length === 0) { log("PDF: no rendered content"); return; }
   // alphaTab paints "rendered by alphaTab" as its own last partial: one short, narrow line of text.
-  // alphaTab has no setting for it (MPL-2.0 needs no notice in output); leave it out of the PDF.
+  // alphaTabNotice.ts stops it; this stays as a fallback in case a later alphaTab draws it again.
   // (a staff system is always far taller than 60 px; the notice is 12 px times the render scale)
   var lastCv = canvases[canvases.length - 1];
   if (canvases.length > 1 && lastCv.height < 60) canvases.pop();

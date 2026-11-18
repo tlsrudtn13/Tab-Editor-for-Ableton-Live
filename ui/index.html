@@ -60,6 +60,7 @@
     <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex">&#128194; ATex</button>
     <button class="btn" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
     <button class="btn" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
+    <select class="tsel" id="ui-zoom" title="Zoom: text, toolbars and score (Ctrl + / Ctrl - / Ctrl 0)"></select>
     <button class="btn" id="btn-theme" onclick="toggleTheme()" title="Toggle dark / light theme">&#9728;</button>
 
     <span class="tn2" id="status">&ndash;</span>
@@ -129,6 +130,7 @@
         <tr><td>↑ / ↓</td><td>String up / down</td></tr>
         <tr><td>0–9</td><td>Set fret / insert note at cursor</td></tr>
         <tr><td>Ctrl+1..6</td><td>Note value 1/1..1/32</td></tr>
+        <tr><td>Ctrl+ + / − / 0</td><td>Zoom in / out / 100%</td></tr>
         <tr><td>Shift+. / Shift+/</td><td>Toggle dot / triplet</td></tr>
         <tr><td>L / R</td><td>Tie / rest at cursor slot</td></tr>
         <tr><td>Ctrl+Ins / Shift+Del</td><td>Insert / delete beat</td></tr>

@@ -1,6 +1,7 @@
 import * as alphaTab from "@coderline/alphatab";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { installInlineWorker } from "./synthWorker";
+import { hideAlphaTabNotice } from "./alphaTabNotice";
 installInlineWorker();   // before any AlphaTabApi: the synth needs a worker in the single-file page
 import { toMusicXml } from "../../src/notation/toMusicXml.js";
 import { keyFromLiveScale } from "../../src/notation/music.js";
@@ -141,6 +142,7 @@ export function createApi() {
     el.innerHTML = "";
   }
 
+   hideAlphaTabNotice();   // no "rendered by alphaTab" line under the score
    state.api = new alphaTab.AlphaTabApi(el, {
     core: {
       engine: "svg", useWorkers: false,

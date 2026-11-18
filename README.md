@@ -4,12 +4,14 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.17.4). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.17.5). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
 **Viewer**
 - Staff + TAB, TAB only or staff only. Dark and light themes.
+- Zoom 80-200 % for text, toolbars, tables and score (toolbar menu or Ctrl + / Ctrl - / Ctrl 0), kept per computer.
+  Live does not share its own Zoom Display setting with extensions, so the editor has its own.
 - Fingering that follows the hand position across a phrase, so runs and solos stay in one position.
 - Bass clips open as 4-string bass automatically. Other instruments: 7/8/12-string guitar, 5/6-string bass.
 - Tunings: Standard, Drop D, Eb, D Standard, Drop C, DADGAD, Open G, Open D; bass Drop D and Eb. Capo.
@@ -139,12 +141,14 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.17.4). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.17.5). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 
 **보기**
 - 오선보+TAB, TAB만, 오선보만. 다크/라이트 테마.
+- 글자·툴바·표·악보 확대 80-200% (툴바 메뉴 또는 Ctrl + / Ctrl - / Ctrl 0). 컴퓨터마다 기억합니다.
+  Live는 자체 화면 확대(Zoom Display) 설정을 확장에 알려 주지 않아서 에디터가 따로 확대합니다.
 - 손 위치를 따라가는 운지 계산. 런과 솔로가 한 포지션 안에 머뭅니다.
 - 베이스 클립은 자동으로 4현 베이스로 열립니다. 7/8/12현 기타, 5/6현 베이스도 고를 수 있습니다.
 - 튜닝: 스탠더드, Drop D, Eb, D 스탠더드, Drop C, DADGAD, Open G, Open D, 베이스 Drop D·Eb. 카포.

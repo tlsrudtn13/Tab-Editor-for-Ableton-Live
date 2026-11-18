@@ -410,6 +410,7 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 #ui-key { min-width:92px; max-width:132px; padding:0 6px; }
 #ui-key.fixed { border-color:#ff764d; color:var(--p-live-text-primary); }
 .ui-title-label { margin-left:auto; margin-right:6px; font-size:10px; color:#999999; }
+#ui-zoom { width:58px; flex-shrink:0; }
 :root.light .ui-title-label { color:#777777; }
 .ui-title { width:160px; height:20px; padding:0 6px; font-size:11px; border-radius:2px;
   background:var(--p-live-control-bg); color:var(--p-live-text-primary); border:1px solid var(--p-live-control-border); }
