@@ -52,4 +52,18 @@ describe("score annotations (chords, key, title)", () => {
     expect(xml).not.toContain("<harmony");
     expect(xml).not.toContain("movement-title");
   });
+
+  it("keeps one lyric syllable per onset and splits lyrics by clip", () => {
+    const a = sanitizeAnn({ lyrics: [{ cb: 0, text: " Hel- " }, { cb: 0, text: "Hi" }, { cb: 1, text: "  " }, { cb: 2, text: "lo   you", c: 1 }] })!;
+    expect(a.lyrics).toEqual([{ cb: 0, text: "Hi" }, { cb: 2, text: "lo you", c: 1 }]);
+    expect(annForClip(a, 1)).toEqual({ lyrics: [{ cb: 2, text: "lo you" }] });
+  });
+
+  it("writes a lyric on the first note of the token that starts at its beat, not on tied continuations", () => {
+    const notes = [n(0, 60, 1), n(1, 62, 1), { ...n(1, 64, 1) }, n(2, 65, 3)];   // beat 1 is a chord; beat 2 rings into bar 2 (tie)
+    const xml = toMusicXml(notes, 120, { skipVoicing: true, quantize: 4 as any, lyrics: [{ b: 0, text: "Hel-" }, { b: 1, text: "lo" }, { b: 4, text: "never" }, { b: 2, text: "A&B" }] });
+    const lyrics = [...xml.matchAll(/<text>([^<]*)<\/text>/g)].map(m => m[1]);
+    expect(lyrics).toEqual(["Hel-", "lo", "A&amp;B"]);   // beat 4 is the tied part of the beat-2 note: no syllable
+    expect((xml.match(/<lyric /g) || []).length).toBe(3);   // the chord on beat 1 carries it once
+  });
 });

@@ -80,3 +80,7 @@ Annotation check (chords / key / title): `open "TT open chords"`, in `ui`: `__an
 so the ui result is reported first), reopen and read `__tabState.curTrack.ann`. `openTrack "TAB-TEST"` checks the
 per-clip split (chords come back at the same display beats), `openScene 2` that a tab saves its annotations
 on Close without any Apply mark.
+Lyrics: with the cursor on a note, `__annotate.openLyrics()`, then set `#lyric-input` value and dispatch
+`keydown` `-` / ` ` / `Tab` / `Enter`; `__tabState.curTrack.ann.lyrics` and the beats' `lyrics` in
+`__tabState.api.score` show the result. Drum tabs: `open "TT drums rock"`, chord via the picker (typed), key, title,
+close, reopen (the drum close path must carry `ann`).

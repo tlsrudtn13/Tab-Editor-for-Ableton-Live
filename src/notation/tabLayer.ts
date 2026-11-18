@@ -29,9 +29,11 @@ export type TabLayerV2 = {
 export type ChordAnn = { cb: number; name: string; auto?: boolean; c?: number };
 /** A fixed key signature; absent = follow Live's scale. */
 export type KeyAnn = { fifths: number; minor: boolean };
-export type LayerAnn = { chords?: ChordAnn[]; key?: KeyAnn; title?: string };
+/** One lyric syllable at a clip beat (a note onset); a trailing "-" joins it to the next syllable. */
+export type LyricAnn = { cb: number; text: string; c?: number };
+export type LayerAnn = { chords?: ChordAnn[]; lyrics?: LyricAnn[]; key?: KeyAnn; title?: string };
 
-const MAX_CHORD_NAME = 24, MAX_TITLE = 120;
+const MAX_CHORD_NAME = 24, MAX_TITLE = 120, MAX_SYLLABLE = 40;
 
 /** Clean annotations read from disk or sent by the editor; undefined when nothing valid is left. */
 export function sanitizeAnn(x: unknown): LayerAnn | undefined {
@@ -51,9 +53,21 @@ export function sanitizeAnn(x: unknown): LayerAnn | undefined {
         const chords = [...seen.values()].sort((a, b) => a.cb - b.cb);
         if (chords.length) out.chords = chords;
     }
+    if (Array.isArray(o.lyrics)) {
+        const seen = new Map<string, LyricAnn>();
+        for (const l of o.lyrics) {
+            const cb = Number(l?.cb), text = typeof l?.text === "string" ? l.text.replace(/\s+/g, " ").trim().slice(0, MAX_SYLLABLE) : "";
+            if (!Number.isFinite(cb) || cb < -1e6 || cb > 1e6 || !text) continue;
+            const item: LyricAnn = { cb: Math.round(cb * 96) / 96, text };
+            if (Number.isInteger(l.c)) item.c = l.c;
+            seen.set(`${item.c ?? ""}@${Math.round(item.cb * 96)}`, item);   // one syllable per onset (per clip)
+        }
+        const lyrics = [...seen.values()].sort((a, b) => a.cb - b.cb);
+        if (lyrics.length) out.lyrics = lyrics;
+    }
     if (o.key && Number.isInteger(o.key.fifths) && o.key.fifths >= -7 && o.key.fifths <= 7) out.key = { fifths: o.key.fifths, minor: o.key.minor === true };
     if (typeof o.title === "string" && o.title.trim()) out.title = o.title.trim().slice(0, MAX_TITLE);
-    return out.chords || out.key || out.title ? out : undefined;
+    return out.chords || out.lyrics || out.key || out.title ? out : undefined;
 }
 
 /** The part of a track view's annotations that belongs to arrangement clip `index` (chords carry `c`). */
@@ -62,9 +76,11 @@ export function annForClip(ann: LayerAnn | undefined, index: number): LayerAnn |
     const out: LayerAnn = {};
     const chords = (ann.chords ?? []).filter(c => c.c === index).map(({ c, ...rest }) => rest);
     if (chords.length) out.chords = chords;
+    const lyrics = (ann.lyrics ?? []).filter(l => l.c === index).map(({ c, ...rest }) => rest);
+    if (lyrics.length) out.lyrics = lyrics;
     if (ann.key) out.key = { ...ann.key };
     if (ann.title) out.title = ann.title;
-    return out.chords || out.key || out.title ? out : undefined;
+    return out.chords || out.lyrics || out.key || out.title ? out : undefined;
 }
 
 export function layerKey(trackName: string, clipName: string): string {

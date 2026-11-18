@@ -209,3 +209,23 @@ describe("drum dynamics reference", () => {
         expect(accents([...base, n(42, 0, 100), n(42, 1, 100)], 100)).toBeGreaterThan(0);
     });
 });
+
+describe("drum score annotations (chords, key, title)", () => {
+    it("puts chord names on the hands voice, on hits and on rests, and prints the key and title", () => {
+        // hi-hat on 1, snare on 3 (hands voice); chords on beat 1 (a hit) and beat 2 (a rest)
+        const tex = toDrumAlphaTex([n(42, 0, 100, 1), n(38, 2, 100, 1)], { bpm: 120, title: "Song", trackName: "Drums",
+            chords: [{ b: 0, name: "Am" }, { b: 1, name: "F/A" }], key: { fifths: -3, minor: true } }).tex;
+        const { score, track, staff } = parse(tex);
+        expect(score.title).toBe("Song");
+        expect(track.name).toBe("Drums");
+        expect(staff.bars[0].keySignature).toBe(-3);
+        const beats = staff.bars[0].voices[0].beats;
+        const named = beats.filter((b: any) => b.chord).map((b: any) => [b.isRest, b.chord.name]);
+        expect(named).toEqual([[false, "Am"], [true, "F/A"]]);
+    });
+    it("adds nothing without annotations", () => {
+        const tex = toDrumAlphaTex([n(36, 0)], { bpm: 120 }).tex;
+        expect(tex).not.toContain("ch ");
+        expect(tex).not.toContain("\ks");
+    });
+});

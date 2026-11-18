@@ -44,15 +44,18 @@ function currentLayer(snapshot: boolean) {
  * undefined when they were not changed in this session (nothing to write).
  */
 export function annOf(t: any): any {
-  if (!t || !t._annDirty || isDrumTrack(t)) return undefined;
+  if (!t || !t._annDirty) return undefined;
   const a = t.ann || {}, e = t.edit, out: any = {};
-  const chords = (a.chords || []).map((c: any) => {
-    const extra = c.auto ? { auto: true } : {};
-    if (e && e.mode === "clip") return { cb: c.b + (e.regionStart || 0), name: c.name, ...extra };
-    if (e && e.mode === "track") { const sp = spanForBeat(t, c.b); return sp ? { cb: c.b - sp.offset, c: sp.index, name: c.name, ...extra } : null; }
+  // display beat -> clip beat (clip view: + regionStart; track view: - span offset, with the clip index `c`)
+  const toClip = (b: number, extra: any) => {
+    if (e && e.mode === "clip") return { cb: b + (e.regionStart || 0), ...extra };
+    if (e && e.mode === "track") { const sp = spanForBeat(t, b); return sp ? { cb: b - sp.offset, c: sp.index, ...extra } : null; }
     return null;
-  }).filter(Boolean);
+  };
+  const chords = (a.chords || []).map((c: any) => toClip(c.b, { name: c.name, ...(c.auto ? { auto: true } : {}) })).filter(Boolean);
   if (chords.length) out.chords = chords;
+  const lyrics = (a.lyrics || []).map((l: any) => toClip(l.b, { text: l.text })).filter(Boolean);
+  if (lyrics.length) out.lyrics = lyrics;
   if (a.key) out.key = { ...a.key };
   if (a.title) out.title = a.title;
   return out;

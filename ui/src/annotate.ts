@@ -11,7 +11,7 @@ import { state } from "./state";
 import { log } from "./log";
 import { rebuildScore, scoreKey } from "./score";
 import { isDrumTrack } from "./drums";
-import { tabBarBoundsAt } from "./overlay";
+import { findBeatBoundsAt, tabBarBoundsAt } from "./overlay";
 import { chordCandidates, autoChord, type ChordCandidate } from "../../src/notation/chordDetect.js";
 
 const MAJ = ["Cb","Gb","Db","Ab","Eb","Bb","F","C","G","D","A","E","B","F#","C#"];   // fifths -7..7
@@ -19,7 +19,10 @@ const MIN = ["Ab","Eb","Bb","F","C","G","D","A","E","B","F#","C#","G#","D#","A#"
 export const keyLabel = (k: { fifths: number; minor: boolean }) => (k.minor ? MIN : MAJ)[k.fifths + 7] + (k.minor ? " min" : " maj");
 const keyOptionLabel = (k: { fifths: number; minor: boolean }) => "Key: " + keyLabel(k);
 
-function editable(): boolean { return !!(state.curTrack && state.curTrack.edit && !isDrumTrack(state.curTrack)); }
+/** Chord names, key and title work on every editable tab (drums too, for the song's score). */
+function editable(): boolean { return !!(state.curTrack && state.curTrack.edit); }
+/** Suggestions, Auto chords and lyrics need pitched notes: not on drum tabs. */
+function pitched(): boolean { return editable() && !isDrumTrack(state.curTrack); }
 function ann(): any { const t = state.curTrack; if (!t.ann) t.ann = {}; return t.ann; }
 function changed() { state.curTrack._annDirty = true; refreshAnnUi(); rebuildScore(); }
 const beatsPerBar = () => { const ts = state.uiTimeSig || state.curTrack.timeSig || { beats: 4, type: 4 }; return ts.beats * 4 / ts.type; };
@@ -74,7 +77,7 @@ export function openChordPicker() {
   const r = targetRange();
   if (!r) { log("Chord: put the cursor on a beat first"); return; }
   // up to four readings; ones far below the best (e.g. "Daug" for a plain D chord) are noise, not choices
-  const all: ChordCandidate[] = chordCandidates(state.curTrack.notes || [], r.start, r.end, { limit: 4, ...keyOpts() });
+  const all: ChordCandidate[] = pitched() ? chordCandidates(state.curTrack.notes || [], r.start, r.end, { limit: 4, ...keyOpts() }) : [];
   const cands = all.filter(c => !all[0] || c.score >= all[0].score - 2.5);
   const existing = chordAt(r.start);
   const box = document.createElement("div");
@@ -94,7 +97,7 @@ export function openChordPicker() {
     row.addEventListener("mousedown", ev => { ev.preventDefault(); pick(c.name); });
     box.appendChild(row); rows.push(row);
   });
-  if (!cands.length) { const e = document.createElement("div"); e.className = "cp-empty"; e.textContent = "No notes here: type a name"; box.appendChild(e); }
+  if (!cands.length) { const e = document.createElement("div"); e.className = "cp-empty"; e.textContent = pitched() ? "No notes here: type a name" : "Type the chord name"; box.appendChild(e); }
   const foot = document.createElement("div");
   foot.className = "cp-foot";
   foot.textContent = existing ? "Now: " + existing.name + (existing.auto ? " (auto)" : "") + " · Backspace removes" : "1–4 pick · Enter · Esc";
@@ -133,7 +136,7 @@ export function openChordPicker() {
 
 /** Fill half bars with confident chord names; never replaces a chord the user set. Returns the count added. */
 export function autoChords(): number {
-  if (!editable()) return 0;
+  if (!pitched()) return 0;
   const t = state.curTrack, notes: any[] = t.notes || [];
   if (!notes.length) return 0;
   const a = ann(), bpb = beatsPerBar(), step = bpb % 2 === 0 && bpb >= 4 ? bpb / 2 : bpb;
@@ -162,16 +165,112 @@ export function clearAutoChords() {
   changed();
 }
 
+// ── Lyrics (Guitar Pro style) ───────────────────────────────────────────────
+// Ctrl+L (or Lyrics) opens a field under the TAB staff at the cursor's note. Type the syllable;
+// Space / Tab = next note, Shift+Tab = previous, "-" = syllable + hyphen and next note,
+// Enter = done, Esc = done without the current field, an empty field removes that note's syllable.
+// One line of lyrics; syllables sit on note onsets.
+let lyr: { box: HTMLInputElement; onsets: number[]; i: number; changedAny: boolean } | null = null;
+
+export function lyricAt(b: number): any | undefined {
+  const t = state.curTrack; const list = (t && t.ann && t.ann.lyrics) || [];
+  return list.find((l: any) => Math.abs(l.b - b) < 1e-6);
+}
+export function setLyric(b: number, text: string | null) {
+  const a = ann();
+  const list = (a.lyrics || []).filter((l: any) => Math.abs(l.b - b) >= 1e-6);
+  const s = (text || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  if (s) list.push({ b, text: s });
+  list.sort((x: any, y: any) => x.b - y.b);
+  a.lyrics = list.length ? list : undefined;
+  state.curTrack._annDirty = true;
+}
+/** Put the field under the TAB staff at the current note (the layout changes as syllables are added). */
+function positionLyricBox() {
+  if (!lyr) return;
+  const b = lyr.onsets[lyr.i]!;
+  // move the edit cursor first: its box is drawn from the current layout, so the field follows it
+  try { (window as any).__editKeys?.setCursor?.(b, state.cursor ? state.cursor.s : 1); } catch {}
+  const host = document.getElementById("alphaTab");
+  const fb = findBeatBoundsAt(b), tb = tabBarBoundsAt(b);
+  const hr = host ? host.getBoundingClientRect() : { left: 0, top: 0 } as DOMRect;
+  const vb = fb && fb.bounds ? (fb.bounds.visualBounds || fb.bounds.realBounds) : null;
+  const barB = tb && tb.visualBounds ? tb.visualBounds : (fb && fb.barBounds ? (fb.barBounds.visualBounds || fb.barBounds.realBounds) : null);
+  const curEls = document.querySelectorAll("#alphaTab .cursor-overlay");   // the newest one is the live cursor
+  const curEl = (curEls.length ? curEls[curEls.length - 1] : null) as HTMLElement | null;
+  const x = curEl ? curEl.getBoundingClientRect().left - 4 : (vb ? hr.left + vb.x - 4 : 40);
+  const y = barB ? hr.top + barB.y + barB.h + 14 : 120;
+  lyr.box.style.left = Math.round(Math.max(8, Math.min(window.innerWidth - 128, x))) + "px";
+  lyr.box.style.top = Math.round(Math.min(window.innerHeight - 30, y)) + "px";
+}
+/** Move to the current note: position the field and load that note's syllable. */
+function placeLyricBox() {
+  if (!lyr) return;
+  positionLyricBox();
+  const cur = lyricAt(lyr.onsets[lyr.i]!);
+  lyr.box.value = cur ? cur.text : "";
+  lyr.box.select();
+}
+function closeLyrics(commit: boolean) {
+  if (!lyr) return;
+  const l = lyr; lyr = null;
+  if (commit) { setLyric(l.onsets[l.i]!, l.box.value); l.changedAny = true; }
+  try { state.api && state.api.postRenderFinished.off(followRender); } catch {}
+  l.box.remove();
+  document.getElementById("btn-lyrics")?.classList.remove("on");
+  if (l.changedAny) changed();
+}
+/** While lyrics entry is open, every finished render (a new syllable widens the layout) re-positions the field. */
+function followRender() { setTimeout(() => { if (lyr) { positionLyricBox(); lyr.box.focus(); } }, 30); }
+
+export function openLyrics() {
+  if (!pitched()) return;
+  if (lyr) { closeLyrics(true); return; }
+  const notes: any[] = state.curTrack.notes || [];
+  const onsets = [...new Set(notes.map((n: any) => Math.round(n.b * 96) / 96))].sort((x, y) => x - y);
+  if (!onsets.length) { log("Lyrics: no notes"); return; }
+  const from = state.cursor ? state.cursor.b : 0;
+  let i = onsets.findIndex(b => b >= from - 1e-6); if (i < 0) i = onsets.length - 1;
+  const box = document.createElement("input");
+  box.id = "lyric-input"; box.type = "text"; box.maxLength = 40; box.setAttribute("aria-label", "Lyric syllable");
+  document.body.appendChild(box);
+  lyr = { box, onsets, i, changedAny: false };
+  try { state.api && state.api.postRenderFinished.on(followRender); } catch {}
+  document.getElementById("btn-lyrics")?.classList.add("on");
+  const go = (d: number) => {
+    if (!lyr) return;
+    const before = lyricAt(lyr.onsets[lyr.i]!), text = box.value.replace(/\s+/g, " ").trim();
+    setLyric(lyr.onsets[lyr.i]!, box.value); lyr.changedAny = true;
+    lyr.i = Math.max(0, Math.min(lyr.onsets.length - 1, lyr.i + d));
+    if ((before ? before.text : "") === text) { placeLyricBox(); return; }
+    // show the syllable on the score as you go: re-render; followRender() then moves the field
+    // to the next note on the new layout
+    placeLyricBox();
+    rebuildScore();
+  };
+  box.addEventListener("keydown", ev => {
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); closeLyrics(false); return; }
+    if (ev.key === "Enter") { ev.preventDefault(); closeLyrics(true); return; }
+    if (ev.key === "Tab") { ev.preventDefault(); go(ev.shiftKey ? -1 : 1); return; }
+    if (ev.key === " ") { ev.preventDefault(); go(1); return; }
+    if (ev.key === "-") { ev.preventDefault(); box.value = box.value.replace(/-+$/, "") + "-"; go(1); return; }
+  });
+  box.addEventListener("blur", () => setTimeout(() => { if (lyr && document.activeElement !== lyr.box) closeLyrics(true); }, 150));
+  placeLyricBox();
+  box.focus();
+}
+
 // ── Key and title ───────────────────────────────────────────────────────────
 export function setKeyFromUi(v: string) {
-  if (!state.curTrack || isDrumTrack(state.curTrack)) return;
+  if (!state.curTrack) return;
   const a = ann();
   if (v === "live") delete a.key;
   else { const [f, m] = v.split(":"); a.key = { fifths: Number(f), minor: m === "min" }; }
   changed();
 }
 export function setTitleFromUi(v: string) {
-  if (!state.curTrack || isDrumTrack(state.curTrack)) return;
+  if (!state.curTrack) return;
   const a = ann(), s = String(v || "").trim().slice(0, 120);
   if (s && s !== state.curTrack.name) a.title = s; else delete a.title;
   changed();
@@ -187,11 +286,14 @@ export function refreshAnnUi() {
     const k = t && t.ann && t.ann.key;
     sel.value = k ? k.fifths + ":" + (k.minor ? "min" : "maj") : "live";
     sel.classList.toggle("fixed", !!k);
-    sel.disabled = !t || isDrumTrack(t);
+    sel.disabled = !t;
   }
   const title = document.getElementById("ui-title") as HTMLInputElement | null;
-  if (title && document.activeElement !== title) { title.value = (t && t.ann && t.ann.title) || ""; title.placeholder = t ? t.name : "Title"; title.disabled = !t || isDrumTrack(t); }
-  for (const id of ["btn-chord", "btn-autochords"]) { const b = document.getElementById(id) as HTMLButtonElement | null; if (b) b.disabled = !editable(); }
+  if (title && document.activeElement !== title) { title.value = (t && t.ann && t.ann.title) || ""; title.placeholder = t ? t.name : "Title"; title.disabled = !t; }
+  const btn = (id: string, on: boolean) => { const b = document.getElementById(id) as HTMLButtonElement | null; if (b) b.disabled = !on; };
+  btn("btn-chord", editable());
+  btn("btn-autochords", pitched());
+  btn("btn-lyrics", pitched());
 }
 function scoreKeyLiveLabel(): string {
   const t = state.curTrack; if (!t) return "";
@@ -215,5 +317,6 @@ export function bindAnnotations() {
   document.getElementById("btn-chord")?.addEventListener("click", openChordPicker);
   document.getElementById("btn-autochords")?.addEventListener("click", e => { if ((e as MouseEvent).shiftKey) clearAutoChords(); else autoChords(); });
   document.addEventListener("mousedown", e => { if (picker && !picker.contains(e.target as Node)) closePicker(); }, true);
-  (window as any).__annotate = { openChordPicker, autoChords, clearAutoChords, setKeyFromUi, setTitleFromUi, chordAt };
+  document.getElementById("btn-lyrics")?.addEventListener("click", openLyrics);
+  (window as any).__annotate = { openChordPicker, autoChords, clearAutoChords, setKeyFromUi, setTitleFromUi, chordAt, openLyrics, setLyric };
 }

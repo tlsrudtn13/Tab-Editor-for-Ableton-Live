@@ -53,7 +53,7 @@ export function collectNoteBounds(beat: any): any[] {
   return out;
 }
 
-function findBeatBoundsAt(bTarget: number): { beat: any; bounds: any; barBounds: any } | null {
+export function findBeatBoundsAt(bTarget: number): { beat: any; bounds: any; barBounds: any } | null {
   try {
     const bl = state.api && state.api.renderer ? state.api.renderer.boundsLookup : null;
     if (!bl || !bl.staffSystems) return null;

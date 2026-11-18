@@ -174,6 +174,7 @@ export function createApi() {
 
   api.scoreLoaded.on(function(score) {
     hideChordDiagrams(score);
+    numberEveryFourBars(score);
     applyStaffMode(score);
     colorizeOutOfRange(score);   // ★ 음역 밖 노트 노란색
     applyTechniquesToScore(score); // let ring, palm mute, hammer, slide, dead, vibrato
@@ -305,6 +306,15 @@ export function scoreTitle(trk: any): string | undefined {
   if (!trk) return undefined;
   return (trk.ann && trk.ann.title) || trk.name || undefined;
 }
+/** Bar numbers on bars 1, 5, 9, ... only (every four bars), on screen and in the PDF. */
+export function numberEveryFourBars(score: any) {
+  try {
+    for (const t of score.tracks || []) for (const st of t.staves || []) for (const bar of st.bars || []) {
+      // alphaTab BarNumberDisplay: 0 = AllBars (show), 2 = Hide
+      bar.barNumberDisplay = bar.index % 4 === 0 ? 0 : 2;
+    }
+  } catch (e) {}
+}
 /** Chord names only: alphaTab would also draw an empty chord diagram for every chord. */
 export function hideChordDiagrams(score: any) {
   try {
@@ -354,6 +364,7 @@ export function rebuildScore() {
       quantize:    state.uiQuantize === "auto" ? undefined : (state.uiQuantize as any),  // ★ v3
       key:         scoreKey(state.curTrack),
       chords:      (state.curTrack.ann && state.curTrack.ann.chords) || undefined,
+      lyrics:      (state.curTrack.ann && state.curTrack.ann.lyrics) || undefined,
       title:       scoreTitle(state.curTrack),
     });
     state.curTrack.musicXml = xml;

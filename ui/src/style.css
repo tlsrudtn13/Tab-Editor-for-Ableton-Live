@@ -102,7 +102,7 @@ body { display:flex; flex-direction:row; }
 
 /* ── Toolbar ── */
 #toolbar {
-  height:32px; display:flex; align-items:center; gap:5px; padding:0 8px;
+  height:32px; display:flex; align-items:center; gap:4px; padding:0 8px;
   background:var(--p-live-input-bg);
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
   flex-wrap:nowrap;
@@ -419,5 +419,11 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 #chord-picker .cp-k { width:12px; color:#888888; font-size:10px; }
 #chord-picker .cp-n { font-weight:600; }
 #chord-picker .cp-empty, #chord-picker .cp-foot { padding:4px 6px 0; font-size:10px; color:#888888; }
-#btn-chord.on { background:#382518; border-color:#ff764d; color:#ff944d; }
-:root.light #btn-chord.on { background:#fff0e5; color:#d95300; }
+#btn-chord.on, #btn-lyrics.on { background:#382518; border-color:#ff764d; color:#ff944d; }
+:root.light #btn-chord.on, :root.light #btn-lyrics.on { background:#fff0e5; color:#d95300; }
+/* lyric field: under the TAB staff at the note (designer D009 §3) */
+#lyric-input { position:fixed; z-index:1000; width:120px; height:22px; padding:0 6px; font-size:12px; border-radius:3px;
+  border:1.5px solid #ff764d; background:#1e1e1e; color:#f0f0f0; box-sizing:border-box; }
+:root.light #lyric-input { background:#ffffff; color:#1a1a1a; }
+/* top toolbar: room for Key and Close & Apply next to the wider multi-tab sidebar (designer D009) */
+#toolbar .btn { padding:2px 6px; }

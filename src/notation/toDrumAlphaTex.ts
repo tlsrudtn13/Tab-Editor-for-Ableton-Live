@@ -22,6 +22,12 @@ export type DrumTexOptions = {
     hints?: PadHints;
     cues?: { beat: number; name: string }[];
     title?: string;
+    /** Name on the staff's left (default: the title). */
+    trackName?: string;
+    /** Chord names above the staff, at display beats (hands voice; one per beat). */
+    chords?: { b: number; name: string }[];
+    /** Key signature to print (fifths -7..7). A drum staff normally has none; the score of a song may want it. */
+    key?: { fifths: number; minor: boolean };
     /** reference velocity for ghost/accent (the editor passes the clip's median as opened, so adding a hit never flips other hits) */
     median?: number;
 };
@@ -119,20 +125,37 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
         if (mi >= 0 && mi < measures && !cuesByBar.has(mi)) cuesByBar.set(mi, String(c.name ?? ""));
     }
 
-    const restRun = (from: number, to: number, out: string[]) => {
+    type Fx = (pos: number, units: number) => string;
+    const noFx: Fx = () => "";
+    const restRun = (from: number, to: number, out: string[], fx: Fx = noFx) => {
         // split at beat boundaries so rests show the beat
         let pos = from;
         while (pos < to) {
             const barStart = Math.floor(pos / upm) * upm;
             const beatEnd = barStart + (Math.floor((pos - barStart) / beatLen) + 1) * beatLen;
             const seg = Math.min(to, beatEnd) - pos;
-            for (const v of decompose(seg, table)) out.push("r" + texDur(v));
+            let p = pos;
+            for (const v of decompose(seg, table)) { out.push("r" + texDur(v) + fx(p, v.units)); p += v.units; }
             pos += seg;
         }
     };
-    const fullBarRest = (out: string[]) => {
-        if (ts.beats === 4 && ts.type === 4) { out.push("r.1"); return; }
-        for (const v of decompose(upm, table)) out.push("r" + texDur(v));
+    const fullBarRest = (out: string[], barStart: number, fx: Fx = noFx) => {
+        if (ts.beats === 4 && ts.type === 4) { out.push("r.1" + fx(barStart, upm)); return; }
+        let p = barStart;
+        for (const v of decompose(upm, table)) { out.push("r" + texDur(v) + fx(p, v.units)); p += v.units; }
+    };
+    // chord names ride on the hands voice: the first beat (hit or rest) whose span holds the chord's position
+    const chordQueue = (opts.chords ?? [])
+        .map(c => ({ u: Math.round(Number(c?.b) * divisions), name: String(c?.name ?? "").trim() }))
+        .filter(c => Number.isFinite(c.u) && c.u >= 0 && c.name)
+        .sort((a, b) => a.u - b.u);
+    const chordFx = (): Fx => {
+        let cq = 0;
+        return (pos, units) => {
+            let first: string | undefined;
+            while (cq < chordQueue.length && chordQueue[cq]!.u < pos + units) { first ??= chordQueue[cq]!.name; cq++; }
+            return first !== undefined ? `{ch ${texStr(first)}}` : "";
+        };
     };
     const hitTex = (h: Hit) => {
         const fx: string[] = [];
@@ -142,7 +165,7 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
         return `k${h.art}` + (fx.length ? `{${fx.join(" ")}}` : "");
     };
 
-    const voiceBars = (vm: Map<number, Map<number, Hit>>): string[] => {
+    const voiceBars = (vm: Map<number, Map<number, Hit>>, fx: Fx = noFx): string[] => {
         const starts = [...vm.keys()].sort((a, b) => a - b);
         const bars: string[] = [];
         let si = 0;
@@ -153,17 +176,17 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
             while (si < starts.length && starts[si]! < barEnd) {
                 const s = starts[si]!;
                 const next = si + 1 < starts.length ? Math.min(starts[si + 1]!, barEnd) : barEnd;
-                restRun(cursor, s, out);
+                restRun(cursor, s, out, fx);
                 const beatEnd = barStart + (Math.floor((s - barStart) / beatLen) + 1) * beatLen;
                 const userLen = Math.max(0, ...[...vm.get(s)!.values()].map(h => h.len ?? 0));
                 const len = userLen > 0 ? Math.min(next - s, userLen) : Math.min(next, beatEnd) - s;
                 const v = decompose(len, table)[0] ?? table[table.length - 1]!;
                 const hits = [...vm.get(s)!.values()].sort((a, b) => a.art - b.art).map(hitTex);
-                out.push((hits.length > 1 ? `(${hits.join(" ")})` : hits[0]!) + texDur(v));
+                out.push((hits.length > 1 ? `(${hits.join(" ")})` : hits[0]!) + texDur(v) + fx(s, v.units));
                 cursor = s + v.units;
                 si++;
             }
-            if (cursor === barStart) fullBarRest(out); else restRun(cursor, barEnd, out);
+            if (cursor === barStart) fullBarRest(out, barStart, fx); else restRun(cursor, barEnd, out, fx);
             bars.push(out.join(" "));
         }
         return bars;
@@ -174,16 +197,19 @@ export function toDrumAlphaTex(notes: Note[], opts: DrumTexOptions): DrumScore {
     const L: string[] = [];
     if (opts.title) L.push(`\\title ${texStr(opts.title)}`);
     L.push(`\\tempo ${Math.max(1, Math.round(opts.bpm || 120))}`);
-    L.push(`\\track ${texStr(opts.title || "Drums")} \\instrument percussion`);
+    L.push(`\\track ${texStr(opts.trackName || opts.title || "Drums")} \\instrument percussion`);
     for (const a of arts) L.push(`\\articulation (k${a} ${a})`);
+    const KS = ["cb","gb","db","ab","eb","bb","f","c","g","d","a","e","b","f#","c#"];
+    const keyTex = opts.key && Number.isInteger(opts.key.fifths) && Math.abs(opts.key.fifths) <= 7
+        ? `\\ks (${KS[opts.key.fifths + 7]} ${opts.key.minor ? "minor" : "major"})` : "";
     const head = (mi: number) => {
         const meta: string[] = [];
-        if (mi === 0) meta.push(`\\clef neutral \\ts (${ts.beats} ${ts.type})`);
+        if (mi === 0) meta.push(`\\clef neutral \\ts (${ts.beats} ${ts.type})` + (keyTex ? ` ${keyTex}` : ""));
         const cue = cuesByBar.get(mi);
         if (cue !== undefined) meta.push(`\\section ${texStr(cue || " ")}`);
         return meta.length ? meta.join(" ") + " " : "";
     };
-    const hands = voiceBars(voices[0]);
+    const hands = voiceBars(voices[0], chordFx());
     L.push("\\voice");
     L.push(hands.map((b, mi) => head(mi) + b).join(" |\n") + " |");
     if (useFeet) {

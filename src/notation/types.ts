@@ -71,7 +71,7 @@ export type TrackPayload = {
 };
 
 /** Annotations as the editor holds them: chord positions in display beats (`b`). */
-export type PayloadAnn = { chords?: { b: number; name: string; auto?: boolean }[]; key?: { fifths: number; minor: boolean }; title?: string };
+export type PayloadAnn = { chords?: { b: number; name: string; auto?: boolean }[]; lyrics?: { b: number; text: string }[]; key?: { fifths: number; minor: boolean }; title?: string };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */
 export type QuantizeGrid = 4 | 8 | 12 | 16 | 24 | 32;
@@ -100,6 +100,8 @@ export type MusicXmlOptions = {
     skipVoicing?: boolean;  // true면 내부 보이싱 재적용 생략
     /** Chord names above the staff, at display beats (one per beat). */
     chords?: { b: number; name: string }[];
+    /** Lyric syllables at note onsets (display beats); "-" at the end joins to the next syllable. */
+    lyrics?: { b: number; text: string }[];
     /** Score title (movement-title). */
     title?: string;
     transpose?: number;     // 반음 단위로 전체 음정 이동 (양수 = 올림, 음수 = 내림)

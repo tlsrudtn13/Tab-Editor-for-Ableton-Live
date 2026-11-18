@@ -13,7 +13,8 @@
 // ============================================================
 import { state } from "./state";
 import { log, status } from "./log";
-import { createApi } from "./score";
+import { createApi, scoreKey, scoreTitle } from "./score";
+import { withAnn } from "./apply";
 import { slotAt } from "./cursor";
 import { drumHooks } from "./drumHooks";
 import { median, toDrumAlphaTex } from "../../src/notation/toDrumAlphaTex.js";
@@ -84,6 +85,12 @@ export function prepareDrumScore(score: any) {
   }
 }
 
+/** Key signature for the drum part: the same rule as the guitar score (fixed key, else Live's scale). */
+function drumKeyOf(trk: any): { fifths: number; minor: boolean } | undefined {
+  const k = scoreKey(trk);
+  return k ? { fifths: k.fifths, minor: k.mode === "minor" } : undefined;
+}
+
 /** Regenerate the percussion staff from the notes (edits / quantize / time signature / kit map changes). */
 export function rebuildDrumScore() {
   const trk = state.curTrack;
@@ -96,7 +103,10 @@ export function rebuildDrumScore() {
     override: trk.drum.override,
     hints: trk.drum.hints,
     cues: trk.live && trk.live.cues,
-    title: trk.name,
+    title: scoreTitle(trk),
+    trackName: trk.name,
+    chords: (trk.ann && trk.ann.chords) || undefined,
+    key: drumKeyOf(trk),
     median: trk.drum.median,
   }).tex;
   trk.drum.tex = tex;
@@ -416,7 +426,7 @@ function sendDrumClose(ev: Event) {
   const t = state.curTrack;
   const edits = t.edit ? t.notes.filter((n: any) => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
   if (edits && !window.confirm("Discard your edits and close?")) return;
-  const msg: any = { action: edits ? "cancel" : "close", layerKey: t.layerStorageKey };
+  const msg: any = withAnn({ action: edits ? "cancel" : "close", layerKey: t.layerStorageKey }, t);   // chords / key / title
   const layer = drumLayerIfChanged();
   if (layer) msg.drumLayer = layer;
   try { window.chrome.webview.postMessage({ method: "close_and_send", params: [JSON.stringify(msg)] }); }

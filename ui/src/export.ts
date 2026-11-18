@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { state } from "./state";
 import { log, status } from "./log";
-import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi } from "./score";
+import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi, numberEveryFourBars } from "./score";
 import { isDrumTrack, prepareDrumScore } from "./drums";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
@@ -48,7 +48,7 @@ export function exportPDF() {
     player: { enablePlayer: false }
   });
 
-  printApi.scoreLoaded.on(function(score) { hideChordDiagrams(score); applyStaffMode(score); });
+  printApi.scoreLoaded.on(function(score) { hideChordDiagrams(score); numberEveryFourBars(score); applyStaffMode(score); });
   printApi.error.on(function(e) {
     log("PDF render error: " + (e.message || JSON.stringify(e)));
     cleanup();
@@ -74,6 +74,7 @@ export function exportPDF() {
 
   if (isDrumTrack(state.curTrack)) {   // drum mode: percussion AlphaTex (ui/src/drums.ts)
     printApi.scoreLoaded.on(prepareDrumScore);
+    printApi.scoreLoaded.on(numberEveryFourBars);
     try { printApi.tex(state.curTrack.drum.tex); } catch(e: any) { log("PDF: " + (e.message || e)); cleanup(); }
     return;
   }

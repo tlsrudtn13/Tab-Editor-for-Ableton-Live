@@ -354,6 +354,13 @@ export function toMusicXml(
         .filter(c => c.u >= 0 && c.name)
         .sort((a, b) => a.u - b.u);
     let cq = 0;
+    // Lyrics: one syllable per note onset (unit position); a note that only continues a tie gets none.
+    const lyricAt = new Map<number, string>();
+    for (const l of opts.lyrics ?? []) {
+        const text = String(l?.text ?? "").trim();
+        const u = Math.round(Number(l?.b) * divisions);
+        if (text && Number.isFinite(u) && u >= 0 && !lyricAt.has(u)) lyricAt.set(u, text);
+    }
     const pushHarmonies = (L: string[], until: number) => {
         let first: string | undefined;
         while (cq < chordQueue.length && chordQueue[cq]!.u < until) { first ??= chordQueue[cq]!.name; cq++; }
@@ -457,6 +464,7 @@ export function toMusicXml(
         } else {
             for (const t of tokens) {
                 pushHarmonies(L, pos + t.value.units);
+                const tokStart = pos;
                 pos += t.value.units;
                 if (t.kind === "rest") {
                     L.push(`      <note>`);
@@ -524,6 +532,11 @@ export function toMusicXml(
                                 L.push(`          </technical>`);
                             }
                             L.push(`        </notations>`);
+                        }
+                        const lyric = pi === 0 && !t.tieStop ? lyricAt.get(tokStart) : undefined;
+                        if (lyric !== undefined) {
+                            // alphaTab ignores <syllabic>: the hyphen stays in the text ("hel-")
+                            L.push(`        <lyric number="1">`, `          <syllabic>single</syllabic>`, `          <text>${escXml(lyric)}</text>`, `        </lyric>`);
                         }
                         L.push(`      </note>`);
                     }

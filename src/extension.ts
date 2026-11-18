@@ -128,18 +128,22 @@ function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 |
     } catch (e) { console.warn("[TAB] v2 TAB layer save failed:", e); return id; }
 }
 /** Replace a clip's annotations (chords, key, title), creating a layer file when the clip has none yet. */
-function saveClipAnn(context: any, id: string | undefined, hint: { track: string; clip: string }, ann: LayerAnn | undefined, base: { instrument: string; capo: number }): string | undefined {
-    const layer: TabLayerV2 = readV2(context, id) ?? { v: 2, instrument: base.instrument, capo: base.capo, hint: { ...hint }, notes: [] };
+function saveClipAnn(context: any, id: string | undefined, hint: { track: string; clip: string }, ann: LayerAnn | undefined, base: { instrument: string; capo: number }, clipForHashes?: any): string | undefined {
+    // a drum clip has no fingering: its new layer file lists the clip's note hashes (k:0 = no lock) so it is
+    // matched by the notes, not only by the track / clip name
+    const notes = clipForHashes ? [...clipRawHashes(clipForHashes)].map(h => ({ h, s: 0, f: 0, k: 0 as const })) : [];
+    const layer: TabLayerV2 = readV2(context, id) ?? { v: 2, instrument: base.instrument, capo: base.capo, hint: { ...hint }, notes };
     if (!readV2(context, id) && !ann) return id;          // nothing stored, nothing to store
     const next: TabLayerV2 = { ...layer };
     if (ann) next.ann = ann; else delete next.ann;
     return saveClipLayer(context, id, next, hint, false);
 }
 /** Clip annotations -> editor beats: display b = clip beat - regionStart (clip view) or + offset (track view). */
-function annToDisplay(ann: LayerAnn | undefined, shift: number): { chords?: { b: number; name: string; auto?: boolean }[]; key?: { fifths: number; minor: boolean }; title?: string } | undefined {
+function annToDisplay(ann: LayerAnn | undefined, shift: number): { chords?: { b: number; name: string; auto?: boolean }[]; lyrics?: { b: number; text: string }[]; key?: { fifths: number; minor: boolean }; title?: string } | undefined {
     if (!ann) return undefined;
     const out: any = {};
     if (ann.chords?.length) out.chords = ann.chords.map(c => ({ b: c.cb + shift, name: c.name, ...(c.auto ? { auto: true } : {}) }));
+    if (ann.lyrics?.length) out.lyrics = ann.lyrics.map(l => ({ b: l.cb + shift, text: l.text }));
     if (ann.key) out.key = { ...ann.key };
     if (ann.title) out.title = ann.title;
     return Object.keys(out).length ? out : undefined;
@@ -368,7 +372,10 @@ export function activate(activation: ActivationContext) {
         const shownName = trackName + (range?.suffix ?? "");
         const drum = drumPayloadFor(context, rawTrack, trackId, shownName, allNotes, tempo, live, storageKey);
         if (drum) {
-            if (editCtx) drum.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+            if (editCtx) {
+                drum.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+                drum.ann = trackAnnToDisplay(clipAnns, editCtx.spans, range ? range.end - range.start : undefined);
+            }
             return drum;
         }
         // v1 note entries are keyed by absolute beat: on a rebased selection keep only instrument / capo / time signature
@@ -482,21 +489,24 @@ export function activate(activation: ActivationContext) {
     function trackAnnToDisplay(clipAnns: Map<number, LayerAnn>, spans: TrackClipSpan[], visibleLength?: number) {
         const out: any = {};
         const chords: { b: number; name: string; auto?: boolean }[] = [];
+        const lyrics: { b: number; text: string }[] = [];
+        const shown = (b: number, sp: TrackClipSpan) =>
+            b >= sp.start - 1e-9 && b < sp.end - 1e-9 &&                                                  // inside the clip's shown part
+            (visibleLength === undefined || (b >= -1e-9 && b < visibleLength - 1e-9));                      // and inside the selection
         for (const sp of spans) {
             const ann = clipAnns.get(sp.index); if (!ann) continue;
-            for (const c of annToDisplay(ann, sp.offset)?.chords ?? []) {
-                if (c.b < sp.start - 1e-9 || c.b >= sp.end - 1e-9) continue;                       // outside the clip's shown part
-                if (visibleLength !== undefined && (c.b < -1e-9 || c.b >= visibleLength - 1e-9)) continue;   // outside the selection
-                chords.push(c);
-            }
+            const disp = annToDisplay(ann, sp.offset);
+            for (const c of disp?.chords ?? []) if (shown(c.b, sp)) chords.push(c);
+            for (const l of disp?.lyrics ?? []) if (shown(l.b, sp)) lyrics.push(l);
             if (!out.key && ann.key) out.key = { ...ann.key };
             if (!out.title && ann.title) out.title = ann.title;
         }
         if (chords.length) out.chords = chords.sort((a, b) => a.b - b.b);
+        if (lyrics.length) out.lyrics = lyrics.sort((a, b) => a.b - b.b);
         return Object.keys(out).length ? out : undefined;
     }
     /** Track view: store each clip's part of the editor's annotations (chords carry their clip index `c`). */
-    function saveTrackAnn(rawTrack: any, trackName: string, editCtx: TrackEditContext, rawAnn: unknown, base: { instrument: string; capo: number }, selectionLength?: number) {
+    function saveTrackAnn(rawTrack: any, trackName: string, editCtx: TrackEditContext, rawAnn: unknown, base: { instrument: string; capo: number }, selectionLength?: number, drum = false) {
         const ann = sanitizeAnn(rawAnn);
         const clips: any[] = rawTrack.arrangementClips ?? [];
         for (const span of editCtx.spans) {
@@ -506,11 +516,13 @@ export function activate(activation: ActivationContext) {
             if (selectionLength !== undefined) {
                 // a selection shows part of the clip: keep the stored chords outside it
                 const old = readV2(context, editCtx.v2Ids.get(span.index))?.ann;
-                const outside = (old?.chords ?? []).filter(c => { const b = c.cb + span.offset; return b < -1e-9 || b >= selectionLength - 1e-9; });
-                const merged = sanitizeAnn({ ...(part ?? {}), chords: [...outside, ...(part?.chords ?? [])] });   // key / title: the editor's state
+                const out = (cb: number) => { const b = cb + span.offset; return b < -1e-9 || b >= selectionLength - 1e-9; };
+                const merged = sanitizeAnn({ ...(part ?? {}),                                   // key / title: the editor's state
+                    chords: [...(old?.chords ?? []).filter(c => out(c.cb)), ...(part?.chords ?? [])],
+                    lyrics: [...(old?.lyrics ?? []).filter(l => out(l.cb)), ...(part?.lyrics ?? [])] });
                 part = merged;
             }
-            editCtx.v2Ids.set(span.index, saveClipAnn(context, editCtx.v2Ids.get(span.index), hint, part, base));
+            editCtx.v2Ids.set(span.index, saveClipAnn(context, editCtx.v2Ids.get(span.index), hint, part, base, drum ? clip : undefined));
         }
     }
 
@@ -556,9 +568,9 @@ export function activate(activation: ActivationContext) {
             if (!tg) continue;
             try {
                 if (tab.drumLayer) { const dl = tab.drumLayer; after.push(() => saveDrumLayer(context, tg.storageKey, dl)); }
-                if (!tg.drum && "ann" in tab) after.push(() => {   // before the fingering save, which then keeps them
-                    if (tg.kind === "clip") tg.v2Id = saveClipAnn(context, tg.v2Id, tg.hint, sanitizeAnn(tab.ann), annBase(tab, readV2(context, tg.v2Id)));
-                    else saveTrackAnn(tg.track, tg.trackName, tg.editCtx, tab.ann, annBase(tab, readLayer(context, tg.storageKey)), tg.selectionLength);
+                if ("ann" in tab) after.push(() => {   // before the fingering save, which then keeps them
+                    if (tg.kind === "clip") tg.v2Id = saveClipAnn(context, tg.v2Id, tg.hint, sanitizeAnn(tab.ann), annBase(tab, readV2(context, tg.v2Id)), tg.drum ? tg.clip : undefined);
+                    else saveTrackAnn(tg.track, tg.trackName, tg.editCtx, tab.ann, annBase(tab, readLayer(context, tg.storageKey)), tg.selectionLength, tg.drum);
                 });
                 if (!(tab.apply && tab.edits)) {
                     if (!tab.edited) after.push(() => saveLayers(tg, tab));   // untouched tab: keep its fingering, as Close does
@@ -651,7 +663,8 @@ export function activate(activation: ActivationContext) {
         const regionStart = clip.looping ? clip.loopStart : clip.startMarker;
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
-        if (!drum) { (p as any).layerStorageKey = storageKey; (p as any).layerHint = hint; (p as any).layerV2Id = foundV2.id; p.ann = annToDisplay(foundV2.layer?.ann, -regionStart); }
+        if (!drum) { (p as any).layerStorageKey = storageKey; (p as any).layerHint = hint; (p as any).layerV2Id = foundV2.id; }
+        p.ann = annToDisplay(foundV2.layer?.ann, -regionStart);
         return { p, target: { kind: "clip", name, clip, regionStart, opened: JSON.stringify(clip.notes), v2Id: foundV2.id, hint, storageKey: drum ? drumKey : storageKey, drum } };
     }
 
@@ -708,8 +721,8 @@ export function activate(activation: ActivationContext) {
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         if (message?.drumLayer) saveDrumLayer(context, message.layerKey || (p as any).layerStorageKey, message.drumLayer);
-        if (!(p as any).drum && message && "ann" in message) {
-            try { saveTrackAnn(track, name, editCtx, message.ann, annBase(message, readLayer(context, layerKey(name, "")))); }
+        if (message && "ann" in message) {
+            try { saveTrackAnn(track, name, editCtx, message.ann, annBase(message, readLayer(context, layerKey(name, ""))), undefined, !!(p as any).drum); }
             catch (e) { console.warn("[TAB] annotation save failed:", e); }
         }
         if (message?.action === "apply" && message.edits) {
@@ -878,7 +891,7 @@ export function activate(activation: ActivationContext) {
         }
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
-        if (!drum) p.ann = annToDisplay(foundV2.layer?.ann, -regionStart);
+        p.ann = annToDisplay(foundV2.layer?.ann, -regionStart);
         (p as any).layerStorageKey = storageKey;
         (p as any).layerHint = hint;
         (p as any).layerV2Id = v2Id;
@@ -890,8 +903,8 @@ export function activate(activation: ActivationContext) {
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         if (drum && message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer);
         // annotations (chords, key, title) are saved on every close, whatever happens to the note edits
-        if (!drum && message && "ann" in message) {
-            try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer)); }
+        if (message && "ann" in message) {
+            try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer), drum ? clip : undefined); }
             catch (e) { console.warn("[TAB] annotation save failed:", e); }
         }
         try {
