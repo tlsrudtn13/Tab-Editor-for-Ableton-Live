@@ -97,11 +97,12 @@ export function applyStaffMode(score) {
 }
 
 // ★ v5.2: 음역 밖 노트(XML에서 괄호 notehead → isGhost=true) 색상 구별
-//   tie 괄호 프렛은 기본색 유지 → 노란색 = 음역 밖으로 즉시 식별
-var OOR_COLOR = "#e5c07b";
+//   tie 괄호 프렛은 기본색 유지 → 빨간색 = 음역 밖으로 즉시 식별
+// out of range = red warning (designer D011); edited, not yet applied = Live orange
+var OOR_COLOR = "#e05252", OOR_COLOR_LIGHT = "#c62828";
 export function colorizeOutOfRange(score) {
   try {
-    var col = alphaTab.model.Color.fromJson(OOR_COLOR);
+    var col = alphaTab.model.Color.fromJson(state.isLight ? OOR_COLOR_LIGHT : OOR_COLOR);
     var NS  = alphaTab.model.NoteSubElement;
     score.tracks.forEach(function(t) {
       (t.staves || []).forEach(function(st) {
@@ -176,7 +177,7 @@ export function createApi() {
     hideChordDiagrams(score);
     numberEveryFourBars(score);
     applyStaffMode(score);
-    colorizeOutOfRange(score);   // ★ 음역 밖 노트 노란색
+    colorizeOutOfRange(score);   // ★ 음역 밖 노트 빨간색, 편집한 노트 주황
     applyTechniquesToScore(score); // let ring, palm mute, hammer, slide, dead, vibrato
     log("Score loaded (" + state.dispMode + ")");
     status("Ready");

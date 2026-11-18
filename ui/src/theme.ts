@@ -42,15 +42,35 @@ export function syncThemeBtn() {
   if (b) b.textContent = state.isLight ? "\uD83C\uDF19" : "\u2600";  // 🌙 / ☀
 }
 
+/**
+ * Score text fonts (designer D011 §4): upright sans-serif instead of alphaTab's italic serif, so chord names
+ * ("Gadd9") and lyrics read cleanly. Segoe UI is always there in Live's WebView2 on Windows; Arial elsewhere.
+ */
+// CSS font shorthand: alphaTab parses it itself (its object form is not accepted in the settings JSON)
+const SANS = "'Segoe UI', Arial, sans-serif";
+const font = (size: number, bold = false, italic = false) => `${italic ? "italic " : ""}${bold ? "bold " : ""}${size}px ${SANS}`;
+export function scoreFonts(): Map<string, any> {
+  return new Map<string, any>([
+    ["scoretitle", font(22, true)],
+    ["effectchordnames", font(13, true)],
+    ["effectlyrics", font(11.5)],
+    ["barnumber", font(10, true)],
+    ["guitartuning", font(11, false, true)],
+  ]);
+}
+
 export function getAtRes() {
+  // D011 §2: title / tuning (scoreInfo) and bar numbers were too faint, light staff lines a touch lighter
   return state.isLight ? {
     mainGlyphColor: "#111111",  secondaryGlyphColor: "#505050",
-    staffLineColor: "#9a9a9a",  barSeparatorColor:   "#7a7a7a",
-    barNumberColor: "#8a8a8a",  scoreInfoColor:      "#606060"
+    staffLineColor: "#a8a8a8",  barSeparatorColor:   "#7a7a7a",
+    barNumberColor: "#5c5c5c",  scoreInfoColor:      "#2a2a2a",
+    elementFonts: scoreFonts()
   } : {
     mainGlyphColor: "#f0f0f0",   secondaryGlyphColor: "#b8b8b8",
     staffLineColor: "#525252",  barSeparatorColor:   "#757575",
-    barNumberColor: "#6f6f6f",  scoreInfoColor:      "#8a8a8a"
+    barNumberColor: "#9a9a9a",  scoreInfoColor:      "#d8d8d8",
+    elementFonts: scoreFonts()
   };
 }
 

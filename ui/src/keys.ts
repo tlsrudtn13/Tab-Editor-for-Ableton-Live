@@ -130,6 +130,8 @@ export function updateEditUi() {
   const edits = state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter((n: any) => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
   const count = document.getElementById("edit-count"), apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (count) { count.textContent = "* " + edits + " edits"; count.classList.toggle("hidden", edits === 0); }
+  // the edit counter takes the status slot: "Ready" would push Close & Apply off the toolbar (designer D011)
+  const st = document.getElementById("status"); if (st) st.classList.toggle("hidden", edits > 0);
   const enabled = active();
   if (apply) {
     (apply as HTMLButtonElement).disabled = !enabled;

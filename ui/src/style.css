@@ -89,9 +89,11 @@ body { display:flex; flex-direction:row; }
 /* per-tab Apply mark (several editable tabs): edited = outlined orange, marked = filled */
 .ti-apply { flex-shrink:0; height:18px; padding:0 6px; font-size:10px; line-height:16px; border-radius:2px; cursor:pointer;
   background:transparent; color:var(--p-live-text-secondary); border:1px solid var(--p-live-control-border); }
-.ti-apply:not(:disabled) { color:#ff764d; border-color:#ff764d; }
+.ti-apply:not(:disabled) { color:#ff764d; border-color:#ff764d; background:rgba(255,118,77,.12); }
 .ti-apply.on { background:#ff764d; color:#1e1e1e; font-weight:700; }
-.ti-apply:disabled { opacity:.35; cursor:default; }
+.ti-apply:disabled { opacity:.55; cursor:default; }
+:root.light .ti-apply:disabled { color:#7a7a7a; border-color:#c4c4c4; }
+:root.light .ti-apply:not(:disabled):not(.on) { color:#c24d00; border-color:#c24d00; }
 .ti.queued { background:#fff0e5; }
 :root:not(.light) .ti.queued { background:#382518; }
 #btn-cancel, #btn-apply { flex-shrink:0; white-space:nowrap; }
@@ -102,7 +104,7 @@ body { display:flex; flex-direction:row; }
 
 /* ── Toolbar ── */
 #toolbar {
-  height:32px; display:flex; align-items:center; gap:4px; padding:0 8px;
+  height:32px; display:flex; align-items:center; gap:3px; padding:0 8px;
   background:var(--p-live-input-bg);
   border-bottom:1px solid var(--p-live-control-border); flex-shrink:0;
   flex-wrap:nowrap;
@@ -128,7 +130,7 @@ body { display:flex; flex-direction:row; }
 }
 .sb:hover { background:rgba(255,255,255,.06); color:var(--p-live-text-primary); }
 .sb.on    { background:var(--p-live-ui-bg); color:var(--p-live-accent-primary); }
-.sp { width:1px; height:16px; background:var(--p-live-control-border); margin:0 2px; flex-shrink:0; }
+.sp { width:1px; height:16px; background:var(--p-live-control-border); margin:0 1px; flex-shrink:0; }
 .btn {
   padding:2px 9px; font-size:10px; font-weight:600; cursor:pointer; user-select:none;
   background:var(--p-live-control-bg); border:1px solid var(--p-live-control-border);
@@ -244,8 +246,9 @@ body { display:flex; flex-direction:row; }
 #fb-header { display:flex; align-items:center; gap:8px; }
 #fb-note-label {
   font-style:italic; text-transform:none; letter-spacing:0; font-weight:400;
-  margin-left:4px; color:var(--p-live-accent-primary);
+  margin-left:4px; color:#00c8ff;   /* selection = cyan, like the inspector line (designer D011) */
 }
+:root.light #fb-note-label { color:#007a9e; }
 .fb-ctl {
   display:flex; gap:5px; align-items:center;
   font-weight:400; text-transform:none; letter-spacing:0;
@@ -349,8 +352,9 @@ body { display:flex; flex-direction:row; }
   font-size:8.5px; color:var(--p-live-text-secondary); border-right:1px solid #2a2a2a;
   background:var(--p-live-input-bg); height:100%; flex-shrink:0;
 }
-.string-lane[data-s="1"] .str-label { color:#e2e; }
-.string-lane[data-s="6"] .str-label { color:#ea8; }
+.string-lane[data-s="1"] .str-label { color:var(--p-live-text-secondary); }
+.string-lane[data-s="6"] .str-label { color:var(--p-live-accent-primary); }
+:root.light .string-lane[data-s="6"] .str-label { color:#c24d00; }
 
 /* ── MIDI Inspector (기본 숨김, 토글) ── */
 #inspector {
@@ -427,3 +431,9 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 :root.light #lyric-input { background:#ffffff; color:#1a1a1a; }
 /* top toolbar: room for Key and Close & Apply next to the wider multi-tab sidebar (designer D009) */
 #toolbar .btn { padding:2px 6px; }
+/* ── Light theme contrast (designer D011) ── */
+:root.light .btn.pdf { color:#0b6699; border-color:#7ab4d6; }
+:root.light .btn.on, :root.light .sb.on, :root.light #edit-toolbar .rb.on { color:#c24d00; border-color:#c24d00; }
+:root.light #btn-chord.on, :root.light #btn-lyrics.on { color:#c24d00; }
+/* Row 2: a divider before the Title field so it does not float alone */
+.ui-title-label { border-left:1px solid var(--p-live-control-border); padding-left:8px; }

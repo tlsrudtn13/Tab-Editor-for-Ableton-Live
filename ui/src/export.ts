@@ -5,6 +5,7 @@ import { state } from "./state";
 import { log, status } from "./log";
 import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi, numberEveryFourBars } from "./score";
 import { isDrumTrack, prepareDrumScore } from "./drums";
+import { scoreFonts } from "./theme";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
 export var PDF_RENDER_W = 1406;
@@ -42,7 +43,8 @@ export function exportPDF() {
         staffLineColor:      "#000000",
         barSeparatorColor:   "#000000",
         barNumberColor:      "#000000",
-        scoreInfoColor:      "#000000"
+        scoreInfoColor:      "#000000",
+        elementFonts:        scoreFonts()   // same upright fonts as on screen
       }
     },
     player: { enablePlayer: false }
