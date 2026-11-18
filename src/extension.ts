@@ -338,7 +338,9 @@ export function activate(activation: ActivationContext) {
             if (editCtx) drum.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
             return drum;
         }
-        const layer = readLayer(context, storageKey);
+        // v1 note entries are keyed by absolute beat: on a rebased selection keep only instrument / capo / time signature
+        const stored = readLayer(context, storageKey);
+        const layer = range && stored ? { ...stored, notes: [] } : stored;
         const p = buildPayload(trackId, shownName, allNotes, tempo, live, { instrument: instrumentForLayer(layer), layer, capo: layer?.capo, timeSig: layer?.timeSig });
         if (p) {
             (p as any).layerStorageKey = storageKey;
@@ -389,7 +391,12 @@ export function activate(activation: ActivationContext) {
         return true;
     }
 
-    function saveTrackV2Layers(rawTrack: any, trackName: string, editCtx: TrackEditContext, message: any) {
+    /**
+     * Save a track view's fingering into each clip's layer. `selectionLength` (Selection tabs, rebased
+     * spans) means the tab showed only part of each clip: the clip's stored entries for notes that were
+     * shown are replaced by the tab's, entries for notes outside the selection are kept.
+     */
+    function saveTrackV2Layers(rawTrack: any, trackName: string, editCtx: TrackEditContext, message: any, selectionLength?: number) {
         if (!message?.layer || message.layer.v !== 2) return;
         const clips: any[] = rawTrack.arrangementClips ?? [];
         const allLayer = message.layer as TabLayerV2;
@@ -398,9 +405,27 @@ export function activate(activation: ActivationContext) {
             const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
             const hashes = clip ? clipRawHashes(clip) : new Set<string>();
             // entries carry their clip index (c); older messages without it fall back to the clip's note hashes
-            const notes = allLayer.notes
+            let notes = allLayer.notes
                 .filter(n => typeof n.c === "number" ? n.c === span.index : hashes.has(n.h))
                 .map(({ c, ...rest }) => rest);
+            if (selectionLength !== undefined) {
+                const id = editCtx.v2Ids.get(span.index);
+                const file = id ? v2File(context, id) : undefined;
+                let old: TabLayerV2 | undefined;
+                try { if (file && fs.existsSync(file)) { const x = JSON.parse(fs.readFileSync(file, "utf8")); if (isValidV2(x)) old = x; } } catch { /* start fresh */ }
+                if (old) {
+                    // hashes of this clip's notes that the tab showed (as opened): rebased start in [0, selectionLength)
+                    const shown = new Set<string>();
+                    try {
+                        for (const n of JSON.parse(editCtx.snapshots.get(span.index) ?? "[]") as any[]) {
+                            const cb = Number(n?.startTime), b = cb + span.offset;
+                            if (Number.isFinite(cb) && b >= -1e-9 && b < selectionLength - 1e-9) shown.add(clipNoteHash({ p: Number(n.pitch), cb }));
+                        }
+                    } catch { /* keep everything old */ }
+                    const fresh = new Set(notes.map(n => n.h));
+                    notes = [...old.notes.filter(n => !shown.has(n.h) && !fresh.has(n.h)), ...notes];
+                }
+            }
             const per: TabLayerV2 = { v: 2, instrument: allLayer.instrument, capo: allLayer.capo, hint, notes };
             if (allLayer.timeSig) per.timeSig = { ...allLayer.timeSig };
             editCtx.v2Ids.set(span.index, saveClipLayer(context, editCtx.v2Ids.get(span.index), per, hint));
@@ -417,7 +442,7 @@ export function activate(activation: ActivationContext) {
     // ──────────────────────────────────────────────────────
     type MultiTarget =
         | { kind: "clip"; name: string; clip: any; regionStart: number; opened: string; v2Id?: string; hint: { track: string; clip: string }; storageKey: string; drum: boolean }
-        | { kind: "track"; name: string; track: any; trackName: string; editCtx: TrackEditContext; storageKey: string; drum: boolean; partial: boolean };
+        | { kind: "track"; name: string; track: any; trackName: string; editCtx: TrackEditContext; storageKey: string; drum: boolean; selectionLength?: number };
 
     async function openMulti(payloads: TrackPayload[], targets: Map<string, MultiTarget>, emptyMessage: string): Promise<void> {
         if (!payloads.length) { await showEditor(context, [], emptyMessage); return; }
@@ -440,49 +465,61 @@ export function activate(activation: ActivationContext) {
 
     async function applyMultiTabs(tabs: any[], targets: Map<string, MultiTarget>): Promise<void> {
         const writes: ClipWrite[] = [];
-        const after: (() => void)[] = [];
+        const after: (() => void)[] = [];          // layer / kit map saves: only once the clips are written
         const total: ApplyStats = { changed: 0, added: 0, deleted: 0, dropped: 0 };
-        const stale: string[] = [];
+        const skipped: string[] = [];
+        const owner = new Map<any, string>();      // clip -> tab that writes it (two tabs must never write one clip)
         let applied = 0;
         const add = (st: ApplyStats) => { total.changed += st.changed; total.added += st.added; total.deleted += st.deleted; total.dropped += st.dropped; };
         const saveLayers = (tg: MultiTarget, tab: any) => {
             if (tg.drum || !tab.layer || tab.layer.v !== 2) return;
             if (tg.kind === "clip") tg.v2Id = saveClipLayer(context, tg.v2Id, tab.layer as TabLayerV2, tg.hint);
-            else if (!tg.partial) saveTrackV2Layers(tg.track, tg.trackName, tg.editCtx, tab);   // a selection holds part of each clip: keep the saved layer
+            else saveTrackV2Layers(tg.track, tg.trackName, tg.editCtx, tab, tg.selectionLength);
+        };
+        const claim = (clips: any[], name: string): boolean => {
+            if (clips.some(c => owner.has(c) && owner.get(c) !== name)) return false;
+            for (const c of clips) owner.set(c, name);
+            return true;
         };
         for (const tab of tabs) {
             const tg = targets.get(String(tab?.id));
             if (!tg) continue;
-            if (tab.drumLayer) saveDrumLayer(context, tg.storageKey, tab.drumLayer);
-            if (!(tab.apply && tab.edits)) {
-                if (!tab.edited) saveLayers(tg, tab);   // untouched tab: keep its fingering, as Close does
-                continue;
-            }
-            if (tg.kind === "clip") {
-                const current = tg.clip.notes;
-                if (!Array.isArray(current) || JSON.stringify(current) !== tg.opened) { stale.push(tg.name); continue; }
-                const merged = mergeClipEdits(current, tab.edits, tg.regionStart);
-                add(merged.stats);
-                if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) { saveLayers(tg, tab); continue; }
-                writes.push({ clip: tg.clip, notes: merged.notes });
+            try {
+                if (tab.drumLayer) { const dl = tab.drumLayer; after.push(() => saveDrumLayer(context, tg.storageKey, dl)); }
+                if (!(tab.apply && tab.edits)) {
+                    if (!tab.edited) after.push(() => saveLayers(tg, tab));   // untouched tab: keep its fingering, as Close does
+                    continue;
+                }
+                if (tg.kind === "clip") {
+                    const current = tg.clip.notes;
+                    if (!Array.isArray(current) || JSON.stringify(current) !== tg.opened) { skipped.push(tg.name); continue; }
+                    const merged = mergeClipEdits(current, tab.edits, tg.regionStart);
+                    if (merged.stats.changed + merged.stats.added + merged.stats.deleted === 0) { add(merged.stats); after.push(() => saveLayers(tg, tab)); continue; }
+                    if (!claim([tg.clip], tg.name)) { skipped.push(tg.name); continue; }
+                    add(merged.stats);
+                    writes.push({ clip: tg.clip, notes: merged.notes });
+                } else {
+                    const prep = prepareTrackEdits(tg.track, tg.editCtx, tab.edits);
+                    if (prep === "stale") { skipped.push(tg.name); continue; }
+                    if (!prep.writes.length || prep.total.changed + prep.total.added + prep.total.deleted === 0) { add(prep.total); continue; }
+                    if (!claim(prep.writes.map(w => w.clip), tg.name)) { skipped.push(tg.name); continue; }
+                    add(prep.total);
+                    writes.push(...prep.writes);
+                }
                 applied++;
                 after.push(() => saveLayers(tg, tab));
-            } else {
-                const prep = prepareTrackEdits(tg.track, tg.editCtx, tab.edits);
-                if (prep === "stale") { stale.push(tg.name); continue; }
-                add(prep.total);
-                if (!prep.writes.length || prep.total.changed + prep.total.added + prep.total.deleted === 0) continue;
-                writes.push(...prep.writes);
-                applied++;
-                after.push(() => saveLayers(tg, tab));
+            } catch (e) {
+                // e.g. the clip was deleted while the editor was open: skip this tab, keep the others
+                console.warn(`[TAB] tab "${tg.name}" skipped:`, e);
+                skipped.push(tg.name);
             }
         }
         if (writes.length) context.withinTransaction(() => { for (const w of writes) w.clip.notes = w.notes as any; });
         for (const f of after) { try { f(); } catch (e) { console.warn("[TAB] layer save failed:", e); } }
-        console.log(`[TAB] multi apply: ${applied} tab(s), ${writes.length} clip(s), ${JSON.stringify(total)}, stale: ${stale.length}`);
-        const staleText = stale.length ? ` Not applied (changed while open, reopen and try again): ${stale.join(", ")}.` : "";
-        if (writes.length) await notify(context, applySummary(total).replace("Applied to clip:", `Applied to ${writes.length} clip(s) in ${applied} tab(s):`) + staleText, stale.length ? 5000 : undefined);
-        else if (stale.length) await notify(context, "Nothing applied." + staleText, 5000);
+        console.log(`[TAB] multi apply: ${applied} tab(s), ${writes.length} clip(s), ${JSON.stringify(total)}, skipped: ${skipped.length}`);
+        const skipText = skipped.length ? ` Not applied (the clip changed or is shared with another tab; reopen and try again): ${skipped.join(", ")}.` : "";
+        if (writes.length) await notify(context, applySummary(total).replace("Applied to clip:", `Applied to ${writes.length} clip(s) in ${applied} tab(s):`) + skipText, skipped.length ? 5000 : undefined);
+        else if (skipped.length) await notify(context, "Nothing applied." + skipText, 5000);
         else if (tabs.some(t => t.apply)) await notify(context, "Nothing to apply: no valid note changes.");
     }
 
@@ -502,7 +539,7 @@ export function activate(activation: ActivationContext) {
             if (!p) continue;
             payloads.push(p);
             const trackName = safeStr((rawTrack as any).name, "Track");
-            targets.set(String(p.id), { kind: "track", name: trackName, track: rawTrack, trackName, editCtx, storageKey: layerKey(trackName, ""), drum: !!(p as any).drum, partial: false });
+            targets.set(String(p.id), { kind: "track", name: trackName, track: rawTrack, trackName, editCtx, storageKey: layerKey(trackName, ""), drum: !!(p as any).drum });
         }
         await openMulti(payloads, targets, "No notes in Arrangement clips. Open a Session clip or scene instead.");
     }
@@ -674,8 +711,10 @@ export function activate(activation: ActivationContext) {
 
             // 테이크 레인이면 부모 트랙으로 거슬러 올라감
             const track: any = (obj instanceof TakeLane) ? (obj as any).parent : obj;
-            if (!track || seen.has(track)) continue;
-            seen.add(track);
+            // a track and its take lanes resolve to the same track: one tab (two tabs must not write the same clips)
+            const key = track ? String(track.handle?.id ?? safeStr(track.name, "")) : "";   // Handle = { id: bigint }
+            if (!track || seen.has(key)) continue;
+            seen.add(key);
 
             // Notes that start inside the range, rebased so the range starts at beat 0; editable like the track view.
             const editCtx: TrackEditContext = { refs: [], spans: [], snapshots: new Map(), v2Ids: new Map() };
@@ -683,7 +722,7 @@ export function activate(activation: ActivationContext) {
             if (!p) continue;
             payloads.push(p);
             const trackName = safeStr(track.name, `Lane${laneIdx}`);
-            targets.set(String(p.id), { kind: "track", name: `${trackName} [sel]`, track, trackName, editCtx, storageKey: layerKey(trackName, ""), drum: !!(p as any).drum, partial: true });
+            targets.set(String(p.id), { kind: "track", name: `${trackName} [sel]`, track, trackName, editCtx, storageKey: layerKey(trackName, ""), drum: !!(p as any).drum, selectionLength: end - start });
         }
         await openMulti(payloads, targets, "No notes in the selected range.");
     });

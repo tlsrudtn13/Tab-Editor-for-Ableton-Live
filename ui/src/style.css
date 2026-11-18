@@ -91,7 +91,10 @@ body { display:flex; flex-direction:row; }
   background:transparent; color:var(--p-live-text-secondary); border:1px solid var(--p-live-control-border); }
 .ti-apply:not(:disabled) { color:#ff764d; border-color:#ff764d; }
 .ti-apply.on { background:#ff764d; color:#1e1e1e; font-weight:700; }
-.ti-apply:disabled { opacity:.45; cursor:default; }
+.ti-apply:disabled { opacity:.35; cursor:default; }
+.ti.queued { background:#fff0e5; }
+:root:not(.light) .ti.queued { background:#382518; }
+#btn-cancel, #btn-apply { flex-shrink:0; white-space:nowrap; }
 .no-tracks { padding:14px 10px; color:var(--p-live-text-secondary); font-size:11px; line-height:1.8; }
 
 /* ── Main ── */

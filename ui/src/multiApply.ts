@@ -71,15 +71,17 @@ export function refreshTabMarks() {
     b.classList.toggle("on", !!t.applyOnClose);
     b.setAttribute("aria-pressed", t.applyOnClose ? "true" : "false");
     b.textContent = n ? (t.applyOnClose ? "✓ Apply " + n : "Apply " + n) : "Apply";
+    const row = document.getElementById("ti-" + t.id);
+    if (row) row.classList.toggle("queued", !!t.applyOnClose);
     b.title = n === 0 ? "No edits in this tab"
       : t.applyOnClose ? "Will be written to the clip when you close the editor. Click to unmark."
-      : "Edited, not marked: click to write this tab to its clip on Close";
+      : "Edited. Click to include this tab in Close & Apply";
   }
   const apply = document.getElementById("btn-apply"), cancel = document.getElementById("btn-cancel");
   if (apply) apply.classList.add("hidden");   // one button in this mode: Close applies the marked tabs
   if (cancel) {
     (cancel as HTMLButtonElement).disabled = false;
-    cancel.textContent = marked ? "Close & Apply " + marked + (marked === 1 ? " tab" : " tabs") : "Close";
+    cancel.textContent = marked ? "Close & Apply (" + marked + ")" : "Close";
     cancel.title = marked ? "Write the marked tabs to their clips (one Live undo step) and close" : "Close the editor";
     cancel.classList.toggle("edit-apply", marked > 0);
   }

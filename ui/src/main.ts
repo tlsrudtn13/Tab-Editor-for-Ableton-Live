@@ -127,24 +127,28 @@ export function loadTrack(id) {
   }
   if (!trk) { log("track \"" + id + "\" not found"); return; }
 
-  if (state.curTrack && state.curTrack !== trk && isMulti()) stashSession(state.curTrack);   // keep this tab's edits
+  // Re-clicking the current tab keeps its edit session (deleted notes, undo); only a switch stashes / restores.
+  const sameTab = state.curTrack === trk;
+  if (state.curTrack && !sameTab && isMulti()) stashSession(state.curTrack);   // keep this tab's edits
   state.curTrack = trk;
   if (isDrumTrack(trk)) enterDrumMode(trk); else leaveDrumMode();
-  state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
-  var tsSel = document.getElementById("ui-timesig") as HTMLSelectElement | null;
-  if (tsSel && state.uiTimeSig) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;
-  state.uiCapo = trk.capo || 0;
-  var capoSel = document.getElementById("ui-capo") as HTMLSelectElement | null;
-  if (capoSel) capoSel.value = String(state.uiCapo);
+  if (!sameTab) {
+    state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
+    var tsSel = document.getElementById("ui-timesig") as HTMLSelectElement | null;
+    if (tsSel && state.uiTimeSig) tsSel.value = state.uiTimeSig.beats + "/" + state.uiTimeSig.type;
+    state.uiCapo = trk.capo || 0;
+    var capoSel = document.getElementById("ui-capo") as HTMLSelectElement | null;
+    if (capoSel) capoSel.value = String(state.uiCapo);
+  }
   // Remember each note's values as opened, so Apply sends only what changed
   // (a pitch-only edit must not move the note's original, unquantized timing).
   if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {
     if (n.b0 === undefined) { n.b0 = n.b; n.d0 = n.d; }
   });
-  if (!restoreSession(trk)) { state.deletedOids = []; state.editHistory = []; state.redoHistory = []; state.sessionChanged = false; }
+  if (!sameTab && !restoreSession(trk)) { state.deletedOids = []; state.editHistory = []; state.redoHistory = []; state.sessionChanged = false; }
   state.cursor = null; state.slots = []; state.selectionAnchor = null;
+  state.selectedNoteIndices = [];   // before updateEditUi: the old tab's indices must not be read against this tab's notes
   if (window.__editKeys) window.__editKeys.updateEditUi();
-  state.selectedNoteIndices = [];
   clearNoteOverlays();
   // 악기 드롭다운을 현재 트랙의 악기와 동기화
   var instSel = document.getElementById("ui-instrument") as HTMLSelectElement | null;
