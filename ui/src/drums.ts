@@ -254,6 +254,30 @@ function staffGeometry(b: number): { x: number; w: number; geo: Geo } | null {
 }
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 
+/**
+ * Lane under a click (y relative to the score element) at beat b: nearest staff position; among
+ * lanes sharing it, keep the cursor's lane, else the first. 0 when not a drum edit track or off the staff.
+ */
+export function laneAtY(b: number, y: number): number {
+  if (!editable() || !state.drumLanes.length) return 0;
+  const g = staffGeometry(b); if (!g) return 0;
+  const line = (y - g.geo.top) / g.geo.half;
+  let best = Infinity;
+  for (const l of state.drumLanes) best = Math.min(best, Math.abs(l.staffLine - line));
+  if (best > 1.5) return 0;                       // well off every drum position
+  const rows = state.drumLanes.map((l, i) => ({ l, row: i + 1 })).filter(x => Math.abs(Math.abs(x.l.staffLine - line) - best) < 1e-6);
+  const cur = state.cursor ? rows.find(x => x.row === state.cursor!.s) : undefined;
+  return (cur || rows[0]!).row;
+}
+
+/** Lane of a clicked alphaTab percussion note (0 when unknown). */
+export function laneOfNote(an: any): number {
+  if (!editable()) return 0;
+  const track = state.api && state.api.score ? state.api.score.tracks[0] : null;
+  const art = track && track.percussionArticulations ? track.percussionArticulations[an.percussionArticulation] : null;
+  return art ? state.drumLanes.findIndex(l => l.art === art.id) + 1 : 0;
+}
+
 /** Draw the drum cursor; returns false when not in drum edit mode (overlay.ts then draws the TAB cursor). */
 export function drawDrumCursor(): boolean {
   if (!isDrumTrack(state.curTrack)) return false;

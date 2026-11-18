@@ -20,7 +20,7 @@ import { bindDragSelection, consumeRecentDrag, isDragSelecting } from "./dragSel
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
 import { renderInspector } from "./inspector";
 import { pitchToName } from "./musicUi";
-import { isDrumTrack, rebuildDrumScore } from "./drums";
+import { isDrumTrack, rebuildDrumScore, laneAtY, laneOfNote } from "./drums";
 
 /* ════════════════════════════════════════════════════════════════════════════
    ★ [v5] 악기 변환 — instruments.ts 프리셋 기반
@@ -236,7 +236,8 @@ export function createApi() {
     let sPick: number | null = null;
     try {
       // only when the TAB line is shown; the mouse y is taken relative to the score element
-      if (lastMouse && state.dispMode !== "staff") sPick = stringAtY(tabBarBoundsAt(b), lastMouse.y);
+      if (lastMouse && isDrumTrack(state.curTrack)) sPick = laneAtY(b, lastMouse.y) || null;   // drum lane from the click height
+      else if (lastMouse && state.dispMode !== "staff") sPick = stringAtY(tabBarBoundsAt(b), lastMouse.y);
     } catch {}
     if (sPick != null) { setCursor(b, sPick); state.selectionAnchor = b; state.selectedNoteIndices = noteAtCursor() ? [noteAtCursor()!.index] : []; }
     else { setCursorAtBeat(beat, true); }
@@ -247,6 +248,13 @@ export function createApi() {
     api.noteMouseDown.on(function(note: any) {
       if (!note) return;
       if (isDragSelecting() || consumeRecentDrag()) return;
+      if (isDrumTrack(state.curTrack)) {   // drum hit: cursor to its beat and lane
+        const row = laneOfNote(note), bt = note.beat;
+        let bd: number | null = null;
+        try { bd = (bt.voice.bar.masterBar.start + bt.playbackStart) / 960; } catch {}
+        if (row > 0 && bd != null) setTimeout(function() { (window.__editKeys as any)?.setCursor?.(bd, row); }, 20);
+        return;
+      }
       const f = note.fret, sRaw = note.string;
       if (f === undefined || sRaw === undefined || sRaw <= 0) return;
       const nStrings = getStringCount();
