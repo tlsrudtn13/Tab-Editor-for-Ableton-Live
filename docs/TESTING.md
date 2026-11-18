@@ -74,3 +74,9 @@ each clip, then in `ui`: change a note of one tab (`n.p++; n.dirty = true; __edi
 `loadTrack(<other id>)` and change one there too, `toggleApplyMark(<first id>)`, stub `window.confirm = () => true`
 and click `#btn-cancel`. Only the marked tab's clip may differ in `rawNotes`; the log shows
 `[TAB] multi apply: 1 tab(s) ...`.
+
+Annotation check (chords / key / title): `open "TT open chords"`, in `ui`: `__annotate.autoChords()`,
+`__annotate.setKeyFromUi('2:maj')`, `__annotate.setTitleFromUi('X')`, close with `#btn-cancel` (after a delay
+so the ui result is reported first), reopen and read `__tabState.curTrack.ann`. `openTrack "TAB-TEST"` checks the
+per-clip split (chords come back at the same display beats), `openScene 2` that a tab saves its annotations
+on Close without any Apply mark.

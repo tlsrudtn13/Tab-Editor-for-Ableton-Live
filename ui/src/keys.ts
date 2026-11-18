@@ -10,6 +10,7 @@ import { log, status } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
 import { drumKey } from "./drums";
 import { refreshTabMarks } from "./multiApply";
+import { openChordPicker } from "./annotate";
 import { barEndSlot, barStartSlot, ensureCursor, rowCount, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
 import { clampDurToSpan, deleteBeatShift, durFromValue, durName, insertBeatShift, tieDecision, valueFromDur } from "./rhythm";
 
@@ -646,6 +647,7 @@ function onKey(e: KeyboardEvent) {
 
   if ((k === "Delete" || k === "Backspace") && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); deleteSelectionOrCursor(); return; }
 
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && kl === "k") { e.preventDefault(); openChordPicker(); return; }   // chord name (ui/src/annotate.ts)
   if (!e.ctrlKey && !e.altKey && !e.metaKey && kl === "b") { e.preventDefault(); cycleSelectedBend(saveUndo, render); return; }
   if (!e.ctrlKey && !e.altKey && !e.metaKey && TECH_KEY[kl as string]) { e.preventDefault(); toggleSelectedTech(TECH_KEY[kl as string], saveUndo, render); return; }
 }

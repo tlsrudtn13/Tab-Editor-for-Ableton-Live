@@ -45,6 +45,7 @@
       <option value="32">1/32</option>
       <option value="auto" selected>Auto</option>
     </select>
+    <select id="ui-key" class="tsel" title="Key signature: follow Live's scale, or fix one for this clip"><option value="live">Live: auto</option></select>
     <select id="ui-timesig" class="tsel" title="Time signature"><option>4/4</option><option>3/4</option><option>2/4</option><option>5/4</option><option>6/8</option><option>7/8</option><option>9/8</option><option>12/8</option></select>
     <label class="numlab">Trans
       <input type="number" id="ui-transpose" value="0" min="-24" max="24" />
@@ -83,6 +84,11 @@
     <div class="sp"></div>
     <button class="btn rb" id="rb-ins" title="Insert beat (Ctrl+Insert)">Ins beat</button>
     <button class="btn rb" id="rb-del" title="Delete beat (Shift+Delete)">Del beat</button>
+    <div class="sp"></div>
+    <button class="btn rb" id="btn-chord" title="Chord name at the cursor or selection (K): suggestions from the notes">Chord</button>
+    <button class="btn rb" id="btn-autochords" title="Auto-detect chords (Shift+click clears auto)">Auto chords</button>
+    <label for="ui-title" class="ui-title-label">Title</label>
+    <input type="text" id="ui-title" class="ui-title" maxlength="120" placeholder="Title" title="Title above the score and in the PDF (empty = tab name)" />
   </div>
 
   <div id="viewer"><div id="alphaTab"></div></div>
@@ -136,6 +142,7 @@
         <tr><td>Ctrl+Alt+← / →</td><td>Move note one beat</td></tr>
         <tr><td>Delete / Backspace</td><td>Delete selection or note at cursor</td></tr>
         <tr><td>I / P / H / S / X / V / B</td><td>Let ring / palm mute / H-P / slide / dead / vibrato / bend</td></tr>
+        <tr><td>K</td><td>Chord name at cursor / selection (1–4 pick a suggestion, type your own, Backspace removes)</td></tr>
         <tr><td>Ctrl+Z</td><td>Undo</td></tr>
         <tr><td>Ctrl+Y / Ctrl+Shift+Z</td><td>Redo</td></tr>
         <tr><td>Ctrl+Enter</td><td>Apply</td></tr>

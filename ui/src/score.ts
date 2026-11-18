@@ -173,6 +173,7 @@ export function createApi() {
   });
 
   api.scoreLoaded.on(function(score) {
+    hideChordDiagrams(score);
     applyStaffMode(score);
     colorizeOutOfRange(score);   // ★ 음역 밖 노트 노란색
     applyTechniquesToScore(score); // let ring, palm mute, hammer, slide, dead, vibrato
@@ -291,6 +292,30 @@ export function loadXmlIntoApi(targetApi, xmlStr) {
   }
 }
 
+/** Key signature of the score: the clip's fixed key, else Live's scale (when Scale Mode is on), else detected. */
+export function scoreKey(trk: any) {
+  const k = trk && trk.ann && trk.ann.key;
+  if (k) return { fifths: k.fifths, mode: k.minor ? "minor" : "major" } as any;
+  return (trk && trk.live && trk.live.scale && trk.live.scale.enabled)
+    ? (keyFromLiveScale(trk.live.scale.root, trk.live.scale.name) || undefined)
+    : undefined;
+}
+/** Title printed above the score (and in the PDF): the user's title, else the tab name. */
+export function scoreTitle(trk: any): string | undefined {
+  if (!trk) return undefined;
+  return (trk.ann && trk.ann.title) || trk.name || undefined;
+}
+/** Chord names only: alphaTab would also draw an empty chord diagram for every chord. */
+export function hideChordDiagrams(score: any) {
+  try {
+    for (const t of score.tracks || []) for (const st of t.staves || []) {
+      const chords = st.chords; if (!chords) continue;
+      const list = typeof chords.values === "function" ? Array.from(chords.values()) : Object.values(chords);
+      for (const c of list as any[]) if (c) c.showDiagram = false;
+    }
+  } catch (e) {}
+}
+
 export function getXmlForMode(track) {
   if (!track) return "";
   return track.musicXml || track.musicXmlBoth || track.musicXmlStaff || "";
@@ -327,9 +352,9 @@ export function rebuildScore() {
       cues:        state.curTrack.live && state.curTrack.live.cues,
       timeSig:     state.uiTimeSig || state.curTrack.timeSig,
       quantize:    state.uiQuantize === "auto" ? undefined : (state.uiQuantize as any),  // ★ v3
-      key:         (state.curTrack.live && state.curTrack.live.scale && state.curTrack.live.scale.enabled)
-                    ? (keyFromLiveScale(state.curTrack.live.scale.root, state.curTrack.live.scale.name) || undefined)
-                    : undefined
+      key:         scoreKey(state.curTrack),
+      chords:      (state.curTrack.ann && state.curTrack.ann.chords) || undefined,
+      title:       scoreTitle(state.curTrack),
     });
     state.curTrack.musicXml = xml;
     if (!state.api) createApi();

@@ -401,3 +401,23 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
   width: 1406px;   /* A4 가용폭 703px × 2배 해상도 */
   background: #fff;
 }
+
+/* ── Annotations: key, title, chord picker (ui/src/annotate.ts) ── */
+#ui-key { min-width:92px; max-width:132px; padding:0 6px; }
+#ui-key.fixed { border-color:#ff764d; color:var(--p-live-text-primary); }
+.ui-title-label { margin-left:auto; margin-right:6px; font-size:10px; color:#999999; }
+:root.light .ui-title-label { color:#777777; }
+.ui-title { width:160px; height:20px; padding:0 6px; font-size:11px; border-radius:2px;
+  background:var(--p-live-control-bg); color:var(--p-live-text-primary); border:1px solid var(--p-live-control-border); }
+#chord-picker { position:fixed; z-index:1000; min-width:168px; padding:4px; border-radius:4px; font-size:12px;
+  background:#2b2b2b; color:#f0f0f0; border:1px solid #4a4a4a; box-shadow:0 4px 12px rgba(0,0,0,.18); }
+:root.light #chord-picker { background:#ffffff; color:#1a1a1a; border-color:#cccccc; }
+#chord-picker input { width:100%; box-sizing:border-box; height:26px; padding:0 6px; font-size:12px; margin-bottom:4px;
+  border:1px solid #ff764d; border-radius:3px; background:transparent; color:inherit; }
+#chord-picker .cp-row { display:flex; align-items:center; gap:8px; height:24px; padding:0 6px; border-radius:3px; cursor:pointer; }
+#chord-picker .cp-row:hover, #chord-picker .cp-row.on { background:rgba(255,118,77,.18); }
+#chord-picker .cp-k { width:12px; color:#888888; font-size:10px; }
+#chord-picker .cp-n { font-weight:600; }
+#chord-picker .cp-empty, #chord-picker .cp-foot { padding:4px 6px 0; font-size:10px; color:#888888; }
+#btn-chord.on { background:#382518; border-color:#ff764d; color:#ff944d; }
+:root.light #btn-chord.on { background:#fff0e5; color:#d95300; }

@@ -4,7 +4,7 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.15.1). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.16.0). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
@@ -14,7 +14,7 @@ Score rendering by [alphaTab](https://alphatab.net).
 - Bass clips open as 4-string bass automatically. Other instruments: 7/8/12-string guitar, 5/6-string bass.
 - Tunings: Standard, Drop D, Eb, D Standard, Drop C, DADGAD, Open G, Open D; bass Drop D and Eb. Capo.
 - Rhythm: automatic grid (1/8, 1/16, 1/32) including 8th and 16th triplets.
-- Key signature from Live's Scale Mode; no guessed sharps on short riffs.
+- Key signature from Live's Scale Mode; no guessed sharps on short riffs. Or fix a key per clip (toolbar **Key**).
 - Time signatures 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (Session clips use their scene's signature).
 - Shows only the clip's loop region. Live locators appear as rehearsal marks.
 - Fretboard with scale overlay, chord names, note table, playback, PDF and AlphaTex export.
@@ -97,6 +97,8 @@ as on guitar. Apply writes only new and changed hits; untouched hits keep their 
 
 Click inside the editor once before pressing Play: the browser engine starts audio only after a click.
 
+**Chord names, key, title (for print).** Press **K** (or **Chord**) on a beat or a selected range: the editor suggests up to four chord names from the notes there (1–4 picks one, or type your own, Backspace removes it). **Auto chords** fills the half bars it is sure about and never replaces a chord you typed (Shift+click removes the auto ones). **Key** fixes the key signature for this clip (default: follow Live's scale). **Title** prints above the score and in the PDF (empty = the tab name). These are saved next to the clip on Close, whether or not you apply note edits; the MIDI itself is not changed. Drum tabs have none of these.
+
 **Several tabs.** Live writes back only when the editor closes, so each tab keeps its own edits while you switch tabs. A tab with edits gets an **Apply** button in the track list: click it (it turns orange, ✓ Apply) to have that tab written to its clip(s). **Close & Apply** then writes every marked tab in one Live undo step; edits in unmarked tabs are discarded after a confirm. Use the editor's Close button: closing the window with its own × applies nothing.
 
 ## Known limitations (beta)
@@ -137,7 +139,7 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.15.1). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.16.0). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 
@@ -151,6 +153,7 @@ MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내�
 - 박자표 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (세션 클립은 씬의 박자를 따름).
 - 클립의 루프 구간만 보여 주고, Live 로케이터는 리허설 마크로 표시합니다.
 - 프렛보드 스케일 표시, 코드 이름, 노트 표, 재생, PDF·AlphaTex 내보내기.
+- 악보용 코드 이름·조성·제목 편집 (코드 이름은 노트를 보고 후보를 제안합니다).
 
 **편집 (Open (Clip) - Edit과 Open (Track) - Edit)**
 
@@ -228,6 +231,8 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 | 세션 클립 여러 개 선택 | Open (Selected Clips) - Edit | 선택한 클립들, 클립마다 탭 하나, 편집 가능 |
 
 재생하기 전에 에디터 안을 한 번 클릭하세요. 브라우저 엔진은 클릭이 있어야 소리를 냅니다.
+
+**코드 이름·조성·제목 (인쇄용).** 박이나 선택 구간에서 **K**(또는 **Chord**)를 누르면 그 자리의 노트를 보고 코드 이름 후보를 최대 4개 보여 줍니다. 1–4로 고르거나 직접 입력하고, Backspace로 지웁니다. **Auto chords**는 확실한 곳만 반 마디 단위로 채우고, 직접 넣은 코드는 바꾸지 않습니다(Shift+클릭이면 자동 코드만 지움). **Key**로 이 클립의 조표를 고정할 수 있습니다(기본은 Live 스케일을 따름). **Title**은 악보 위와 PDF에 찍힙니다(비우면 탭 이름). 이 정보는 노트 편집을 Apply하든 안 하든 닫을 때 클립 옆에 저장되고, MIDI 자체는 바뀌지 않습니다. 드럼 탭에는 없습니다.
 
 **탭이 여러 개일 때.** Live에는 에디터를 닫을 때만 반영되므로, 탭을 옮겨 다녀도 탭마다 편집 내용이 남아 있습니다. 편집한 탭은 왼쪽 트랙 목록에 **Apply** 버튼이 켜집니다. 눌러 두면(주황색 ✓ Apply) 그 탭이 클립에 반영 대상이 됩니다. **Close & Apply**를 누르면 표시한 탭이 모두 Live 실행 취소 한 번으로 묶여 반영되고, 표시하지 않은 탭의 편집은 확인 후 버려집니다. 창의 × 버튼으로 닫으면 아무것도 반영되지 않으니 에디터의 Close 버튼을 쓰세요.
 

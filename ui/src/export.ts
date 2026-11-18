@@ -3,7 +3,7 @@ import { jsPDF } from "jspdf";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { state } from "./state";
 import { log, status } from "./log";
-import { applyStaffMode, getXmlForMode, loadXmlIntoApi } from "./score";
+import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi } from "./score";
 import { isDrumTrack, prepareDrumScore } from "./drums";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
@@ -48,7 +48,7 @@ export function exportPDF() {
     player: { enablePlayer: false }
   });
 
-  printApi.scoreLoaded.on(function(score) { applyStaffMode(score); });
+  printApi.scoreLoaded.on(function(score) { hideChordDiagrams(score); applyStaffMode(score); });
   printApi.error.on(function(e) {
     log("PDF render error: " + (e.message || JSON.stringify(e)));
     cleanup();
@@ -88,6 +88,11 @@ export function buildPdf(pc: HTMLElement) {
     return a.getBoundingClientRect().top - b.getBoundingClientRect().top;
   });
   if (canvases.length === 0) { log("PDF: no rendered content"); return; }
+  // alphaTab paints "rendered by alphaTab" as its own last partial: one short, narrow line of text.
+  // alphaTab has no setting for it (MPL-2.0 needs no notice in output); leave it out of the PDF.
+  // (a staff system is always far taller than 60 px; the notice is 12 px times the render scale)
+  var lastCv = canvases[canvases.length - 1];
+  if (canvases.length > 1 && lastCv.height < 60) canvases.pop();
 
   var MARGIN = 12, PAGE_W = 210, PAGE_H = 297;
   var availW = PAGE_W - MARGIN * 2;

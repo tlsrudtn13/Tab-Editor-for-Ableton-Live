@@ -66,7 +66,12 @@ export type TrackPayload = {
     /** regionLength: beats shown (loop or start/end markers); edits must stay inside it. */
     edit?: { mode: "clip"; regionStart: number; regionLength?: number; noteCount: number }
          | { mode: "track"; spans: { start: number; end: number; offset: number; index: number }[]; noteCount: number };
+    /** Score annotations in display beats (chord names, fixed key, title), from the clips' layers. */
+    ann?: PayloadAnn;
 };
+
+/** Annotations as the editor holds them: chord positions in display beats (`b`). */
+export type PayloadAnn = { chords?: { b: number; name: string; auto?: boolean }[]; key?: { fifths: number; minor: boolean }; title?: string };
 
 /** 퀀타이즈 그리드: 분음표 단위 (4 = 4분음표, 32 = 32분음표) */
 export type QuantizeGrid = 4 | 8 | 12 | 16 | 24 | 32;
@@ -93,6 +98,10 @@ export type MusicXmlOptions = {
     tuning?:   number[];      // 개방현 MIDI 피치 [1번줄..6번줄], 기본 표준 튜닝
     instrument?: InstrumentConfig;  // 악기 설정 (기본값: 6현 기타)
     skipVoicing?: boolean;  // true면 내부 보이싱 재적용 생략
+    /** Chord names above the staff, at display beats (one per beat). */
+    chords?: { b: number; name: string }[];
+    /** Score title (movement-title). */
+    title?: string;
     transpose?: number;     // 반음 단위로 전체 음정 이동 (양수 = 올림, 음수 = 내림)
     cues?: { beat: number; name: string }[];  // 리허설 마크 (큐포인트)
 };

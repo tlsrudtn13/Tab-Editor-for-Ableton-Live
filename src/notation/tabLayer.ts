@@ -21,7 +21,51 @@ export type TabLayerV2 = {
     timeSig?: TimeSig;
     hint: { track: string; clip: string };
     notes: LayerNoteV2[];
+    /** Score annotations (chord names, fixed key, title); not part of the MIDI. */
+    ann?: LayerAnn;
 };
+
+/** Chord name at a clip beat (`cb`); `auto` = filled by the detector, not typed by the user. `c` only in transit (track view). */
+export type ChordAnn = { cb: number; name: string; auto?: boolean; c?: number };
+/** A fixed key signature; absent = follow Live's scale. */
+export type KeyAnn = { fifths: number; minor: boolean };
+export type LayerAnn = { chords?: ChordAnn[]; key?: KeyAnn; title?: string };
+
+const MAX_CHORD_NAME = 24, MAX_TITLE = 120;
+
+/** Clean annotations read from disk or sent by the editor; undefined when nothing valid is left. */
+export function sanitizeAnn(x: unknown): LayerAnn | undefined {
+    const o: any = x;
+    if (!o || typeof o !== "object" || Array.isArray(o)) return undefined;
+    const out: LayerAnn = {};
+    if (Array.isArray(o.chords)) {
+        const seen = new Map<string, ChordAnn>();
+        for (const c of o.chords) {
+            const cb = Number(c?.cb), name = typeof c?.name === "string" ? c.name.trim().slice(0, MAX_CHORD_NAME) : "";
+            if (!Number.isFinite(cb) || cb < -1e6 || cb > 1e6 || !name) continue;
+            const item: ChordAnn = { cb: Math.round(cb * 96) / 96, name };
+            if (c.auto === true) item.auto = true;
+            if (Number.isInteger(c.c)) item.c = c.c;
+            seen.set(`${item.c ?? ""}@${Math.round(item.cb * 96)}`, item);   // one chord per beat (per clip)
+        }
+        const chords = [...seen.values()].sort((a, b) => a.cb - b.cb);
+        if (chords.length) out.chords = chords;
+    }
+    if (o.key && Number.isInteger(o.key.fifths) && o.key.fifths >= -7 && o.key.fifths <= 7) out.key = { fifths: o.key.fifths, minor: o.key.minor === true };
+    if (typeof o.title === "string" && o.title.trim()) out.title = o.title.trim().slice(0, MAX_TITLE);
+    return out.chords || out.key || out.title ? out : undefined;
+}
+
+/** The part of a track view's annotations that belongs to arrangement clip `index` (chords carry `c`). */
+export function annForClip(ann: LayerAnn | undefined, index: number): LayerAnn | undefined {
+    if (!ann) return undefined;
+    const out: LayerAnn = {};
+    const chords = (ann.chords ?? []).filter(c => c.c === index).map(({ c, ...rest }) => rest);
+    if (chords.length) out.chords = chords;
+    if (ann.key) out.key = { ...ann.key };
+    if (ann.title) out.title = ann.title;
+    return out.chords || out.key || out.title ? out : undefined;
+}
 
 export function layerKey(trackName: string, clipName: string): string {
     return `${trackName}\u0000${clipName}`;

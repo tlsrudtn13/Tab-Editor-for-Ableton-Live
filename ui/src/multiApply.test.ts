@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./apply", () => ({
   editsOf: (t: any, del: number[]) => ({ changed: t.notes.filter((n: any) => n.dirty && n.oid !== undefined).length, added: t.notes.filter((n: any) => n.oid === undefined).length, deleted: del.slice() }),
   layerOf: () => ({ v: 2, notes: [] }),
+  annOf: () => undefined,
 }));
 vi.mock("./drums", () => ({ isDrumTrack: (t: any) => !!t.drum, drumLayerIfChanged: () => undefined }));
 vi.mock("./log", () => ({ log: () => {} }));

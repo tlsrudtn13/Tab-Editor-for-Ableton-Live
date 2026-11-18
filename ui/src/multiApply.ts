@@ -7,7 +7,7 @@
 // (after a confirm).
 import { state } from "./state";
 import { log } from "./log";
-import { editsOf, layerOf } from "./apply";
+import { annOf, editsOf, layerOf } from "./apply";
 import { drumLayerIfChanged, isDrumTrack } from "./drums";
 
 /** More than one tab, at least one editable: the window works in "apply marked tabs on close" mode. */
@@ -103,6 +103,7 @@ export function sendMulti() {
     // a tab that was never opened changed nothing, so its saved fingering is left alone
     if (!drum && (apply || (n === 0 && t._ses))) tab.layer = layerOf(t, apply ? true : s.sessionChanged, s.uiCapo, s.uiTimeSig);
     if (drum) { const dl = drumLayerIfChanged(t); if (dl) tab.drumLayer = dl; }
+    const ann = annOf(t); if (ann !== undefined) tab.ann = ann;   // chords / key / title: saved whatever happens to note edits
     return tab;
   });
   const msg = { action: "multi", tabs };

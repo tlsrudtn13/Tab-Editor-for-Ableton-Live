@@ -24,6 +24,7 @@ import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggl
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
 import { isMulti, restoreSession, stashSession, toggleApplyMark } from "./multiApply";
+import { bindAnnotations, refreshAnnUi } from "./annotate";
 import { startDevReporter } from "./devReporter";
 import { bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
@@ -111,6 +112,7 @@ bindRb("rb-rest", () => ek()?.restAtCursor?.());
 bindRb("rb-ins", () => ek()?.insertBeatAtCursor?.());
 bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 bindDrums();
+bindAnnotations();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
@@ -149,6 +151,7 @@ export function loadTrack(id) {
   state.cursor = null; state.slots = []; state.selectionAnchor = null;
   state.selectedNoteIndices = [];   // before updateEditUi: the old tab's indices must not be read against this tab's notes
   if (window.__editKeys) window.__editKeys.updateEditUi();
+  refreshAnnUi();
   clearNoteOverlays();
   // 악기 드롭다운을 현재 트랙의 악기와 동기화
   var instSel = document.getElementById("ui-instrument") as HTMLSelectElement | null;

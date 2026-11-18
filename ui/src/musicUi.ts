@@ -1,5 +1,7 @@
 /* ── Musical helpers (pure, no DOM, no state) ─────────────────────────────── */
 
+import { chordCandidates } from "../../src/notation/chordDetect.js";
+
 export const NOTE_NAMES: string[] = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 
 // Ableton 옥타브 컨벤션: MIDI 60 = C3
@@ -64,32 +66,25 @@ export const CHORD_PATTERNS: [string, number[]][] = [
 
 export function detectChord(pitches: number[] | null | undefined): string {
   if (!pitches || pitches.length < 2) return "";
+  // build pitch classes
   var pcs: number[] = [];
   for (var i = 0; i < pitches.length; i++) {
     var pc = ((pitches[i] % 12) + 12) % 12;
     if (pcs.indexOf(pc) === -1) pcs.push(pc);
   }
   if (pcs.length < 2) return "";
-  var bassPc = ((Math.min.apply(null, pitches) % 12) + 12) % 12;
-  var roots = [bassPc].concat(pcs.filter(function(p) { return p !== bassPc; }));
-  for (var r = 0; r < roots.length; r++) {
-    var root = roots[r];
-    var iv = pcs.map(function(p) { return ((p - root) + 12) % 12; })
-                .sort(function(a, b) { return a - b; });
-    for (var c = 0; c < CHORD_PATTERNS.length; c++) {
-      var pat = CHORD_PATTERNS[c][1];
-      if (iv.length === pat.length &&
-          iv.every(function(v, k) { return v === pat[k]; })) {
-        var name = NOTE_NAMES[root] + CHORD_PATTERNS[c][0];
-        if (root !== bassPc) name += "/" + NOTE_NAMES[bassPc];
-        return name;
-      }
-    }
+  // use new module: treat as notes at b=0,d=1
+  var notes = pitches.map(function(p) { return { b: 0, d: 1, p: p, v: 100 }; });
+  var cands = chordCandidates(notes, 0, 1, { limit: 4 });
+  if (cands.length > 0) {
+    return cands[0].name;
   }
+  // fallback for 2 notes: old interval text
   if (pcs.length === 2) {
     var iv2 = ((pcs[1] - pcs[0]) + 12) % 12;
+    var bassPc = ((Math.min.apply(null, pitches) % 12) + 12) % 12;
     var IVN: Record<number, string> = {1:"m2",2:"M2",3:"m3",4:"M3",5:"P4",6:"TT",7:"P5",8:"m6",9:"M6",10:"m7",11:"M7"};
-    return NOTE_NAMES[bassPc] + " +" + (IVN[iv2] || iv2);
+    return NOTE_NAMES[bassPc] + " +" + (IVN[iv2] || String(iv2));
   }
   return "";
 }

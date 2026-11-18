@@ -254,6 +254,26 @@ function timelineToMeasures(
 
 // ── 메인 함수 ────────────────────────────────────────────────────────────────
 
+/**
+ * <harmony> for a chord name. alphaTab prints root + kind text, so the root goes in <root> and the rest of
+ * the name ("m7b5/C") in <kind text>; a name without a root letter (N.C.) goes in the kind text alone.
+ */
+export function harmonyXml(name: string): string[] {
+    const m = /^([A-G])([#b]?)(.*)$/.exec(name);
+    const out = [`      <harmony print-frame="no">`];
+    if (m) {
+        out.push(`        <root>`, `          <root-step>${m[1]}</root-step>`);
+        if (m[2]) out.push(`          <root-alter>${m[2] === "#" ? 1 : -1}</root-alter>`);
+        out.push(`        </root>`);
+        // empty text falls back to the kind value: "major" prints nothing after the root
+        out.push(m[3] ? `        <kind text="${escXml(m[3])}">major</kind>` : `        <kind>major</kind>`);
+    } else {
+        out.push(`        <kind text="${escXml(name)}">none</kind>`);
+    }
+    out.push(`      </harmony>`);
+    return out;
+}
+
 export function toMusicXml(
     notes: Note[],
     bpm:   number,
@@ -327,11 +347,25 @@ export function toMusicXml(
         cuesByMeasure.get(mi)!.push(name);
     }
 
+    // Chord names (<harmony>): one per beat, written before the first note of the token that sounds at that
+    // position (alphaTab keeps only the first harmony before a note and attaches it to that beat).
+    const chordQueue = (opts.chords ?? [])
+        .map(c => ({ u: Math.round(c.b * divisions), name: String(c.name ?? "").trim() }))
+        .filter(c => c.u >= 0 && c.name)
+        .sort((a, b) => a.u - b.u);
+    let cq = 0;
+    const pushHarmonies = (L: string[], until: number) => {
+        let first: string | undefined;
+        while (cq < chordQueue.length && chordQueue[cq]!.u < until) { first ??= chordQueue[cq]!.name; cq++; }
+        if (first !== undefined) L.push(...harmonyXml(first));
+    };
+
     // ── 5. XML 헤더 ───────────────────────────────────────────────────────
     const L: string[] = [
         `<?xml version="1.0" encoding="UTF-8"?>`,
         `<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">`,
         `<score-partwise version="4.0">`,
+        ...(opts.title ? [`  <movement-title>${escXml(opts.title)}</movement-title>`] : []),
         `  <part-list>`,
         `    <score-part id="P1">`,
         `      <part-name>${instr.name === "6-String Guitar" || instr.name === "7-String Guitar" || instr.name === "8-String Guitar" || instr.name === "12-String Guitar" ? "Guitar" : instr.name === "4-String Bass" || instr.name === "5-String Bass" || instr.name === "6-String Bass" ? "Bass" : instr.name}</part-name>`,
@@ -411,8 +445,10 @@ export function toMusicXml(
         const tokens = measures[mi]!;
         const allRest = tokens.length === 0 || tokens.every(t => t.kind === "rest");
 
+        let pos = mi * upm;   // token start in units (for chord names)
         if (allRest) {
             // 완전히 빈 마디 = 온쉼표 1개 (마디 중앙 배치)
+            pushHarmonies(L, pos + upm);
             L.push(`      <note>`);
             L.push(`        <rest measure="yes"/>`);
             L.push(`        <duration>${upm}</duration>`);
@@ -420,6 +456,8 @@ export function toMusicXml(
             L.push(`      </note>`);
         } else {
             for (const t of tokens) {
+                pushHarmonies(L, pos + t.value.units);
+                pos += t.value.units;
                 if (t.kind === "rest") {
                     L.push(`      <note>`);
                     L.push(`        <rest/>`);

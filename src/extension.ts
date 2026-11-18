@@ -33,7 +33,7 @@ import fs   from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { BASS_4, BASS_4_DROPD, BASS_4_EB, BASS_5, BASS_6, DEFAULT_INSTRUMENT, GUITAR_6, GUITAR_6_D, GUITAR_6_DROPC, GUITAR_6_DROPD, GUITAR_6_DADGAD, GUITAR_6_EB, GUITAR_6_OPEND, GUITAR_6_OPENG, GUITAR_7, GUITAR_8, GUITAR_12 } from "./notation/instruments.js";
-import { applyLayerV2, clipNoteHash, layerKey, matchClipLayer, type TabLayer, type TabLayerV2 } from "./notation/tabLayer.js";
+import { annForClip, applyLayerV2, clipNoteHash, layerKey, matchClipLayer, sanitizeAnn, type LayerAnn, type TabLayer, type TabLayerV2 } from "./notation/tabLayer.js";
 import { buildDrumPayload, looksLikeDrums } from "./notation/drumPayload.js";
 import { parseDrumLayer, type DrumLayer } from "./notation/drumMap.js";
 import { drumRackInfo } from "./drumDetect.js";
@@ -84,7 +84,7 @@ function readClipLayers(context: any): { id: string; layer: TabLayerV2 }[] {
         const file = path.join(dir, name);
         try {
             const x = JSON.parse(fs.readFileSync(file, "utf8"));
-            if (isValidV2(x)) out.push({ id: name.slice(0, -5), layer: x });
+            if (isValidV2(x)) { x.ann = sanitizeAnn(x.ann); if (!x.ann) delete x.ann; out.push({ id: name.slice(0, -5), layer: x }); }
             else console.warn("[TAB] invalid v2 TAB layer ignored:", file);
         } catch (e) { console.warn("[TAB] invalid v2 TAB layer ignored:", file, e); }
     }
@@ -104,22 +104,47 @@ function findClipLayer(context: any, clip: any, hint: { track: string; clip: str
     const id = matchClipLayer(readClipLayers(context), clipRawHashes(clip), hint);
     if (!id) return {};
     const file = v2File(context, id);
-    try { if (file) { const x = JSON.parse(fs.readFileSync(file, "utf8")); if (isValidV2(x)) return { id, layer: x }; } } catch {}
+    try { if (file) { const x = JSON.parse(fs.readFileSync(file, "utf8")); if (isValidV2(x)) { x.ann = sanitizeAnn(x.ann); if (!x.ann) delete x.ann; return { id, layer: x }; } } } catch {}
     return {};
 }
 function newV2Id(hint: { track: string; clip: string }): string {
     return createHash("sha256").update(`${hint.track}\u0000${hint.clip}\u0000${Date.now()}\u0000${Math.random()}`).digest("hex").slice(0, 16);
 }
-function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 | undefined, hint: { track: string; clip: string }): string | undefined {
+function readV2(context: any, id: string | undefined): TabLayerV2 | undefined {
+    const file = id ? v2File(context, id) : undefined;
+    try { if (file && fs.existsSync(file)) { const x = JSON.parse(fs.readFileSync(file, "utf8")); if (isValidV2(x)) return x; } } catch { /* none */ }
+    return undefined;
+}
+/** Save a clip's fingering layer. Annotations stored in the file are kept unless the layer carries its own (`keepAnn`). */
+function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 | undefined, hint: { track: string; clip: string }, keepAnn = true): string | undefined {
     if (!layer) return id;
     try {
         const useId = id || newV2Id(hint);
         const file = v2File(context, useId); if (!file) return id;
+        if (keepAnn && !("ann" in layer)) { const old = sanitizeAnn(readV2(context, id)?.ann); if (old) layer = { ...layer, ann: old }; }
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, JSON.stringify(layer), "utf8");
         return useId;
     } catch (e) { console.warn("[TAB] v2 TAB layer save failed:", e); return id; }
 }
+/** Replace a clip's annotations (chords, key, title), creating a layer file when the clip has none yet. */
+function saveClipAnn(context: any, id: string | undefined, hint: { track: string; clip: string }, ann: LayerAnn | undefined, base: { instrument: string; capo: number }): string | undefined {
+    const layer: TabLayerV2 = readV2(context, id) ?? { v: 2, instrument: base.instrument, capo: base.capo, hint: { ...hint }, notes: [] };
+    if (!readV2(context, id) && !ann) return id;          // nothing stored, nothing to store
+    const next: TabLayerV2 = { ...layer };
+    if (ann) next.ann = ann; else delete next.ann;
+    return saveClipLayer(context, id, next, hint, false);
+}
+/** Clip annotations -> editor beats: display b = clip beat - regionStart (clip view) or + offset (track view). */
+function annToDisplay(ann: LayerAnn | undefined, shift: number): { chords?: { b: number; name: string; auto?: boolean }[]; key?: { fifths: number; minor: boolean }; title?: string } | undefined {
+    if (!ann) return undefined;
+    const out: any = {};
+    if (ann.chords?.length) out.chords = ann.chords.map(c => ({ b: c.cb + shift, name: c.name, ...(c.auto ? { auto: true } : {}) }));
+    if (ann.key) out.key = { ...ann.key };
+    if (ann.title) out.title = ann.title;
+    return Object.keys(out).length ? out : undefined;
+}
+
 // ── Drum tracks (docs/DRUMS.md): per-track kit map, stored next to the TAB layers ──
 const drumKey = (key: string) => "drum\u0000" + key;
 function readDrumLayer(context: any, key: string): DrumLayer | undefined {
@@ -164,6 +189,12 @@ function locateClip(context: any, clip: any): { trackName: string; slotIndex?: n
     return undefined;
 }
 function instrumentForLayer(layer?: TabLayer) { return layer ? INSTRUMENT_BY_KEY[layer.instrument] : undefined; }
+/** Instrument / capo for a new annotation-only layer file: from the editor's layer, else the stored one, else guitar6. */
+function annBase(message: any, stored?: { instrument?: string; capo?: number }): { instrument: string; capo: number } {
+    const inst = [message?.layer?.instrument, stored?.instrument].find(k => typeof k === "string" && INSTRUMENT_BY_KEY[k]) ?? "guitar6";
+    const capo = Number.isFinite(message?.layer?.capo) ? message.layer.capo : (Number.isFinite(stored?.capo) ? stored!.capo! : 0);
+    return { instrument: inst, capo };
+}
 
 // 공용 헬퍼 1 (buildPayload) 은 src/notation/payload.ts 로 이동 — dev harness 와 공유
 
@@ -305,6 +336,7 @@ export function activate(activation: ActivationContext) {
         const collected = collectNotes(rawTrack);
         if (!collected) return null;
         let allNotes: Note[] = Array.isArray(collected.arr) ? collected.arr : [];
+        const clipAnns = new Map<number, LayerAnn>();   // arrangement clip index -> its annotations
         const trackId = range?.id ?? String(rawTrack.id ?? rawTrack.rawId ?? rawTrack._id ?? `track_${idx}`);
         const trackName = safeStr(rawTrack.name, "Unknown");
         const clips: any[] = rawTrack.arrangementClips ?? [];
@@ -318,6 +350,7 @@ export function activate(activation: ActivationContext) {
                 const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
                 const found = clip ? findClipLayer(context, clip, hint) : {};
                 editCtx.v2Ids.set(span.index, found.id);
+                if (found.layer?.ann) clipAnns.set(span.index, found.layer.ann);
                 if (found.layer) {
                     const inst = INSTRUMENT_BY_KEY[found.layer.instrument] || DEFAULT_INSTRUMENT;
                     allNotes = allNotes.map(n => n.cref === span.index ? applyLayerV2([n], found.layer!, inst)[0]! : n);
@@ -349,6 +382,7 @@ export function activate(activation: ActivationContext) {
         if (p && editCtx) {
             p.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
             (p as any).layerV2IdsByClip = Object.fromEntries([...editCtx.v2Ids.entries()]);
+            p.ann = trackAnnToDisplay(clipAnns, editCtx.spans, range ? range.end - range.start : undefined);
         }
         return p;
     }
@@ -444,6 +478,42 @@ export function activate(activation: ActivationContext) {
         | { kind: "clip"; name: string; clip: any; regionStart: number; opened: string; v2Id?: string; hint: { track: string; clip: string }; storageKey: string; drum: boolean }
         | { kind: "track"; name: string; track: any; trackName: string; editCtx: TrackEditContext; storageKey: string; drum: boolean; selectionLength?: number };
 
+    /** Track view: every clip's chords at display beats (b = clip beat + span offset); key / title from the first clip that has one. */
+    function trackAnnToDisplay(clipAnns: Map<number, LayerAnn>, spans: TrackClipSpan[], visibleLength?: number) {
+        const out: any = {};
+        const chords: { b: number; name: string; auto?: boolean }[] = [];
+        for (const sp of spans) {
+            const ann = clipAnns.get(sp.index); if (!ann) continue;
+            for (const c of annToDisplay(ann, sp.offset)?.chords ?? []) {
+                if (c.b < sp.start - 1e-9 || c.b >= sp.end - 1e-9) continue;                       // outside the clip's shown part
+                if (visibleLength !== undefined && (c.b < -1e-9 || c.b >= visibleLength - 1e-9)) continue;   // outside the selection
+                chords.push(c);
+            }
+            if (!out.key && ann.key) out.key = { ...ann.key };
+            if (!out.title && ann.title) out.title = ann.title;
+        }
+        if (chords.length) out.chords = chords.sort((a, b) => a.b - b.b);
+        return Object.keys(out).length ? out : undefined;
+    }
+    /** Track view: store each clip's part of the editor's annotations (chords carry their clip index `c`). */
+    function saveTrackAnn(rawTrack: any, trackName: string, editCtx: TrackEditContext, rawAnn: unknown, base: { instrument: string; capo: number }, selectionLength?: number) {
+        const ann = sanitizeAnn(rawAnn);
+        const clips: any[] = rawTrack.arrangementClips ?? [];
+        for (const span of editCtx.spans) {
+            const clip = clips[span.index]; if (!clip) continue;
+            const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
+            let part = annForClip(ann, span.index);
+            if (selectionLength !== undefined) {
+                // a selection shows part of the clip: keep the stored chords outside it
+                const old = readV2(context, editCtx.v2Ids.get(span.index))?.ann;
+                const outside = (old?.chords ?? []).filter(c => { const b = c.cb + span.offset; return b < -1e-9 || b >= selectionLength - 1e-9; });
+                const merged = sanitizeAnn({ ...(part ?? {}), chords: [...outside, ...(part?.chords ?? [])] });   // key / title: the editor's state
+                part = merged;
+            }
+            editCtx.v2Ids.set(span.index, saveClipAnn(context, editCtx.v2Ids.get(span.index), hint, part, base));
+        }
+    }
+
     async function openMulti(payloads: TrackPayload[], targets: Map<string, MultiTarget>, emptyMessage: string): Promise<void> {
         if (!payloads.length) { await showEditor(context, [], emptyMessage); return; }
         const result = await showEditor(context, payloads);
@@ -454,7 +524,7 @@ export function activate(activation: ActivationContext) {
         let tabs: any[] = Array.isArray(message?.tabs) ? message.tabs : [];
         if (!tabs.length && payloads.length === 1) {
             const apply = message?.action === "apply";
-            tabs = [{ id: payloads[0]!.id, apply, edited: apply || message?.action === "cancel", edits: message?.edits, layer: message?.layer, drumLayer: message?.drumLayer }];
+            tabs = [{ id: payloads[0]!.id, apply, edited: apply || message?.action === "cancel", edits: message?.edits, layer: message?.layer, drumLayer: message?.drumLayer, ...(message && "ann" in message ? { ann: message.ann } : {}) }];
         }
         try { await applyMultiTabs(tabs, targets); }
         catch (e) {
@@ -486,6 +556,10 @@ export function activate(activation: ActivationContext) {
             if (!tg) continue;
             try {
                 if (tab.drumLayer) { const dl = tab.drumLayer; after.push(() => saveDrumLayer(context, tg.storageKey, dl)); }
+                if (!tg.drum && "ann" in tab) after.push(() => {   // before the fingering save, which then keeps them
+                    if (tg.kind === "clip") tg.v2Id = saveClipAnn(context, tg.v2Id, tg.hint, sanitizeAnn(tab.ann), annBase(tab, readV2(context, tg.v2Id)));
+                    else saveTrackAnn(tg.track, tg.trackName, tg.editCtx, tab.ann, annBase(tab, readLayer(context, tg.storageKey)), tg.selectionLength);
+                });
                 if (!(tab.apply && tab.edits)) {
                     if (!tab.edited) after.push(() => saveLayers(tg, tab));   // untouched tab: keep its fingering, as Close does
                     continue;
@@ -577,7 +651,7 @@ export function activate(activation: ActivationContext) {
         const regionStart = clip.looping ? clip.loopStart : clip.startMarker;
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
-        if (!drum) { (p as any).layerStorageKey = storageKey; (p as any).layerHint = hint; (p as any).layerV2Id = foundV2.id; }
+        if (!drum) { (p as any).layerStorageKey = storageKey; (p as any).layerHint = hint; (p as any).layerV2Id = foundV2.id; p.ann = annToDisplay(foundV2.layer?.ann, -regionStart); }
         return { p, target: { kind: "clip", name, clip, regionStart, opened: JSON.stringify(clip.notes), v2Id: foundV2.id, hint, storageKey: drum ? drumKey : storageKey, drum } };
     }
 
@@ -634,6 +708,10 @@ export function activate(activation: ActivationContext) {
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         if (message?.drumLayer) saveDrumLayer(context, message.layerKey || (p as any).layerStorageKey, message.drumLayer);
+        if (!(p as any).drum && message && "ann" in message) {
+            try { saveTrackAnn(track, name, editCtx, message.ann, annBase(message, readLayer(context, layerKey(name, "")))); }
+            catch (e) { console.warn("[TAB] annotation save failed:", e); }
+        }
         if (message?.action === "apply" && message.edits) {
             try {
                 const ok = await applyTrackEdits(track, editCtx, message.edits);
@@ -800,6 +878,7 @@ export function activate(activation: ActivationContext) {
         }
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
+        if (!drum) p.ann = annToDisplay(foundV2.layer?.ann, -regionStart);
         (p as any).layerStorageKey = storageKey;
         (p as any).layerHint = hint;
         (p as any).layerV2Id = v2Id;
@@ -810,6 +889,11 @@ export function activate(activation: ActivationContext) {
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
         if (drum && message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer);
+        // annotations (chords, key, title) are saved on every close, whatever happens to the note edits
+        if (!drum && message && "ann" in message) {
+            try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer)); }
+            catch (e) { console.warn("[TAB] annotation save failed:", e); }
+        }
         try {
             const saveV2 = () => {
                 if (!drum && message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint);
