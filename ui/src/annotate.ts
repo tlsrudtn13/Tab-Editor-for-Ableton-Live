@@ -12,6 +12,7 @@ import { log } from "./log";
 import { rebuildScore, scoreKey } from "./score";
 import { isDrumTrack } from "./drums";
 import { findBeatBoundsAt, tabBarBoundsAt } from "./overlay";
+import { saveAnnUndo } from "./keys";
 import { chordCandidates, autoChord, type ChordCandidate } from "../../src/notation/chordDetect.js";
 
 const MAJ = ["Cb","Gb","Db","Ab","Eb","Bb","F","C","G","D","A","E","B","F#","C#"];   // fifths -7..7
@@ -59,6 +60,7 @@ export function chordAt(b: number): any | undefined {
   return list.find((c: any) => Math.abs(c.b - b) < 1e-6);
 }
 function setChord(b: number, name: string | null, auto = false) {
+  saveAnnUndo();   // Ctrl+Z puts the previous chord back
   const a = ann();
   const list = (a.chords || []).filter((c: any) => Math.abs(c.b - b) >= 1e-6);
   if (name) list.push(auto ? { b, name, auto: true } : { b, name });
@@ -139,6 +141,7 @@ export function autoChords(): number {
   if (!pitched()) return 0;
   const t = state.curTrack, notes: any[] = t.notes || [];
   if (!notes.length) return 0;
+  saveAnnUndo();   // one Ctrl+Z removes the whole Auto chords pass
   const a = ann(), bpb = beatsPerBar(), step = bpb % 2 === 0 && bpb >= 4 ? bpb / 2 : bpb;
   const end = Math.max(...notes.map((n: any) => n.b + n.d));
   const user = (a.chords || []).filter((c: any) => !c.auto);
@@ -159,6 +162,7 @@ export function autoChords(): number {
   return added;
 }
 export function clearAutoChords() {
+  if (editable()) saveAnnUndo();
   if (!editable()) return;
   const a = ann(); const list = (a.chords || []).filter((c: any) => !c.auto);
   a.chords = list.length ? list : undefined;
@@ -219,6 +223,7 @@ function closeLyrics(commit: boolean) {
   l.box.remove();
   document.getElementById("btn-lyrics")?.classList.remove("on");
   if (l.changedAny) changed();
+  else state.editHistory.pop();   // nothing typed: no undo step
 }
 /** While lyrics entry is open, every finished render (a new syllable widens the layout) re-positions the field. */
 function followRender() { setTimeout(() => { if (lyr) { positionLyricBox(); lyr.box.focus(); } }, 30); }
@@ -235,6 +240,7 @@ export function openLyrics() {
   box.id = "lyric-input"; box.type = "text"; box.maxLength = 40; box.setAttribute("aria-label", "Lyric syllable");
   document.body.appendChild(box);
   lyr = { box, onsets, i, changedAny: false };
+  saveAnnUndo();   // the whole lyrics session is one undo step (dropped again when nothing changes)
   try { state.api && state.api.postRenderFinished.on(followRender); } catch {}
   document.getElementById("btn-lyrics")?.classList.add("on");
   const go = (d: number) => {
@@ -264,6 +270,7 @@ export function openLyrics() {
 // ── Key and title ───────────────────────────────────────────────────────────
 export function setKeyFromUi(v: string) {
   if (!state.curTrack) return;
+  saveAnnUndo();
   const a = ann();
   if (v === "live") delete a.key;
   else { const [f, m] = v.split(":"); a.key = { fifths: Number(f), minor: m === "min" }; }
@@ -271,6 +278,7 @@ export function setKeyFromUi(v: string) {
 }
 export function setTitleFromUi(v: string) {
   if (!state.curTrack) return;
+  saveAnnUndo();
   const a = ann(), s = String(v || "").trim().slice(0, 120);
   if (s && s !== state.curTrack.name) a.title = s; else delete a.title;
   changed();

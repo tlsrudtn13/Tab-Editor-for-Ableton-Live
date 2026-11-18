@@ -10,7 +10,7 @@ import { log, status } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
 import { drumKey } from "./drums";
 import { refreshTabMarks } from "./multiApply";
-import { openChordPicker, openLyrics } from "./annotate";
+import { openChordPicker, openLyrics, refreshAnnUi } from "./annotate";
 import { barEndSlot, barStartSlot, ensureCursor, rowCount, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
 import { clampDurToSpan, deleteBeatShift, durFromValue, durName, insertBeatShift, tieDecision, valueFromDur } from "./rhythm";
 
@@ -33,11 +33,34 @@ function spanOf(b: number) {
   return sp && i >= 0 ? sp[i] : null;
 }
 
+/** Copy of the tab's annotations (chords, lyrics, key, title) for the undo history. */
+export function annSnapshot(): any {
+  const a = state.curTrack && state.curTrack.ann;
+  return a ? JSON.parse(JSON.stringify(a)) : undefined;
+}
+/** Undo entry: notes, deleted notes and annotations as they are now. */
+function historyEntry(notes?: any[], deleted?: number[]) {
+  return { notes: notes || state.curTrack.notes.map((n: any) => ({ ...n })), deletedOids: (deleted || state.deletedOids).slice(), ann: annSnapshot() };
+}
 export function saveUndo(before?: any, deletedBefore?: any) {
   state.sessionChanged = true;
   state.redoHistory = [];
-  state.editHistory.push({ notes: before || state.curTrack.notes.map((n: any) => ({ ...n })), deletedOids: (deletedBefore || state.deletedOids).slice() });
+  state.editHistory.push(historyEntry(before, deletedBefore));
   if (state.editHistory.length > 50) state.editHistory.shift();
+}
+/** Before a chord / lyric / key / title change: one undo step (the notes are unchanged). */
+export function saveAnnUndo() {
+  if (!state.curTrack) return;
+  state.redoHistory = [];
+  state.editHistory.push(historyEntry());
+  if (state.editHistory.length > 50) state.editHistory.shift();
+}
+/** Put a history entry's annotations back (entries from before this feature carry none: leave them). */
+function restoreAnn(h: any) {
+  if (!h || !("ann" in h)) return;
+  state.curTrack.ann = h.ann ? JSON.parse(JSON.stringify(h.ann)) : undefined;
+  state.curTrack._annDirty = true;
+  try { refreshAnnUi(); } catch {}
 }
 
 function render() {
@@ -529,17 +552,19 @@ function pasteAtCursor() {
 
 function undo() {
   const h = state.editHistory.pop(); if (!h) return;
-  state.redoHistory.push({ notes: state.curTrack.notes.map((n:any)=>({...n})), deletedOids: state.deletedOids.slice() });
+  state.redoHistory.push(historyEntry());
   state.curTrack.notes = h.notes.map((n:any)=>({...n}));
   state.deletedOids = h.deletedOids.slice();
+  restoreAnn(h);
   syncFromCursor();
   rebuildScore(); renderInspector(state.curTrack); updateEditUi();
 }
 function redo() {
   const h = state.redoHistory.pop(); if (!h) return;
-  state.editHistory.push({ notes: state.curTrack.notes.map((n:any)=>({...n})), deletedOids: state.deletedOids.slice() });
+  state.editHistory.push(historyEntry());
   state.curTrack.notes = h.notes.map((n:any)=>({...n}));
   state.deletedOids = h.deletedOids.slice();
+  restoreAnn(h);
   syncFromCursor();
   rebuildScore(); renderInspector(state.curTrack); updateEditUi();
 }

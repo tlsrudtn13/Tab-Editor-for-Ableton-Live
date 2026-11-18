@@ -26,7 +26,7 @@ import { stopPlay, togglePlay } from "./player";
 import { isMulti, restoreSession, stashSession, toggleApplyMark } from "./multiApply";
 import { bindAnnotations, refreshAnnUi } from "./annotate";
 import { startDevReporter } from "./devReporter";
-import { bindKeys, toggleTech } from "./keys";
+import { annSnapshot, bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
@@ -59,7 +59,7 @@ function adjustDuration(mode: string) {
   }
   if (changed) {
     state.sessionChanged = true; state.redoHistory = [];
-    state.editHistory.push({ notes: before, deletedOids: state.deletedOids.slice() });
+    state.editHistory.push({ notes: before, deletedOids: state.deletedOids.slice(), ann: annSnapshot() });
     log("Duration " + from + " → " + to);
     rebuildScore(); renderInspector(state.curTrack); (window.__editKeys as any)?.updateEditUi?.();
   }
