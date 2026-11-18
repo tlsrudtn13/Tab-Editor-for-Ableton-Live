@@ -56,6 +56,7 @@ export function scoreFonts(): Map<string, any> {
     ["effectlyrics", font(11.5)],
     ["barnumber", font(10, true)],
     ["guitartuning", font(11, false, true)],
+    ["effectmarker", font(12, true)],    // tempo "= 120" (alphaTab draws it with the marker font) and section markers (designer D012)
   ]);
 }
 

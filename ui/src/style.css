@@ -116,6 +116,7 @@ body { display:flex; flex-direction:row; }
 }
 #edit-toolbar .rb { padding:1px 6px; font-size:10px; min-width:22px; }
 #edit-toolbar .rb.on { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
+#edit-toolbar .btn:disabled { opacity:.38; cursor:default; }   /* Auto chords / Lyrics on drum tabs (designer D012) */
 #status { margin-left:auto; }
 .tl { font-size:9.5px; color:var(--p-live-text-secondary); user-select:none; white-space:nowrap; }
 .seg {

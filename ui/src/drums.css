@@ -7,7 +7,7 @@ body.drum-mode #toolbar .numlab,
 body.drum-mode #tech-palette { display:none !important; }
 
 #drum-legend {
-  flex-shrink:0; max-height:132px; overflow-y:auto;
+  flex-shrink:0; max-height:min(220px, 30vh); overflow-y:auto;   /* 4 legend rows without a scrollbar (designer D012) */
   background:var(--p-live-control-bg); border-top:1px solid var(--p-live-control-border);
   padding:4px 10px 6px;
 }

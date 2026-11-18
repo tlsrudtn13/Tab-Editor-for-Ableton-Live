@@ -307,8 +307,13 @@ export function scoreTitle(trk: any): string | undefined {
   if (!trk) return undefined;
   return (trk.ann && trk.ann.title) || trk.name || undefined;
 }
-/** Bar numbers on bars 1, 5, 9, ... only (every four bars), on screen and in the PDF. */
+/**
+ * Bar numbers on bars 1, 5, 9, ... only (every four bars), on screen and in the PDF.
+ * Also hides the vertical track label left of the staff: alphaTab cuts it to 10 characters ("TT drums r"), and
+ * every score here is one track whose name is already the title (designer D012).
+ */
 export function numberEveryFourBars(score: any) {
+  try { if (score.stylesheet) score.stylesheet.singleTrackTrackNamePolicy = 0; } catch (e) {}   // TrackNamePolicy.Hidden
   try {
     for (const t of score.tracks || []) for (const st of t.staves || []) for (const bar of st.bars || []) {
       // alphaTab BarNumberDisplay: 0 = AllBars (show), 2 = Hide
