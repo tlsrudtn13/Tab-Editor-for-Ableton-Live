@@ -40,12 +40,14 @@ const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_
 let devDir = "";
 let tempDir = "";
 let uiSeq = 0;
+let currentPage = "";   // file name of the editor page opened last; only it gets queued JS
 const uiQueue: Array<{ id: string; js: string }> = [];
 
 /** URL the modal should load instead of file:// (null when the harness is off). */
 export function devEditorUrl(htmlPath: string): string | null {
     if (!devDir) return null;
     tempDir = path.dirname(htmlPath);
+    currentPage = path.basename(htmlPath);
     return `http://localhost:${DEV_PORT}/file/${encodeURIComponent(path.basename(htmlPath))}`;
 }
 
@@ -355,8 +357,11 @@ const onRequest: http.RequestListener = async (req, res) => {
             return;
         }
         if (req.method === "GET" && url === "/ui-cmd") {
+            // an editor window left open from an earlier run (or an old build) must not take the jobs
+            const m = /[?&]page=([^&]*)/.exec(req.url ?? "");   // no URL global in the extension host
+            const page = m ? decodeURIComponent(m[1]!) : "";
             res.writeHead(200, { "content-type": "application/json" });
-            res.end(JSON.stringify(uiQueue.splice(0)));
+            res.end(JSON.stringify(currentPage && page !== currentPage ? [] : uiQueue.splice(0)));
             return;
         }
         if (req.method === "POST" && (url === "/report" || url === "/ui-result")) {

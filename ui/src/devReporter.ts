@@ -68,7 +68,7 @@ export function startDevReporter(): void {
     // Run JS queued by the harness ("ui" action), then report its result.
     setInterval(async () => {
         let cmds: Array<{ id: string; js: string }> = [];
-        try { cmds = await (await fetch(BASE + "/ui-cmd")).json(); } catch { return; }
+        try { cmds = await (await fetch(BASE + "/ui-cmd?page=" + encodeURIComponent(decodeURIComponent(location.pathname.split("/").pop() || "")))).json(); } catch { return; }
         for (const c of cmds) {
             let result: unknown = null, error: string | null = null;
             try {

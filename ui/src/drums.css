@@ -73,7 +73,7 @@ body.drum-mode #tech-palette { display:none !important; }
 :root.light #drum-legend .dl-row.active .dl-k { font-weight:600; }
 
 /* Drum editing: Apply shows (disabled when view only, as on guitar); tie means nothing on drums. */
-body.drum-mode #rb-tie, body.drum-mode #btn-refinger { display:none !important; }
+body.drum-mode #rb-tie, body.drum-mode #btn-refinger, body.drum-mode #sp-refinger { display:none !important; }
 .cursor-overlay.drum { overflow:visible; }
 /* lane name to the right of the box, centred on it: never covers noteheads above or below */
 .drum-lane-tag {
