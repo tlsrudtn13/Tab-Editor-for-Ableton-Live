@@ -6,28 +6,69 @@ body.drum-mode #toolbar .seg,
 body.drum-mode #toolbar .numlab,
 body.drum-mode #tech-palette { display:none !important; }
 
+/* Drum map: a table like Live's mapping browser / Drum Rack I-O list.
+   Fixed columns Note | Pad | Notation | Voice, 22 px rows, hairline grid, header like FRETBOARD. */
 #drum-legend {
-  flex-shrink:0; max-height:min(220px, 30vh); overflow-y:auto;   /* 4 legend rows without a scrollbar (designer D012) */
+  --dl-line: rgba(0,0,0,.45); --dl-alt: rgba(255,255,255,.025); --dl-hover: rgba(255,255,255,.05);
+  --dl-sel: #00c8ff; --dl-sel-bg: rgba(0,200,255,.16); --dl-sel-text: #00c8ff;
+  --dl-block: #111111; --dl-th-bg: #2a2a2a; --dl-th-text: #9a9a9a; --dl-th-line: #1b1b1b; --dl-dim: #7d7d7d;
+  --dl-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0h8L4 5z' fill='%239a9a9a'/%3E%3C/svg%3E");
+  flex-shrink:0; max-height:min(240px, 34vh); overflow-y:auto;
   background:var(--p-live-control-bg); border-top:1px solid var(--p-live-control-border);
-  padding:4px 10px 6px;
 }
-#drum-legend .dl-head {
-  display:flex; gap:12px; align-items:baseline; padding:2px 0 4px;
-  font-weight:700; color:var(--p-live-text-primary);
+:root.light #drum-legend {
+  --dl-line: hsl(0,0%,80%); --dl-alt: rgba(0,0,0,.03); --dl-hover: rgba(0,0,0,.05);
+  --dl-sel: #008ca8; --dl-sel-bg: rgba(0,140,168,.14); --dl-sel-text: #005f75;
+  --dl-line: #cfcfcf; --dl-block: #a8a8a8; --dl-th-bg: #dcdcdc; --dl-th-text: #585858; --dl-th-line: #b4b4b4; --dl-dim: #6e6e6e;
+  --dl-chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0h8L4 5z' fill='%23555555'/%3E%3C/svg%3E");
 }
-#drum-legend .dl-note { font-weight:400; color:var(--p-live-text-secondary); }
-#drum-legend .dl-list { display:flex; flex-wrap:wrap; gap:4px 14px; }
-#drum-legend .dl-row { display:flex; gap:6px; align-items:center; white-space:nowrap; }
-#drum-legend .dl-key {
-  min-width:46px; font-variant-numeric:tabular-nums; color:var(--p-live-text-secondary);
+#drum-legend .dl-head { display:flex; align-items:center; gap:8px; position:sticky; top:0; z-index:2; }
+#drum-legend .dl-src, #drum-legend .dl-note {
+  text-transform:none; letter-spacing:0; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-#drum-legend .dl-pad {
-  max-width:120px; overflow:hidden; text-overflow:ellipsis;
-  color:var(--p-live-text-secondary); font-style:italic;
+#drum-legend .dl-note { min-width:0; }
+#drum-legend .dl-table { display:grid; grid-template-columns:repeat(var(--dl-blocks, 1), minmax(0, 1fr)); }
+#drum-legend .dl-block { min-width:0; border-right:2px solid var(--dl-block); }   /* blocks split harder than cells (D014) */
+#drum-legend .dl-block:last-child { border-right:none; }
+#drum-legend .dl-tr {
+  display:grid; grid-template-columns:56px minmax(0, 1fr) 148px 48px; align-items:stretch;
+  height:22px; border-bottom:1px solid var(--dl-line); font-size:11px; color:var(--p-live-text-primary);
 }
-#drum-legend .dl-row.custom .dl-key { color:var(--p-live-accent-primary); }
-#drum-legend .dl-row.unmapped .dl-key { color:#e5c07b; }
-#drum-legend .dl-row.unmapped .dl-key::after { content:" ?"; }
+#drum-legend .dl-c {
+  display:flex; align-items:center; min-width:0; padding:0 6px; border-right:1px solid var(--dl-line);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#drum-legend .dl-c:last-child { border-right:none; }
+#drum-legend .dl-th {
+  height:18px; position:sticky; top:31px; z-index:1; background:var(--dl-th-bg); border-bottom-color:var(--dl-th-line);
+  font-size:9px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--dl-th-text);
+}
+#drum-legend .dl-row.alt { background:var(--dl-alt); }
+#drum-legend .dl-row:hover { background:var(--dl-hover); }
+#drum-legend .dl-k { font-variant-numeric:tabular-nums; color:var(--p-live-text-secondary); }
+#drum-legend .dl-p { color:var(--p-live-text-secondary); }
+#drum-legend .dl-row .dl-p { display:block; line-height:22px; }   /* block so the ellipsis works */
+#drum-legend .dl-v { color:var(--p-live-text-secondary); justify-content:center; }
+#drum-legend .dl-n { padding:0 1px; }
+#drum-legend .dl-sel { width:100%; height:20px; font-size:11px; padding:0 16px 0 2px; margin:0;
+  appearance:none; -webkit-appearance:none; background-image:var(--dl-chev) !important; background-repeat:no-repeat; background-position:right 5px center; }
+/* choosers sit flat in the table (no box) until hovered or focused, like Live's in-list choosers */
+#drum-legend .dl-sel { background-color:transparent; border-color:transparent; color:var(--p-live-text-primary); }
+#drum-legend .dl-row:hover .dl-sel, #drum-legend .dl-sel:focus { background-color:var(--p-live-input-bg); border-color:var(--p-live-control-border); }
+#drum-legend .dl-sel option { background:var(--p-live-control-bg); color:var(--p-live-text-primary); }
+#drum-legend .dl-row.custom .dl-k { color:var(--p-live-accent-primary); }
+#drum-legend .dl-row.unmapped .dl-k { color:#e5c07b; }
+:root.light #drum-legend .dl-row.unmapped .dl-k { color:#a86b00; }
+#drum-legend .dl-row.unmapped .dl-k::after { content:"\00a0?"; }
+/* edit mode: core-kit pieces not in the clip yet (click = cursor on that lane) */
+#drum-legend .dl-free { cursor:pointer; }
+#drum-legend .dl-free .dl-c { color:var(--dl-dim); }
+#drum-legend .dl-free .dl-n { padding:0 6px; }
+#drum-legend .dl-free:hover .dl-c { color:var(--p-live-text-secondary); }
+/* the lane under the cursor: selection tint + 2 px bar on the left, like a selected Live list row */
+#drum-legend .dl-row.active { background:var(--dl-sel-bg); box-shadow:inset 2px 0 0 var(--dl-sel); }
+#drum-legend .dl-row.active .dl-k { color:var(--dl-sel-text); font-weight:700; }
+:root.light #drum-legend .dl-row.active .dl-k { font-weight:600; }
 
 /* Drum editing: Apply shows (disabled when view only, as on guitar); tie means nothing on drums. */
 body.drum-mode #rb-tie, body.drum-mode #btn-refinger { display:none !important; }
@@ -40,12 +81,3 @@ body.drum-mode #rb-tie, body.drum-mode #btn-refinger { display:none !important; 
   background:rgba(18,22,28,0.80); color:#fff; border:1px solid #00c8ff; pointer-events:none;
 }
 .drum-lane-tag.left { left:auto; right:calc(100% + 4px); }
-#drum-legend .dl-row, #drum-legend .dl-chip { border:1px solid transparent; border-radius:3px; padding:2px 6px; }
-#drum-legend .dl-row.active, #drum-legend .dl-chip.active { border-color:#00c8ff; background:rgba(0,200,255,0.14); opacity:1; }
-#drum-legend .dl-row.active .dl-key { font-weight:700; color:#0088b3; }
-html:not(.light) #drum-legend .dl-row.active .dl-key { color:#00c8ff; }
-#drum-legend .dl-chip {
-  opacity:0.55; border:1px dashed var(--p-live-control-border, rgba(128,128,128,0.45));
-  font-size:11px; background:transparent; color:var(--p-live-text-primary); cursor:pointer;
-}
-#drum-legend .dl-chip:hover { opacity:0.85; border-color:#00c8ff; }

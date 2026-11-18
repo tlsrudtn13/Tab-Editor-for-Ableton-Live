@@ -109,7 +109,7 @@ one Live undo step, nothing written when the clip changed while the editor was o
   (crash, hi-hat closed/open, ride, toms, snare, kick, hi-hat pedal), ordered top of the staff
   first. Pieces that share a staff position (snare / side stick, closed / open hi-hat) are
   separate lanes; a tag on the cursor and the highlighted legend row name the lane. Core-kit
-  pieces the clip does not use are dashed **+ piece** chips in the legend (click = go there).
+  pieces the clip does not use are dim **+ piece** rows in the drum map table (click = go there).
 - **Pitch of a new hit** on a lane: the pitch the clip already uses for that piece, else a
   Drum Rack pad mapped to it, else its GM key (`lanePitch`). A piece no pad plays is left out.
 - **Keys.** Left/Right beat (both voices: a kick-only beat is a stop), Ctrl+Left/Right bar,

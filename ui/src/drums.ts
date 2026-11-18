@@ -48,6 +48,7 @@ export function leaveDrumMode() {
   state.drumLanes = [];
   const el = document.getElementById("drum-legend");
   if (el) el.remove();
+  if (legendObs) { legendObs.disconnect(); legendObs = null; }
 }
 
 /** Recompute the lanes (pieces used + core kit) and each hit's lane row (note.s). */
@@ -125,6 +126,30 @@ export function rebuildDrumScore() {
 }
 
 // ── Legend ──────────────────────────────────────────────────────────────────
+// Laid out like Live's own mapping tables (MIDI/Key Map browser, Drum Rack I-O list):
+// a panel header like the fretboard's, then fixed columns Note | Pad | Notation | Voice
+// with one 22 px row per pad, filled top to bottom in as many column blocks as fit.
+const LEGEND_BLOCK_MIN = 360;          // px per block (4 columns); 1..4 blocks
+let legendObs: ResizeObserver | null = null;
+let legendBlocks = 0;
+
+function legendCell(cls: string, text: string): HTMLElement {
+  const c = document.createElement("span");
+  c.className = "dl-c " + cls;
+  c.textContent = text;
+  return c;
+}
+
+function legendHeaderRow(): HTMLElement {
+  const h = document.createElement("div");
+  h.className = "dl-tr dl-th";
+  h.append(legendCell("dl-k", "Note"), legendCell("dl-p", "Pad"), legendCell("dl-n", "Notation"), legendCell("dl-v", "Voice"));
+  return h;
+}
+
+const limbText = (art: number) => (DRUM_ARTICULATIONS.find(a => a.id === art)?.limb === "foot" ? "Foot" : "Hand");
+const blocksFor = (width: number, rows: number) => Math.max(1, Math.min(4, Math.floor((width - 20) / LEGEND_BLOCK_MIN), rows));
+
 function renderLegend(trk: any) {
   let el = document.getElementById("drum-legend");
   if (!el) {
@@ -134,32 +159,39 @@ function renderLegend(trk: any) {
     if (viewer && viewer.parentElement) viewer.parentElement.insertBefore(el, viewer.nextSibling);
     else document.body.appendChild(el);
   }
+  const host = el as HTMLElement;
   const override: DrumOverride = trk.drum.override || (trk.drum.override = {});
   const pieces = drumLegend(trk.notes.map((n: any) => n.p), override, trk.drum.hints);
   trk.drum.pieces = pieces;
-  el.innerHTML = "";
+  host.innerHTML = "";
+
+  // header: same look as the FRETBOARD panel header
   const head = document.createElement("div");
-  head.className = "dl-head";
-  head.textContent = "Drum kit — " + (trk.drum.source === "drum-rack" ? "Drum Rack" : "detected by name") + ", GM map";
+  head.className = "ph dl-head";
+  const title = document.createElement("span");
+  title.textContent = "Drum map";
+  const src = document.createElement("span");
+  src.className = "dl-src";
+  src.textContent = (trk.drum.source === "drum-rack" ? "Drum Rack" : "detected by name") + " · GM";
+  const spacer = document.createElement("span");
+  spacer.className = "sb-spacer";
   const hint = document.createElement("span");
   hint.className = "dl-note";
   hint.textContent = trk.edit
     ? "Enter add/remove hit · Alt+↑↓ change piece · G ghost · A accent · N normal"
     : "Hands: stems up · Feet: stems down · change a pad to fix a custom kit";
-  head.appendChild(hint);
-  el.appendChild(head);
-  const list = document.createElement("div");
-  list.className = "dl-list";
+  head.append(title, src, spacer, hint);
+  host.appendChild(head);
+
+  // rows: pads in the clip, then (edit mode) core-kit pieces not used yet
+  const rows: HTMLElement[] = [];
   for (const p of pieces) {
     const row = document.createElement("label");
-    row.className = "dl-row" + (p.mapped ? "" : " unmapped") + (p.custom ? " custom" : "");
+    row.className = "dl-tr dl-row" + (p.mapped ? "" : " unmapped") + (p.custom ? " custom" : "");
     row.dataset.art = String(p.articulation);
     row.title = "MIDI " + p.pitch + (p.pad ? " · pad: " + p.pad : "") + (p.mapped ? "" : " · not in the GM map");
-    const key = document.createElement("span");
-    key.className = "dl-key";
-    key.textContent = liveNoteName(p.pitch) + " " + p.pitch;
     const sel = document.createElement("select");
-    sel.className = "tsel";
+    sel.className = "tsel dl-sel";
     for (const a of DRUM_ARTICULATIONS) {
       const o = document.createElement("option");
       o.value = String(a.id);
@@ -172,31 +204,52 @@ function renderLegend(trk: any) {
       state.curTrack._kitChanged = true;   // per tab: the kit map goes back on close
       rebuildDrumScore();
     });
-    row.appendChild(key);
-    row.appendChild(sel);
-    if (p.pad) {
-      const pad = document.createElement("span");
-      pad.className = "dl-pad";
-      pad.textContent = p.pad;
-      row.appendChild(pad);
-    }
-    list.appendChild(row);
+    const n = document.createElement("span");
+    n.className = "dl-c dl-n";
+    n.appendChild(sel);
+    row.append(legendCell("dl-k", liveNoteName(p.pitch) + " " + p.pitch), legendCell("dl-p", p.pad || "—"), n,
+      legendCell("dl-v", limbText(p.articulation)));
+    rows.push(row);
   }
-  // Edit mode: core-kit pieces the clip does not use yet, as chips the cursor can reach.
   if (trk.edit) {
     state.drumLanes.forEach((lane, i) => {
       if (!lane.empty) return;
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "dl-chip";
-      chip.dataset.art = String(lane.art);
-      chip.textContent = "+ " + lane.name;
-      chip.title = lane.label + " — click to put the cursor on this piece";
-      chip.addEventListener("click", () => moveCursorToLane(i + 1));
-      list.appendChild(chip);
+      const row = document.createElement("div");
+      row.className = "dl-tr dl-row dl-free";
+      row.dataset.art = String(lane.art);
+      row.title = lane.label + " — not in the clip yet; click to put the cursor on this piece";
+      row.append(legendCell("dl-k", liveNoteName(lane.pitch) + " " + lane.pitch), legendCell("dl-p", "not in clip"),
+        legendCell("dl-n", "+ " + lane.name), legendCell("dl-v", lane.limb === "foot" ? "Foot" : "Hand"));
+      row.addEventListener("click", () => moveCursorToLane(i + 1));
+      rows.push(row);
     });
   }
-  el.appendChild(list);
+
+  const table = document.createElement("div");
+  table.className = "dl-table";
+  host.appendChild(table);
+  const layout = () => {
+    const blocks = blocksFor(host.clientWidth, rows.length);
+    legendBlocks = blocks;
+    table.innerHTML = "";
+    table.style.setProperty("--dl-blocks", String(blocks));
+    const per = Math.ceil(rows.length / blocks);
+    for (let b = 0; b < blocks; b++) {
+      const blk = document.createElement("div");
+      blk.className = "dl-block";
+      blk.appendChild(legendHeaderRow());
+      rows.slice(b * per, (b + 1) * per).forEach((r, i) => { r.classList.toggle("alt", i % 2 === 1); blk.appendChild(r); });
+      table.appendChild(blk);
+    }
+  };
+  layout();
+  if (legendObs) legendObs.disconnect();
+  if (typeof ResizeObserver !== "undefined") {
+    legendObs = new ResizeObserver(() => {
+      if (blocksFor(host.clientWidth, rows.length) !== legendBlocks) { layout(); markActiveLane(); }
+    });
+    legendObs.observe(host);
+  }
   markActiveLane();
 }
 
@@ -210,7 +263,7 @@ function markActiveLane() {
   const el = document.getElementById("drum-legend"); if (!el) return;
   const lane = state.cursor && editable() ? state.drumLanes[state.cursor.s - 1] : undefined;
   let active: HTMLElement | null = null;
-  el.querySelectorAll<HTMLElement>(".dl-row, .dl-chip").forEach(r => {
+  el.querySelectorAll<HTMLElement>(".dl-row").forEach(r => {
     const on = !!lane && r.dataset.art === String(lane.art);
     r.classList.toggle("active", on);
     if (on && !active) active = r;

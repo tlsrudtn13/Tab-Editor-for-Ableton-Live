@@ -4,7 +4,7 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.17.3). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.17.4). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
@@ -70,8 +70,8 @@ String choices, tuning, capo and time signature are saved per clip and restored 
 Edited fingering is kept per clip, also after renaming or moving the clip; Re-finger clears it.
 
 **Drums.** A track with a Drum Rack (or a drum-named track playing GM drum keys) opens as a drum staff
-with a pad legend underneath. In Open (Clip) - Edit and Open (Track) - Edit the cursor moves over beats
-(Left/Right) and drum pieces (Up/Down, top of the staff first; the dashed **+ piece** chips in the legend
+with a drum map table underneath (Note | Pad | Notation | Voice, one row per pad). In Open (Clip) - Edit and Open (Track) - Edit the cursor moves over beats
+(Left/Right) and drum pieces (Up/Down, top of the staff first; the dim **+ piece** rows in the drum map
 are pieces the clip does not use yet). **Enter** adds or removes a hit, **Delete** removes it,
 **Alt+Up/Down** changes its piece (closed to open hi-hat, snare to side stick ...), **G / A / N** set
 ghost (velocity 35), accent (127) or normal (100). The Value buttons, dot, triplet and Ins/Del beat work
@@ -139,7 +139,7 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.17.3). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.17.4). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 
@@ -205,9 +205,9 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 고른 줄, 튜닝, 카포, 박자표는 클립마다 저장되어 다시 열 때 복원됩니다.
 편집한 운지는 클립 이름을 바꾸거나 옮긴 뒤에도 클립별로 유지되며, Re-finger는 이를 지웁니다.
 
-**드럼.** Drum Rack이 있는 트랙(또는 이름이 드럼이고 GM 드럼 키를 쓰는 트랙)은 드럼 악보와 그 아래 패드
-목록으로 열립니다. Open (Clip) - Edit과 Open (Track) - Edit에서는 커서가 박(←/→)과 드럼 악기(↑/↓, 오선
-위쪽부터)를 오갑니다. 목록의 점선 **+ 악기** 칩은 클립에 아직 없는 악기입니다. **Enter**는 타격을 넣거나
+**드럼.** Drum Rack이 있는 트랙(또는 이름이 드럼이고 GM 드럼 키를 쓰는 트랙)은 드럼 악보와 그 아래 드럼 맵
+표(노트 | 패드 | 악보 기호 | 손·발, 패드마다 한 줄)로 열립니다. Open (Clip) - Edit과 Open (Track) - Edit에서는 커서가 박(←/→)과 드럼 악기(↑/↓, 오선
+위쪽부터)를 오갑니다. 표의 흐린 **+ 악기** 줄은 클립에 아직 없는 악기입니다. **Enter**는 타격을 넣거나
 빼고, **Delete**는 지우며, **Alt+↑/↓**는 악기를 바꿉니다(클로즈드→오픈 하이햇, 스네어→사이드 스틱 등).
 **G / A / N**은 고스트(벨로시티 35), 액센트(127), 보통(100)입니다. 음가 버튼, 점, 셋잇단, 박 넣기/지우기는
 기타와 같습니다. Apply는 새로 넣거나 바꾼 타격만 쓰며, 손대지 않은 타격은 원래 타이밍과 벨로시티를 그대로 둡니다.

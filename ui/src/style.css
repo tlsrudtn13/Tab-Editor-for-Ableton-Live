@@ -140,8 +140,7 @@ body { display:flex; flex-direction:row; }
 }
 .btn:hover { background:rgba(255,255,255,.08); }
 .btn.on    { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
-.btn.pdf   { color:hsl(200,80%,65%); border-color:hsl(200,50%,30%); }
-.btn.pdf:hover { background:rgba(100,180,255,.08); }
+/* PDF: a neutral toolbar button like ATex / Data / Log (designer D014: the blue broke Live's monochrome toolbar) */
 .tn2 { font-size:9px; color:var(--p-live-text-secondary); font-style:italic; user-select:none; white-space:nowrap; }
 
 /* 드롭다운 & 숫자 입력 (툴바/패널 공용) */
@@ -433,7 +432,6 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 /* top toolbar: room for Key and Close & Apply next to the wider multi-tab sidebar (designer D009) */
 #toolbar .btn { padding:2px 6px; }
 /* ── Light theme contrast (designer D011) ── */
-:root.light .btn.pdf { color:#0b6699; border-color:#7ab4d6; }
 :root.light .btn.on, :root.light .sb.on, :root.light #edit-toolbar .rb.on { color:#c24d00; border-color:#c24d00; }
 :root.light #btn-chord.on, :root.light #btn-lyrics.on { color:#c24d00; }
 /* Row 2: a divider before the Title field so it does not float alone */
