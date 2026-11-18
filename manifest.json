@@ -2,7 +2,7 @@
   "id": "com.mockini.tab-editor",
   "name": "Tab Editor for Ableton Live",
   "author": "Mockin_I",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "minimumApiVersion": "1.0.0",
   "entry": "dist/extension.js",
   "description": "Ableton Live 내장형 기타 타브 악보 편집기 (alphaTab 기반)",

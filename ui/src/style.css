@@ -58,6 +58,8 @@ body { display:flex; flex-direction:row; }
   display:flex; flex-direction:column; overflow:hidden;
 }
 #sidebar { transition: width .15s ease, min-width .15s ease; }
+/* several editable tabs: room for "Track · Clip" names next to the Apply marks */
+#sidebar:not(.collapsed):has(.ti-apply) { width:220px; min-width:220px; }
 #sidebar.collapsed { width: 26px; min-width: 26px; }
 #sidebar.collapsed #track-list { display: none; }
 #sidebar.collapsed .ph {
@@ -84,6 +86,12 @@ body { display:flex; flex-direction:row; }
 .tn  { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; }
 .ti.active .tn { color:var(--p-live-accent-primary); }
 .tc  { font-size:9px; color:var(--p-live-text-secondary); flex-shrink:0; }
+/* per-tab Apply mark (several editable tabs): edited = outlined orange, marked = filled */
+.ti-apply { flex-shrink:0; height:18px; padding:0 6px; font-size:10px; line-height:16px; border-radius:2px; cursor:pointer;
+  background:transparent; color:var(--p-live-text-secondary); border:1px solid var(--p-live-control-border); }
+.ti-apply:not(:disabled) { color:#ff764d; border-color:#ff764d; }
+.ti-apply.on { background:#ff764d; color:#1e1e1e; font-weight:700; }
+.ti-apply:disabled { opacity:.45; cursor:default; }
 .no-tracks { padding:14px 10px; color:var(--p-live-text-secondary); font-size:11px; line-height:1.8; }
 
 /* ── Main ── */

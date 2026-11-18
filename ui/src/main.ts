@@ -23,6 +23,7 @@ import { moveString } from "./editing";
 import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggleSidebar } from "./inspector";
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
+import { isMulti, restoreSession, stashSession, toggleApplyMark } from "./multiApply";
 import { startDevReporter } from "./devReporter";
 import { bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
@@ -126,6 +127,7 @@ export function loadTrack(id) {
   }
   if (!trk) { log("track \"" + id + "\" not found"); return; }
 
+  if (state.curTrack && state.curTrack !== trk && isMulti()) stashSession(state.curTrack);   // keep this tab's edits
   state.curTrack = trk;
   if (isDrumTrack(trk)) enterDrumMode(trk); else leaveDrumMode();
   state.uiTimeSig = trk.timeSig || { beats: 4, type: 4 };
@@ -139,7 +141,7 @@ export function loadTrack(id) {
   if (Array.isArray(trk.notes)) trk.notes.forEach(function(n) {
     if (n.b0 === undefined) { n.b0 = n.b; n.d0 = n.d; }
   });
-  state.deletedOids = []; state.editHistory = []; state.redoHistory = []; state.sessionChanged = false;
+  if (!restoreSession(trk)) { state.deletedOids = []; state.editHistory = []; state.redoHistory = []; state.sessionChanged = false; }
   state.cursor = null; state.slots = []; state.selectionAnchor = null;
   if (window.__editKeys) window.__editKeys.updateEditUi();
   state.selectedNoteIndices = [];
@@ -198,6 +200,7 @@ window.exportAlphaTex = exportAlphaTex;
 window.togglePlay = togglePlay;
 window.stopPlay = stopPlay;
 window.loadTrack = loadTrack;
+(window as any).toggleApplyMark = toggleApplyMark;
 window.refingerNotes = refingerNotes;
 
 /* ── 초기 실행 ────────────────────────────────────────────────────────────── */

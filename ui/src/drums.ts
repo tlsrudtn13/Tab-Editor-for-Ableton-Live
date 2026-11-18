@@ -27,14 +27,12 @@ export function isDrumTrack(trk: any): boolean {
 const editable = () => !!(state.curTrack && state.curTrack.edit && isDrumTrack(state.curTrack));
 
 let prevMode: string | null = null;
-let kitChanged = false;
 
 export function enterDrumMode(trk: any) {
   document.body.classList.add("drum-mode");
   document.body.classList.toggle("drum-edit", !!trk.edit);
   if (prevMode === null) prevMode = state.dispMode;
   state.dispMode = "staff";            // no TAB for percussion
-  kitChanged = false;
   // ghost/accent reference: the clip's velocities as opened (edits must not flip other hits)
   if (typeof trk.drum.median !== "number") trk.drum.median = median((trk.notes || []).map((n: any) => n.v));
   refreshLanes(trk);
@@ -161,7 +159,7 @@ function renderLegend(trk: any) {
     }
     sel.addEventListener("change", function() {
       override[p.pitch] = Number(sel.value);
-      kitChanged = true;
+      state.curTrack._kitChanged = true;   // per tab: the kit map goes back on close
       rebuildDrumScore();
     });
     row.appendChild(key);
@@ -405,13 +403,14 @@ export function drumNoteMatches(an: any, tn: any): boolean {
 
 // ── Apply / Close ──────────────────────────────────────────────────────────
 /** Kit map to send back with Apply / Close, when the user changed it. */
-export function drumLayerIfChanged(): any {
-  return isDrumTrack(state.curTrack) && kitChanged ? drumLayerFrom(state.curTrack.drum.override || {}) : undefined;
+export function drumLayerIfChanged(trk: any = state.curTrack): any {
+  return isDrumTrack(trk) && trk._kitChanged ? drumLayerFrom(trk.drum.override || {}) : undefined;
 }
 
 /** Close from a drum track: discard edits after a confirm; send the kit map (if changed) instead of a TAB layer. */
 function sendDrumClose(ev: Event) {
   if (!isDrumTrack(state.curTrack)) return;
+  if (state.tracks && state.tracks.length > 1 && state.tracks.some((t: any) => !!t.edit)) return;   // several tabs: ui/src/multiApply.ts closes
   ev.stopImmediatePropagation();
   ev.preventDefault();
   const t = state.curTrack;

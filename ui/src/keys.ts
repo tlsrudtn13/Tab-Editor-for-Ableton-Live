@@ -9,6 +9,7 @@ import { detectQuantizeGrid } from "../../src/notation/music.js";
 import { log, status } from "./log";
 import { TECH_KEY, toggleSelectedTech, cycleSelectedBend } from "./techUi";
 import { drumKey } from "./drums";
+import { refreshTabMarks } from "./multiApply";
 import { barEndSlot, barStartSlot, ensureCursor, rowCount, firstBarSlot, lastBarSlot, nearestSlot, nextBarSlot, nextSlot, noteAtCursor, prevBarSlot, prevSlot, setCursor, slotAt } from "./cursor";
 import { clampDurToSpan, deleteBeatShift, durFromValue, durName, insertBeatShift, tieDecision, valueFromDur } from "./rhythm";
 
@@ -112,6 +113,7 @@ export function updateEditUi() {
     apply.textContent = enabled && state.curTrack.edit.mode === "track" ? "Apply to Clips" : "Apply to Clip";
   }
   if (cancel) { (cancel as HTMLButtonElement).disabled = false; cancel.textContent = edits === 0 ? "Close" : "Cancel"; cancel.title = ""; }
+  refreshTabMarks();   // several tabs: per-tab Apply marks, Close applies the marked ones
   const tb = document.getElementById("edit-toolbar");
   if (tb) tb.classList.toggle("hidden", !enabled);
   try { updateRhythmToolbar(); } catch {}

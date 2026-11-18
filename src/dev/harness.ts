@@ -308,6 +308,14 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             ctx.commands.executeCommand("tabeditor.openClips", { selected_clip_slots: slots.map((s: any) => s.handle) });
             return { opened: `${slots.length} slots of row ${cmd.clip}` };
         }
+        case "openSelection": {
+            // Same as selecting beats start..end on the named tracks in Arrangement: "start:end:Track A|Track B".
+            const [s, e, names] = String(cmd.clip ?? "").split(":");
+            const lanes = String(names ?? "").split("|").map(n => (ctx.application.song.tracks as any[]).find(t => t?.name === n)).filter(Boolean);
+            if (!lanes.length) throw new Error(`tracks not found: ${names}`);
+            ctx.commands.executeCommand("tabeditor.openSelection", { time_selection_start: Number(s), time_selection_end: Number(e), selected_lanes: lanes.map((t: any) => t.handle) });
+            return { opened: `selection ${s}..${e} on ${lanes.length} track(s)` };
+        }
         case "openAll":
             ctx.commands.executeCommand("tabeditor.openAll");
             return { opened: "all tracks" };

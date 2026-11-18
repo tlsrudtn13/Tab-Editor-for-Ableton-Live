@@ -4,7 +4,7 @@ A guitar/bass tablature and standard-notation editor that runs inside Ableton Li
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
 Score rendering by [alphaTab](https://alphatab.net).
 
-> Beta (v0.14.1). Needs Ableton Live 12 with Extensions (beta) enabled.
+> Beta (v0.15.0). Needs Ableton Live 12 with Extensions (beta) enabled.
 
 ## Features
 
@@ -89,20 +89,22 @@ as on guitar. Apply writes only new and changed hits; untouched hits keep their 
 | Right-click | Menu item | Opens |
 |---|---|---|
 | A MIDI clip | Open (Clip) - Edit | That clip's loop region, editable (guitar/bass as TAB, drums as drum notation) |
-| An arrangement selection on a MIDI track | Open (Selection) - View | The selected range (view only) |
+| An arrangement selection on a MIDI track | Open (Selection) - Edit | The selected range, one tab per track, editable |
 | A MIDI track | Open (Track) - Edit | All arrangement clips on that track, editable (Apply to Clips writes each clip) |
-| An audio track | Open (All Tracks) - View | Every MIDI track's Arrangement clips (view only) |
-| A scene (Session View) | Open (Scene) - View | Every MIDI clip in that scene, guitar/bass as TAB and drums as drum notation, one tab each (view only) |
-| Several selected Session clips | Open (Selected Clips) - View | Those clips, one tab each (view only) |
+| An audio track | Open (All Tracks) - Edit | Every MIDI track's Arrangement clips, one tab per track, editable |
+| A scene (Session View) | Open (Scene) - Edit | Every MIDI clip in that scene, guitar/bass as TAB and drums as drum notation, one tab each, editable |
+| Several selected Session clips | Open (Selected Clips) - Edit | Those clips, one tab each, editable |
 
 Click inside the editor once before pressing Play: the browser engine starts audio only after a click.
+
+**Several tabs.** Live writes back only when the editor closes, so each tab keeps its own edits while you switch tabs. A tab with edits gets an **Apply** button in the track list: click it (it turns orange, ✓ Apply) to have that tab written to its clip(s). **Close & Apply** then writes every marked tab in one Live undo step; edits in unmarked tabs are discarded after a confirm. Use the editor's Close button: closing the window with its own × applies nothing.
 
 ## Known limitations (beta)
 
 - While Live's Developer Mode is on, Live does not load installed extensions (the right-click menu entries disappear). Turn Developer Mode off to use the installed `.ablx`.
 - Overlapping notes are written as one voice (with a let-ring mark).
 - New notes go only into rests; use Shift + fret click for chord tones.
-- Selection view, Open (All Tracks) - View, Open (Scene) - View and Open (Selected Clips) - View cannot write back; open a single clip to edit it. In track view a note cannot move from one clip into another.
+- In track and selection views a note cannot move from one clip into another; a new note outside every clip is dropped. Applying a selection keeps the clips' saved fingering for the notes outside the selection.
 - Very long tracks (thousands of notes) take a few seconds to render.
 
 ## Development
@@ -135,7 +137,7 @@ MIT, see [LICENSE](LICENSE).
 Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
 MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
 
-> 베타 (v0.14.1). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
+> 베타 (v0.15.0). Extensions(베타)가 켜진 Ableton Live 12가 필요합니다.
 
 ## 기능
 
@@ -219,20 +221,22 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 | 우클릭 위치 | 메뉴 | 열리는 범위 |
 |---|---|---|
 | MIDI 클립 | Open (Clip) - Edit | 그 클립의 루프 구간, 편집 가능 (기타·베이스는 TAB, 드럼은 드럼 악보) |
-| MIDI 트랙의 어레인지 선택 구간 | Open (Selection) - View | 선택 구간 (보기 전용) |
+| MIDI 트랙의 어레인지 선택 구간 | Open (Selection) - Edit | 선택 구간, 트랙마다 탭 하나, 편집 가능 |
 | MIDI 트랙 | Open (Track) - Edit | 그 트랙의 모든 어레인지 클립, 편집 가능 (Apply to Clips가 클립마다 반영) |
-| 오디오 트랙 | Open (All Tracks) - View | 모든 MIDI 트랙의 어레인지 클립 (보기 전용) |
-| 씬 (세션 뷰) | Open (Scene) - View | 그 씬의 모든 MIDI 클립. 기타·베이스는 TAB, 드럼은 드럼 악보로 클립마다 탭 하나 (보기 전용) |
-| 세션 클립 여러 개 선택 | Open (Selected Clips) - View | 선택한 클립들, 클립마다 탭 하나 (보기 전용) |
+| 오디오 트랙 | Open (All Tracks) - Edit | 모든 MIDI 트랙의 어레인지 클립, 트랙마다 탭 하나, 편집 가능 |
+| 씬 (세션 뷰) | Open (Scene) - Edit | 그 씬의 모든 MIDI 클립. 기타·베이스는 TAB, 드럼은 드럼 악보로 클립마다 탭 하나, 편집 가능 |
+| 세션 클립 여러 개 선택 | Open (Selected Clips) - Edit | 선택한 클립들, 클립마다 탭 하나, 편집 가능 |
 
 재생하기 전에 에디터 안을 한 번 클릭하세요. 브라우저 엔진은 클릭이 있어야 소리를 냅니다.
+
+**탭이 여러 개일 때.** Live에는 에디터를 닫을 때만 반영되므로, 탭을 옮겨 다녀도 탭마다 편집 내용이 남아 있습니다. 편집한 탭은 왼쪽 트랙 목록에 **Apply** 버튼이 켜집니다. 눌러 두면(주황색 ✓ Apply) 그 탭이 클립에 반영 대상이 됩니다. **Close & Apply**를 누르면 표시한 탭이 모두 Live 실행 취소 한 번으로 묶여 반영되고, 표시하지 않은 탭의 편집은 확인 후 버려집니다. 창의 × 버튼으로 닫으면 아무것도 반영되지 않으니 에디터의 Close 버튼을 쓰세요.
 
 ## 알려진 제한 (베타)
 
 - Live의 Developer Mode가 켜져 있으면 Live가 설치된 익스텐션을 불러오지 않습니다(우클릭 메뉴 항목이 사라집니다). 설치한 `.ablx`를 쓰려면 Developer Mode를 끄세요.
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
-- 선택 구간 보기, Open (All Tracks) - View, Open (Scene) - View, Open (Selected Clips) - View에서는 클립에 반영할 수 없습니다. 편집하려면 클립 하나를 여세요. 트랙 보기에서 노트를 다른 클립으로 옮길 수는 없습니다.
+- 트랙 보기와 선택 구간 보기에서 노트를 다른 클립으로 옮길 수는 없고, 어느 클립에도 속하지 않는 새 노트는 버려집니다. 선택 구간을 반영해도 선택 밖 노트의 저장된 운지는 그대로 둡니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
 
 ## 크레딧

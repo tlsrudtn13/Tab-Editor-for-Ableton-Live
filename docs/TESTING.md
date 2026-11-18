@@ -38,8 +38,9 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    node scripts/dev-cmd.mjs payload "TT open chords"  # notes, string/fret result (add --full for MusicXML)
    node scripts/dev-cmd.mjs open "TT open chords"     # opens the real editor through the registered command
    node scripts/dev-cmd.mjs openTrack "TAB-TEST"      # "Open (Track) - Edit" on one track; openAll = all tracks
-   node scripts/dev-cmd.mjs openScene 2               # "Open (Scene) - View" on scene 2 (every MIDI clip of that row)
-   node scripts/dev-cmd.mjs openClips 1               # "Open (Selected Clips) - View" with every slot of row 1 selected
+   node scripts/dev-cmd.mjs openScene 2               # "Open (Scene) - Edit" on scene 2 (every MIDI clip of that row)
+   node scripts/dev-cmd.mjs openClips 1               # "Open (Selected Clips) - Edit" with every slot of row 1 selected
+   node scripts/dev-cmd.mjs openSelection "2:6:TAB-TEST|TAB-TEST-BASS"   # "Open (Selection) - Edit": beats 2..6 on those tracks
    node scripts/dev-cmd.mjs report                    # editor state: log, errors, TAB numbers drawn
    node scripts/dev-cmd.mjs ui "setMode('tab'); return __tabState.dispMode"
    node scripts/dev-cmd.mjs close
@@ -67,3 +68,9 @@ state to that server and runs queued JS.
 
 Not covered: right-click menus themselves (the harness calls the same commands the
 menus call) and anything outside the editor window. Use screenshots for those.
+
+Several-tab Apply check (README: Several tabs): `openScene 2` (or `openAll`), save `rawNotes` of
+each clip, then in `ui`: change a note of one tab (`n.p++; n.dirty = true; __editKeys.updateEditUi()`),
+`loadTrack(<other id>)` and change one there too, `toggleApplyMark(<first id>)`, stub `window.confirm = () => true`
+and click `#btn-cancel`. Only the marked tab's clip may differ in `rawNotes`; the log shows
+`[TAB] multi apply: 1 tab(s) ...`.

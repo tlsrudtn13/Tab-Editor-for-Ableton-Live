@@ -2,15 +2,16 @@ import { state } from "./state";
 import { layerV2FromNotes } from "../../src/notation/tabLayer.js";
 import { instrumentKeyOf } from "./score";
 import { drumLayerIfChanged, isDrumTrack } from "./drums";
+import { editCountOf, isMulti, sendMulti } from "./multiApply";
 
-function spanForBeat(b: number): any | undefined {
-  const e = state.curTrack && state.curTrack.edit;
+function spanForBeat(t: any, b: number): any | undefined {
+  const e = t && t.edit;
   if (!e || e.mode !== "track") return undefined;
   return (e.spans || []).find((s: any) => b >= s.start - 1e-6 && b < s.end - 1e-6);
 }
 
-function notesForLayer() {
-  const t = state.curTrack; if (!t) return [];
+function notesForLayer(t: any) {
+  if (!t) return [];
   const e = t.edit;
   return (t.notes || []).map((n: any) => {
     const out: any = { ...n };
@@ -18,7 +19,7 @@ function notesForLayer() {
     if (cb == null) {
       if (e && e.mode === "clip") cb = n.b + (e.regionStart || 0);
       else if (e && e.mode === "track") {
-        const sp = spanForBeat(n.b);
+        const sp = spanForBeat(t, n.b);
         if (sp) { cb = n.b - sp.offset; out.c = sp.index; }
       }
     }
@@ -28,28 +29,38 @@ function notesForLayer() {
   });
 }
 
-function currentLayer(snapshot: boolean) {
-  const t = state.curTrack; if (!t) return null;
+/** TAB layer (fingering) of a tab; capo / time signature come from that tab's own session. */
+export function layerOf(t: any, snapshot: boolean, capo: number, timeSig: any) {
+  if (!t) return null;
   const hint = t.layerHint || { track: t.name || "", clip: "" };
-  return layerV2FromNotes(notesForLayer(), { instrument: instrumentKeyOf(t.instrument), capo: state.uiCapo, timeSig: state.uiTimeSig || t.timeSig, hint, snapshot });
+  return layerV2FromNotes(notesForLayer(t), { instrument: instrumentKeyOf(t.instrument), capo, timeSig: timeSig || t.timeSig, hint, snapshot });
+}
+function currentLayer(snapshot: boolean) {
+  return layerOf(state.curTrack, snapshot, state.uiCapo, state.uiTimeSig);
 }
 
-export function editCount() {
-  return state.curTrack && state.curTrack.edit ? state.curTrack.notes.filter(n => n.dirty || n.oid === undefined).length + state.deletedOids.length : 0;
-}
-export function sendApply() {
-  if (!state.curTrack || !state.curTrack.edit) return;
-  const notes = state.curTrack.notes;
-  const edits = {
-    changed: notes.filter(n => n.dirty && n.oid !== undefined).map(n => ({
+/** Note edits of a tab, in the form the extension merges into the clip. */
+export function editsOf(t: any, deletedOids: number[]) {
+  const notes = t.notes || [];
+  return {
+    changed: notes.filter((n: any) => n.dirty && n.oid !== undefined).map((n: any) => ({
       oid: n.oid, pitch: n.p, velocity: n.v,
       // undefined = unchanged: the extension keeps the clip's original value
       start: Math.abs(n.b - n.b0) > 1e-6 ? n.b : undefined,
       duration: Math.abs(n.d - n.d0) > 1e-6 ? n.d : undefined,
     })),
-    added: notes.filter(n => n.oid === undefined).map(n => ({ pitch:n.p, start:n.b, duration:n.d, velocity:n.v })),
-    deleted: state.deletedOids.slice(),
+    added: notes.filter((n: any) => n.oid === undefined).map((n: any) => ({ pitch: n.p, start: n.b, duration: n.d, velocity: n.v })),
+    deleted: deletedOids.slice(),
   };
+}
+
+export function editCount() {
+  return editCountOf(state.curTrack);
+}
+export function sendApply() {
+  if (isMulti()) { sendMulti(); return; }
+  if (!state.curTrack || !state.curTrack.edit) return;
+  const edits = editsOf(state.curTrack, state.deletedOids);
   // drums: no TAB layer; the kit map goes back when it changed
   const drum = isDrumTrack(state.curTrack);
   const layer = drum ? undefined : currentLayer(true);
@@ -57,6 +68,7 @@ export function sendApply() {
   window.chrome.webview.postMessage({ method:"close_and_send", params:[JSON.stringify({ action:"apply", edits, layer, drumLayer, layerKey:state.curTrack.layerStorageKey, layerV2Id:state.curTrack.layerV2Id, sessionChanged:true })] });
 }
 export function sendCancel() {
+  if (isMulti()) { sendMulti(); return; }
   const edits = editCount();
   if (edits && !window.confirm("Discard your edits and close?")) return;
   const snapshot = state.sessionChanged;

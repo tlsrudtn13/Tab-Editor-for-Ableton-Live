@@ -100,6 +100,9 @@ export function renderTrackList() {
          + ' onclick="loadTrack(\'' + t.id + '\')">'
          + '<span class="tn" title="' + t.name + '">' + t.name + "</span>"
          + '<span class="tc">' + t.noteCount + "</span>"
+         + (t.edit && state.tracks.length > 1 && state.tracks.some(function(x: any) { return !!x.edit; })
+            ? '<button class="ti-apply" id="ta-' + t.id + '" disabled aria-pressed="false" onclick="event.stopPropagation();toggleApplyMark(\'' + t.id + '\')">Apply</button>'
+            : "")
          + "</div>";
     }
     state.listEl!.innerHTML = h;

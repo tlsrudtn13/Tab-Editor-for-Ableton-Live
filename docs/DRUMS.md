@@ -2,8 +2,8 @@
 
 Drum MIDI opens as a standard **drum staff** (no TAB: there is no drum tablature
 standard worth following, and alphaTab disables tablature for percussion).
-Open (Clip) - Edit and Open (Track) - Edit can edit it (§5); the multi-open views
-(Selection, All Tracks, Scene, Selected Clips) stay view only.
+Every Open menu can edit it (§5); in the multi-tab views (Selection, All Tracks, Scene,
+Selected Clips) a drum tab is applied like any other tab (README: Several tabs).
 
 ## 1. Standard we follow
 
@@ -82,7 +82,7 @@ Live check of editing (0.14.0, 2026-11-18): on the humanized clip "TT drums huma
 snare, closed -> open hi-hat (Alt+Down) and an accent were applied in one step; the 32
 untouched hits kept their exact off-grid starts and velocities, the changed ones kept their
 start. Open (Track) - Edit added a crash, removed a kick and a snare in the arrangement clip,
-and saved the kit map changed in the same session. Open (Scene) - View stays view only.
+and saved the kit map changed in the same session. (0.15.0: drum tabs in Open (Scene) / Open (All Tracks) apply through the per-tab Apply mark.)
 
 Fallback, deliberately narrow: no Drum Rack, but the **track name** says drums
 (`drum(s)`, `kit`, `beat`, `perc`, `808`, `909`, `드럼`) **and** ≥ 80 % of notes sit on core
