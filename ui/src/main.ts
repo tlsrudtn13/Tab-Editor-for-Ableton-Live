@@ -17,6 +17,7 @@ import { state } from "./state";
 import { initLog, log, status } from "./log";
 import { getAtRes, initTheme, syncThemeBtn, toggleTheme } from "./theme";
 import { initZoom } from "./uiZoom";
+import { initFretboardSplitter } from "./panelSize";
 import { bindScaleControls, buildFretboard, clearFretboard, fretClick, updateScaleOverlay } from "./fretboard";
 import { clearNoteOverlays, showSelection } from "./overlay";
 import { bindControls, bindInstrument, instrumentKeyOf, rebuildScore, refingerNotes, renderScore, setInstrument, setMode } from "./score";
@@ -72,6 +73,7 @@ if (__TAB_DEV__) { window.__tabState = state; startDevReporter(); }
 /* ── Init & start-up (same order as today) ────────────────────────────────── */
 var txtColor = initTheme();
 initZoom();   // saved editor zoom (toolbar menu, Ctrl + / - / 0)
+initFretboardSplitter();   // drag the fretboard's top edge to resize it
 initLog();
 setTimeout(syncThemeBtn, 0);
 

@@ -1,6 +1,7 @@
 import { state } from "./state";
 import { log } from "./log";
 import { NOTE_NAMES, SCALES, pitchToName } from "./musicUi";
+import { applyFretboardHeight } from "./panelSize";
 
 /* ── 악기 정보 ────────────────────────────────────────────────────────────── */
 export var DEFAULT_OPEN = [0, 64, 59, 55, 50, 45, 40];
@@ -47,6 +48,7 @@ export function buildFretboard() {
     html += "</div>";
   }
   grid!.innerHTML = html;
+  applyFretboardHeight();   // string count may change: refit to the saved panel height
 }
 
 export function clearFretboard() {

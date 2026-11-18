@@ -1,6 +1,6 @@
 {
   "name": "tab-editor-for-ableton-live",
-  "version": "0.17.5",
+  "version": "0.17.6",
   "type": "module",
   "main": "dist/extension.js",
   "scripts": {

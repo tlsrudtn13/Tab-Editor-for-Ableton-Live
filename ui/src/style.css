@@ -411,6 +411,11 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 #ui-key.fixed { border-color:#ff764d; color:var(--p-live-text-primary); }
 .ui-title-label { margin-left:auto; margin-right:6px; font-size:10px; color:#999999; }
 #ui-zoom { width:58px; flex-shrink:0; }
+/* Splitter above a bottom panel (ui/src/panelSize.ts): drag = resize, like the line above Live's Clip view */
+.panel-splitter { flex-shrink:0; height:6px; margin:-3px 0; position:relative; z-index:6; cursor:ns-resize; }
+.panel-splitter::after { content:""; position:absolute; left:0; right:0; top:2px; height:2px; background:transparent; transition:background .1s; }
+.panel-splitter:hover::after, .panel-splitter.drag::after { background:var(--p-live-accent-primary); }
+#fretboard-panel { min-height:112px; }
 :root.light .ui-title-label { color:#777777; }
 .ui-title { width:160px; height:20px; padding:0 6px; font-size:11px; border-radius:2px;
   background:var(--p-live-control-bg); color:var(--p-live-text-primary); border:1px solid var(--p-live-control-border); }

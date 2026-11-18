@@ -20,6 +20,7 @@ import { drumHooks } from "./drumHooks";
 import { median, toDrumAlphaTex } from "../../src/notation/toDrumAlphaTex.js";
 import { DRUM_ARTICULATIONS, drumLayerFrom, drumLegend, liveNoteName, resolveDrumPiece, type DrumOverride } from "../../src/notation/drumMap.js";
 import { DRUM_VELOCITY, drumLanes, laneRow } from "../../src/notation/drumEdit.js";
+import { attachSplitter, legendFit, savedHeight } from "./panelSize";
 import "./drums.css";
 
 export function isDrumTrack(trk: any): boolean {
@@ -47,6 +48,8 @@ export function leaveDrumMode() {
   prevMode = null;
   state.drumLanes = [];
   const el = document.getElementById("drum-legend");
+  const bar = el && el.previousElementSibling;
+  if (bar && bar.classList.contains("panel-splitter")) bar.remove();
   if (el) el.remove();
   if (legendObs) { legendObs.disconnect(); legendObs = null; }
 }
@@ -132,6 +135,10 @@ export function rebuildDrumScore() {
 const LEGEND_BLOCK_MIN = 360;          // px per block (4 columns); 1..4 blocks
 let legendObs: ResizeObserver | null = null;
 let legendBlocks = 0;
+let legendWidth = 0;
+let legendHeight: number | null = savedHeight("drum");   // null = default (max-height in drums.css)
+let legendRelayout: () => void = () => {};
+const DL_TH = 19, DL_ROW = 23, DL_MAX_SCALE = 2;          // 18 / 22 px + 1 px line (drums.css)
 
 function legendCell(cls: string, text: string): HTMLElement {
   const c = document.createElement("span");
@@ -158,6 +165,8 @@ function renderLegend(trk: any) {
     const viewer = document.getElementById("viewer");
     if (viewer && viewer.parentElement) viewer.parentElement.insertBefore(el, viewer.nextSibling);
     else document.body.appendChild(el);
+    // drag its top edge to resize, like Live's Clip / Device view; the table scales to fill
+    attachSplitter(el, "drum", 80, h => { legendHeight = h; legendRelayout(); });
   }
   const host = el as HTMLElement;
   const override: DrumOverride = trk.drum.override || (trk.drum.override = {});
@@ -229,8 +238,16 @@ function renderLegend(trk: any) {
   table.className = "dl-table";
   host.appendChild(table);
   const layout = () => {
-    const blocks = blocksFor(host.clientWidth, rows.length);
-    legendBlocks = blocks;
+    let blocks = blocksFor(host.clientWidth, rows.length), z = 1;
+    if (legendHeight !== null) {
+      const fit = legendFit(legendHeight, host.clientWidth, rows.length,
+        { head: head.offsetHeight || 31, th: DL_TH, row: DL_ROW, max: DL_MAX_SCALE, blocksFor });
+      z = fit.scale; blocks = fit.blocks;
+      host.style.height = legendHeight + "px"; host.style.maxHeight = "none";
+    } else { host.style.height = ""; host.style.maxHeight = ""; }
+    (table.style as any).zoom = z === 1 ? "" : String(z);
+    host.classList.toggle("dl-scaled", z !== 1);
+    legendBlocks = blocks; legendWidth = host.clientWidth;
     table.innerHTML = "";
     table.style.setProperty("--dl-blocks", String(blocks));
     const per = Math.ceil(rows.length / blocks);
@@ -243,10 +260,13 @@ function renderLegend(trk: any) {
     }
   };
   layout();
+  legendRelayout = () => { layout(); markActiveLane(); };
   if (legendObs) legendObs.disconnect();
   if (typeof ResizeObserver !== "undefined") {
     legendObs = new ResizeObserver(() => {
-      if (blocksFor(host.clientWidth, rows.length) !== legendBlocks) { layout(); markActiveLane(); }
+      if (host.clientWidth === legendWidth) return;
+      if (legendHeight !== null || blocksFor(host.clientWidth, rows.length) !== legendBlocks) { layout(); markActiveLane(); }
+      else legendWidth = host.clientWidth;
     });
     legendObs.observe(host);
   }

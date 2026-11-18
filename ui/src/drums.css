@@ -1,5 +1,5 @@
 /* Drum notation mode (ui/src/drums.ts): guitar-only controls hidden, pad legend shown. */
-body.drum-mode #fretboard-panel,
+body.drum-mode #fretboard-panel, body.drum-mode .panel-splitter[data-key="fretboard"],
 body.drum-mode #selection-bar,
 body.drum-mode #ui-instrument,
 body.drum-mode #toolbar .seg,
@@ -43,6 +43,8 @@ body.drum-mode #tech-palette { display:none !important; }
   height:18px; position:sticky; top:31px; z-index:1; background:var(--dl-th-bg); border-bottom-color:var(--dl-th-line);
   font-size:9px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--dl-th-text);
 }
+/* scaled to a dragged height: everything fits, and a sticky offset would scale with the table */
+#drum-legend.dl-scaled .dl-th { position:static; }
 #drum-legend .dl-row.alt { background:var(--dl-alt); }
 #drum-legend .dl-row:hover { background:var(--dl-hover); }
 #drum-legend .dl-k { font-variant-numeric:tabular-nums; color:var(--p-live-text-secondary); }
