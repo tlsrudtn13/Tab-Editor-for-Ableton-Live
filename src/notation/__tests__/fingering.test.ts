@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Note } from "../types.js";
 import { assignFingering } from "../fingering.js";
 import { applyGreedyVoicing } from "../voicing.js";
-import { GUITAR_6, BASS_4 } from "../instruments.js";
+import { GUITAR_6, GUITAR_6_DROPD, BASS_4 } from "../instruments.js";
 
 const n = (b: number, p: number, extra: Partial<Note> = {}): Note => ({ b, d: 0.5, p, v: 100, f: 0, s: 1, src: "ses", clip: "t", ...extra });
 
@@ -164,5 +164,31 @@ describe("locked fingering always wins (T008)", () => {
         const out = assignFingering(input, GUITAR_6);
         const locked = out.find(x => x.p === 59)!;
         expect(locked).toMatchObject({ s: 2, f: 0, lock: true });
+    });
+});
+
+describe("locks that no longer fit are dropped (Fable review #1)", () => {
+    const locked = () => [
+        n(0, 40, { s: 6, f: 0, lock: true }),   // E2
+        n(1, 45, { s: 5, f: 0, lock: true }),   // A2
+        n(2, 64, { s: 1, f: 0, lock: true }),   // E4
+    ];
+    it("bass: no note stays on a string the bass does not have", () => {
+        const out = assignFingering(locked(), BASS_4);
+        for (const x of out) if (!x.oor) {
+            expect(x.s).toBeLessThanOrEqual(4);
+            expect(BASS_4.open[x.s!]! + x.f!).toBe(x.p);
+        }
+    });
+    it("Drop D: low E moves to fret 2, matching locks stay", () => {
+        const out = assignFingering(locked(), GUITAR_6_DROPD);
+        const e2 = out.find(x => x.p === 40)!;
+        expect(GUITAR_6_DROPD.open[e2.s!]! + e2.f!).toBe(40);
+        expect(e2.lock).toBeFalsy();
+        expect(out.find(x => x.p === 45)).toMatchObject({ s: 5, f: 0, lock: true });
+    });
+    it("transposed pitches are re-fingered", () => {
+        const out = assignFingering(locked().map(x => ({ ...x, p: x.p + 2 })), GUITAR_6);
+        for (const x of out) expect(GUITAR_6.open[x.s!]! + x.f!).toBe(x.p);
     });
 });

@@ -196,14 +196,14 @@ export function matchClipLayer(
     let bestScore = -1;
     let bestHint = false;
     let bestEntries = -1;
+    let hintOnlyId: string | undefined;
     for (const c of candidates) {
         const entries = c.layer.notes.length;
         if (entries === 0) {
+            // older annotation-only file: found by track / clip name, but only when no file matches the notes
+            // (same-named clips would otherwise share it; Fable review #4)
             const same = c.layer.hint.track === hint.track && c.layer.hint.clip === hint.clip;
-            if (!same) continue;
-            if (bestId === undefined || (!bestHint || entries > bestEntries)) {
-                bestId = c.id; bestScore = 1; bestHint = true; bestEntries = entries;
-            }
+            if (same && hintOnlyId === undefined) hintOnlyId = c.id;
             continue;
         }
         let matched = 0;
@@ -221,5 +221,5 @@ export function matchClipLayer(
             bestId = c.id; bestScore = score; bestHint = sameHint; bestEntries = entries;
         }
     }
-    return bestId;
+    return bestId ?? hintOnlyId;
 }

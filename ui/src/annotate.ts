@@ -215,6 +215,8 @@ function placeLyricBox() {
   lyr.box.value = cur ? cur.text : "";
   lyr.box.select();
 }
+/** Switching tabs: finish lyrics entry on the tab it was opened on (Fable review #10). */
+export function closeLyricsForTabSwitch() { closeLyrics(true); }
 function closeLyrics(commit: boolean) {
   if (!lyr) return;
   const l = lyr; lyr = null;

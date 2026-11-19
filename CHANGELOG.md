@@ -33,4 +33,12 @@ First public release.
 - About section in the Keys panel with version, credits and trademark note; licence texts ship in the package.
 - The temporary editor page is deleted when the editor closes; the package no longer carries the page twice.
 
+**Bug fixes and Live look** (Fable bug review, designer D016)
+- Saved fingering no longer shows wrong frets after a change of instrument, tuning or Transpose.
+- Typed frets count from the capo, as the TAB shows them.
+- Track view keeps each clip's own title and key; chords and lyrics outside the shown part are kept.
+- Clips with the same name no longer share chords, lyrics and title (layers are matched by the notes).
+- Undo after an instrument change; names with `$` or `<`; Ctrl+D past the clip end; lyrics entry when switching tabs.
+- Active buttons in Live's solid orange, flat scrollbars, monochrome theme icon, cleaner fretboard string names.
+
 Built on the Ableton Extensions SDK 1.0.0-beta.1. Development history before 1.0 (0.9–0.17) is in the git log.

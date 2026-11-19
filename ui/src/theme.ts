@@ -39,7 +39,10 @@ export function initTheme() {
 // ★ 아이콘 초기화 (DOM 준비 후 — module script는 defer라 바로 가능)
 export function syncThemeBtn() {
   var b = document.getElementById("btn-theme");
-  if (b) b.textContent = state.isLight ? "\uD83C\uDF19" : "\u2600";  // 🌙 / ☀
+  // monochrome line icons like Live's (designer D016): moon in light theme, sun in dark
+  if (b) b.innerHTML = state.isLight
+    ? '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9.8 7.6A4.3 4.3 0 0 1 4.4 2.2a4.3 4.3 0 1 0 5.4 5.4z"/></svg>'
+    : '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6" cy="6" r="2.3"/><path d="M6 .8v1.4M6 9.8v1.4M.8 6h1.4M9.8 6h1.4M2.3 2.3l1 1M8.7 8.7l1 1M2.3 9.7l1-1M8.7 3.3l1-1"/></svg>';
 }
 
 /**

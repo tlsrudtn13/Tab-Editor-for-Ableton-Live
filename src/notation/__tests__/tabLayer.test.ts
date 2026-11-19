@@ -102,3 +102,27 @@ describe("TAB layers", () => {
     expect(plain.notes[0]).toMatchObject({ h: "45@96" });
   });
 });
+
+describe("annotation-only layers (Fable review #4)", () => {
+    const layer = (hint: { track: string; clip: string }, hashes: string[]): TabLayerV2 =>
+        ({ v: 2, instrument: "guitar6", capo: 0, hint, notes: hashes.map(h => ({ h, s: 0, f: 0, k: 0 as const })) });
+    const hint = { track: "Guitar", clip: "Clip" };
+    it("a file that matches the notes wins over an old name-only file", () => {
+        const cand = [
+            { id: "nameOnly", layer: layer(hint, []) },
+            { id: "byNotes", layer: layer(hint, ["60@0", "62@96"]) },
+        ];
+        expect(matchClipLayer(cand, new Set(["60@0", "62@96"]), hint)).toBe("byNotes");
+    });
+    it("two same-named clips with different notes find their own files", () => {
+        const cand = [
+            { id: "A", layer: layer(hint, ["60@0", "62@96"]) },
+            { id: "B", layer: layer(hint, ["40@0", "43@96"]) },
+        ];
+        expect(matchClipLayer(cand, new Set(["40@0", "43@96"]), hint)).toBe("B");
+        expect(matchClipLayer(cand, new Set(["50@0"]), hint)).toBeUndefined();
+    });
+    it("an old name-only file is still found when nothing matches the notes", () => {
+        expect(matchClipLayer([{ id: "old", layer: layer(hint, []) }], new Set(["50@0"]), hint)).toBe("old");
+    });
+});

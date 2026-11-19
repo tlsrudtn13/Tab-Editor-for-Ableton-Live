@@ -124,6 +124,7 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 - New notes go only into rests; use Shift + fret click for chord tones.
 - In track and selection views a note cannot move from one clip into another; a new note outside every clip is dropped. Applying a selection keeps the clips' saved fingering for the notes outside the selection.
 - Very long tracks (thousands of notes) take a few seconds to render.
+- Lyrics under chords with very low notes (several ledger lines) can touch the notes or a "let ring" line; this is how alphaTab places lyrics.
 
 ## Development
 
@@ -279,6 +280,7 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 - 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
 - 트랙 보기와 선택 구간 보기에서 노트를 다른 클립으로 옮길 수는 없고, 어느 클립에도 속하지 않는 새 노트는 버려집니다. 선택 구간을 반영해도 선택 밖 노트의 저장된 운지는 그대로 둡니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
+- 아주 낮은 음(덧줄 여러 개)이 있는 화음 아래의 가사는 음표나 let ring 선에 닿을 수 있습니다. alphaTab이 가사를 배치하는 방식 때문입니다.
 
 ## 크레딧
 

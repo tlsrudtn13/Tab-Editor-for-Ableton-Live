@@ -60,6 +60,9 @@ export function setInstrument(key) {
   if (!state.curTrack) { log("Instrument: load a track first"); return; }
 
   state.curTrack.instrument = preset;
+  // undo entries hold string/fret choices of the old instrument; replaying them would bring back
+  // strings the new one does not have (Fable review #7)
+  state.editHistory = []; state.redoHistory = [];
   // 새 악기 기준 재보이싱 (MIDI 피치는 유지, fret/string 재계산)
   if (Array.isArray(state.curTrack.notes) && state.curTrack.notes.length > 0) {
     state.curTrack.notes = applyGuitarVoicing(

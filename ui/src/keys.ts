@@ -58,8 +58,9 @@ export function saveAnnUndo() {
 /** Put a history entry's annotations back (entries from before this feature carry none: leave them). */
 function restoreAnn(h: any) {
   if (!h || !("ann" in h)) return;
+  const same = JSON.stringify(h.ann ?? null) === JSON.stringify(state.curTrack.ann ?? null);
   state.curTrack.ann = h.ann ? JSON.parse(JSON.stringify(h.ann)) : undefined;
-  state.curTrack._annDirty = true;
+  if (!same) state.curTrack._annDirty = true;   // undoing a note edit alone does not rewrite the annotations (Fable review #3)
   try { refreshAnnUi(); } catch {}
 }
 
@@ -212,8 +213,12 @@ export function setSelectedStringFret(s: number, f: number) {
   render();
 }
 
-function setFretAtCursor(f: number) {
+/** Typed frets: the TAB shows frets above the capo, the note keeps the real fret (Fable review #2). */
+function setFretAtCursor(typed: number) {
   if (!active()) return;
+  if (state.uiTranspose !== 0) { status("Set Trans to 0 to type frets"); return; }
+  const f = typed + (state.uiCapo || 0);
+  if (f > 24) { status("Fret " + f + " is above 24"); return; }
   const c = ensureCursor(); if (!c) return;
   const hit = noteAtCursor();
   if (hit) {
@@ -228,6 +233,7 @@ function setFretAtCursor(f: number) {
 
 function semitoneAtCursor(delta: number) {
   if (!active()) return;
+  if (state.uiTranspose !== 0) { status("Set Trans to 0 to change pitch"); return; }
   const hit = noteAtCursor(); if (!hit) return;
   const n = hit.note, open = getOpenStrings()[n.s]; if (open === undefined) return;
   const p = n.p + delta, f = p - open;
@@ -591,7 +597,12 @@ function onKey(e: KeyboardEvent) {
   if(e.ctrlKey && kl === "d" && active() && state.selectedNoteIndices.length){
     e.preventDefault();
     const i=state.selectedNoteIndices[0], n=state.curTrack.notes[i], before=state.curTrack.notes.map((x:any)=>({...x}));
-    if(n){state.curTrack.notes.push({...n,b:n.b+n.d,oid:undefined,dirty:undefined});selectIndex(state.curTrack.notes.length-1);saveUndo(before);render();}
+    if(n){
+      // the copy goes right after the note: it must fit in the same clip and not sit on a used string (Fable review #12)
+      const nb=n.b+n.d, sp=spanOf(n.b), notes=state.curTrack.notes;
+      if(editSpans() && (!sp || nb+n.d > sp.end+1e-6)){status("Duplicate: no room before the clip end");return;}
+      if(notes.some((o:any)=>o.s===n.s && Math.abs(o.b-nb)<1e-6)){status("Duplicate: string "+n.s+" is already used there");return;}
+      notes.push({...n,b:nb,oid:undefined,dirty:undefined});selectIndex(notes.length-1);saveUndo(before);render();}
     return;
   }
   if(e.ctrlKey && kl === "z" && !e.shiftKey && active()){e.preventDefault();undo();return;}

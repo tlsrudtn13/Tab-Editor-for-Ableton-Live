@@ -3,6 +3,11 @@ import { clearFretboard, lightFret } from "./fretboard";
 import { showSelection, overlaySelectedNotes } from "./overlay";
 import { beatToBarBeat, durToLabel, pitchToName, velToDynamic } from "./musicUi";
 
+/** Clip and track names come from Live: escape them before they go into innerHTML. */
+function esc(v: unknown): string {
+  return String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" } as any)[c]);
+}
+
 /* ── MIDI Inspector ───────────────────────────────────────────────────────── */
 export function renderInspector(track) {
   function nf(n, ck, vk, def) {
@@ -51,7 +56,7 @@ export function renderInspector(track) {
           + '<td style="font-weight:700">' + pitchToName(pit) + "</td>"
           + "<td>" + velToDynamic(vel)   + "</td>"
           + '<td class="ca">' + ((str < 1 || fret < 0) ? "\u2013" : fret + "." + str) + "</td>"
-          + "<td>" + clip + "</td>"
+          + "<td>" + esc(clip) + "</td>"
           + '<td class="' + cls + '">' + String(src2).slice(0, 3) + "</td>"
           + "</tr>";
   }
@@ -98,7 +103,7 @@ export function renderTrackList() {
       var t = state.tracks[i];
       h += '<div class="ti' + (i === 0 ? " active" : "") + '" id="ti-' + t.id + '"'
          + ' onclick="loadTrack(\'' + t.id + '\')">'
-         + '<span class="tn" title="' + t.name + '">' + t.name + "</span>"
+         + '<span class="tn" title="' + esc(t.name) + '">' + esc(t.name) + "</span>"
          + '<span class="tc">' + t.noteCount + "</span>"
          + (t.edit && state.tracks.length > 1 && state.tracks.some(function(x: any) { return !!x.edit; })
             ? '<button class="ti-apply" id="ta-' + t.id + '" disabled aria-pressed="false" onclick="event.stopPropagation();toggleApplyMark(\'' + t.id + '\')">Apply</button>'

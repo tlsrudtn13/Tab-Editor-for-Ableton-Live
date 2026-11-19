@@ -449,3 +449,26 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 :root.light #btn-chord.on, :root.light #btn-lyrics.on { color:#c24d00; }
 /* Row 2: a divider before the Title field so it does not float alone */
 .ui-title-label { border-left:1px solid var(--p-live-control-border); padding-left:8px; }
+
+/* ── Live integration (designer D016) ── */
+/* on / active = Live's solid orange fill with dark text */
+:root .sb.on, :root .btn.on, :root #edit-toolbar .rb.on, :root #btn-chord.on, :root #btn-lyrics.on,
+:root.light .sb.on, :root.light .btn.on, :root.light #edit-toolbar .rb.on, :root.light #btn-chord.on, :root.light #btn-lyrics.on {
+  background:#ff764d; color:#1a1a1a; border-color:#ff764d;
+}
+:root.light .ti.active .tn { color:#c24d00; }
+#btn-theme svg { display:block; }
+#edit-toolbar .btn:disabled { opacity:.5; }
+/* status line: regular muted text, cut with an ellipsis when long */
+.tn2 { font-style:normal; font-size:10px; }
+#status { max-width:320px; overflow:hidden; text-overflow:ellipsis; }
+/* fretboard string names above the string line */
+.str-label { position:relative; z-index:3; }
+/* flat scrollbars like Live's */
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background:#1e1e1e; }
+::-webkit-scrollbar-thumb { background:#4a4a4a; }
+::-webkit-scrollbar-thumb:hover { background:#5c5c5c; }
+:root.light ::-webkit-scrollbar-track, :root.light ::-webkit-scrollbar-corner { background:#d4d4d4; }
+:root.light ::-webkit-scrollbar-thumb { background:#a0a0a0; }
+:root.light ::-webkit-scrollbar-thumb:hover { background:#8a8a8a; }

@@ -26,7 +26,7 @@ import { inspectorRowClick, renderInspector, renderTrackList, togglePanel, toggl
 import { exportAlphaTex, exportPDF } from "./export";
 import { stopPlay, togglePlay } from "./player";
 import { isMulti, restoreSession, stashSession, toggleApplyMark } from "./multiApply";
-import { bindAnnotations, refreshAnnUi } from "./annotate";
+import { bindAnnotations, refreshAnnUi, closeLyricsForTabSwitch } from "./annotate";
 import { startDevReporter } from "./devReporter";
 import { annSnapshot, bindKeys, toggleTech } from "./keys";
 import { bindApply } from "./apply";
@@ -121,6 +121,7 @@ bindAnnotations();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {
+  closeLyricsForTabSwitch();   // a syllable being typed belongs to the tab it was typed on
   var items = document.querySelectorAll(".ti");
   for (var i = 0; i < items.length; i++) items[i].classList.remove("active");
   var el = document.getElementById("ti-" + id);

@@ -116,8 +116,11 @@ function readV2(context: any, id: string | undefined): TabLayerV2 | undefined {
     return undefined;
 }
 /** Save a clip's fingering layer. Annotations stored in the file are kept unless the layer carries its own (`keepAnn`). */
-function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 | undefined, hint: { track: string; clip: string }, keepAnn = true): string | undefined {
+function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 | undefined, hint: { track: string; clip: string }, keepAnn = true, clipForHashes?: any): string | undefined {
     if (!layer) return id;
+    // a layer with no fingering entries would be found by the track / clip name only, and same-named clips
+    // ("Clip") would share it: list the clip's note hashes instead (k:0 = no lock) (Fable review #4)
+    if (!layer.notes.length && clipForHashes) layer = { ...layer, notes: hashEntries(clipForHashes) };
     try {
         const useId = id || newV2Id(hint);
         const file = v2File(context, useId); if (!file) return id;
@@ -127,16 +130,26 @@ function saveClipLayer(context: any, id: string | undefined, layer: TabLayerV2 |
         return useId;
     } catch (e) { console.warn("[TAB] v2 TAB layer save failed:", e); return id; }
 }
+function hashEntries(clip: any): TabLayerV2["notes"] {
+    return [...clipRawHashes(clip)].map(h => ({ h, s: 0, f: 0, k: 0 as const }));
+}
+/** After notes were written: a layer that only lists hashes (no fingering) gets the clip's new hashes. */
+function refreshHashOnlyLayer(context: any, id: string | undefined, clip: any) {
+    const layer = readV2(context, id); if (!layer || !id) return;
+    if (layer.notes.some(n => n.k !== 0)) return;          // real fingering entries: saved by their own path
+    try { const file = v2File(context, id); if (file) fs.writeFileSync(file, JSON.stringify({ ...layer, notes: hashEntries(clip) }), "utf8"); }
+    catch (e) { console.warn("[TAB] layer hash refresh failed:", e); }
+}
 /** Replace a clip's annotations (chords, key, title), creating a layer file when the clip has none yet. */
 function saveClipAnn(context: any, id: string | undefined, hint: { track: string; clip: string }, ann: LayerAnn | undefined, base: { instrument: string; capo: number }, clipForHashes?: any): string | undefined {
     // a drum clip has no fingering: its new layer file lists the clip's note hashes (k:0 = no lock) so it is
     // matched by the notes, not only by the track / clip name
-    const notes = clipForHashes ? [...clipRawHashes(clipForHashes)].map(h => ({ h, s: 0, f: 0, k: 0 as const })) : [];
+    const notes = clipForHashes ? hashEntries(clipForHashes) : [];
     const layer: TabLayerV2 = readV2(context, id) ?? { v: 2, instrument: base.instrument, capo: base.capo, hint: { ...hint }, notes };
     if (!readV2(context, id) && !ann) return id;          // nothing stored, nothing to store
     const next: TabLayerV2 = { ...layer };
     if (ann) next.ann = ann; else delete next.ann;
-    return saveClipLayer(context, id, next, hint, false);
+    return saveClipLayer(context, id, next, hint, false, clipForHashes);
 }
 /** Clip annotations -> editor beats: display b = clip beat - regionStart (clip view) or + offset (track view). */
 function annToDisplay(ann: LayerAnn | undefined, shift: number): { chords?: { b: number; name: string; auto?: boolean }[]; lyrics?: { b: number; text: string }[]; key?: { fifths: number; minor: boolean }; title?: string } | undefined {
@@ -249,7 +262,7 @@ async function showEditor(
         headInject += `<script>window.tabMessage=${JSON.stringify(message)};</script>`;
     }
     headInject += "";
-    const finalHtml = modalInterface.replace("<head>", headInject);
+    const finalHtml = modalInterface.replace("<head>", () => headInject);   // function form: no $& / $' patterns from names in the payload
 
    // ★ SDK 허용 경로 사용 (os.tmpdir()는 권한 차단됨).
     //   tempDirectory가 undefined일 수 있어 storageDirectory로 폴백.
@@ -474,7 +487,7 @@ export function activate(activation: ActivationContext) {
             }
             const per: TabLayerV2 = { v: 2, instrument: allLayer.instrument, capo: allLayer.capo, hint, notes };
             if (allLayer.timeSig) per.timeSig = { ...allLayer.timeSig };
-            editCtx.v2Ids.set(span.index, saveClipLayer(context, editCtx.v2Ids.get(span.index), per, hint));
+            editCtx.v2Ids.set(span.index, saveClipLayer(context, editCtx.v2Ids.get(span.index), per, hint, true, clip));
         }
         // track-level settings in v1 file
         saveLayer(context, layerKey(trackName, ""), { v: 1, instrument: allLayer.instrument, capo: allLayer.capo, notes: [], ...(allLayer.timeSig ? { timeSig: allLayer.timeSig } : {}) });
@@ -510,24 +523,38 @@ export function activate(activation: ActivationContext) {
         if (lyrics.length) out.lyrics = lyrics.sort((a, b) => a.b - b.b);
         return Object.keys(out).length ? out : undefined;
     }
-    /** Track view: store each clip's part of the editor's annotations (chords carry their clip index `c`). */
+    /** Track view: store each clip's part of the editor's annotations (chords carry their clip index `c`).
+     *  The view shows one key / title (the first clip's that has one): a clip keeps its own key / title unless
+     *  that shown value was changed. Chords and lyrics outside what was shown are kept (Fable review #3). */
     function saveTrackAnn(rawTrack: any, trackName: string, editCtx: TrackEditContext, rawAnn: unknown, base: { instrument: string; capo: number }, selectionLength?: number, drum = false) {
         const ann = sanitizeAnn(rawAnn);
         const clips: any[] = rawTrack.arrangementClips ?? [];
+        const stored = new Map<number, LayerAnn | undefined>();
+        for (const span of editCtx.spans) stored.set(span.index, readV2(context, editCtx.v2Ids.get(span.index))?.ann);
+        let shownKey: LayerAnn["key"], shownTitle: string | undefined;
+        for (const span of editCtx.spans) {
+            const a = stored.get(span.index); if (!a) continue;
+            if (!shownKey && a.key) shownKey = a.key;
+            if (!shownTitle && a.title) shownTitle = a.title;
+        }
+        const sameKey = (a?: LayerAnn["key"], b?: LayerAnn["key"]) => (!a && !b) || (!!a && !!b && a.fifths === b.fifths && !!a.minor === !!b.minor);
+        const keyChanged = !sameKey(ann?.key, shownKey);
+        const titleChanged = (ann?.title ?? "") !== (shownTitle ?? "");
         for (const span of editCtx.spans) {
             const clip = clips[span.index]; if (!clip) continue;
             const hint = { track: trackName, clip: safeStr(clip?.name, `Clip${span.index + 1}`) };
-            let part = annForClip(ann, span.index);
-            if (selectionLength !== undefined) {
-                // a selection shows part of the clip: keep the stored chords outside it
-                const old = readV2(context, editCtx.v2Ids.get(span.index))?.ann;
-                const out = (cb: number) => { const b = cb + span.offset; return b < -1e-9 || b >= selectionLength - 1e-9; };
-                const merged = sanitizeAnn({ ...(part ?? {}),                                   // key / title: the editor's state
-                    chords: [...(old?.chords ?? []).filter(c => out(c.cb)), ...(part?.chords ?? [])],
-                    lyrics: [...(old?.lyrics ?? []).filter(l => out(l.cb)), ...(part?.lyrics ?? [])] });
-                part = merged;
-            }
-            editCtx.v2Ids.set(span.index, saveClipAnn(context, editCtx.v2Ids.get(span.index), hint, part, base, drum ? clip : undefined));
+            const old = stored.get(span.index);
+            const part = annForClip(ann, span.index);
+            const shown = (cb: number) => { const b = cb + span.offset;
+                return b >= span.start - 1e-9 && b < span.end - 1e-9 &&
+                    (selectionLength === undefined || (b >= -1e-9 && b < selectionLength - 1e-9)); };
+            const merged = sanitizeAnn({
+                chords: [...(old?.chords ?? []).filter(c => !shown(c.cb)), ...(part?.chords ?? [])],
+                lyrics: [...(old?.lyrics ?? []).filter(l => !shown(l.cb)), ...(part?.lyrics ?? [])],
+                ...(keyChanged ? (ann?.key ? { key: ann.key } : {}) : (old?.key ? { key: old.key } : {})),
+                ...(titleChanged ? (ann?.title ? { title: ann.title } : {}) : (old?.title ? { title: old.title } : {})),
+            });
+            editCtx.v2Ids.set(span.index, saveClipAnn(context, editCtx.v2Ids.get(span.index), hint, merged, base, clip));
         }
     }
 
@@ -560,7 +587,7 @@ export function activate(activation: ActivationContext) {
         const add = (st: ApplyStats) => { total.changed += st.changed; total.added += st.added; total.deleted += st.deleted; total.dropped += st.dropped; };
         const saveLayers = (tg: MultiTarget, tab: any) => {
             if (tg.drum || !tab.layer || tab.layer.v !== 2) return;
-            if (tg.kind === "clip") tg.v2Id = saveClipLayer(context, tg.v2Id, tab.layer as TabLayerV2, tg.hint);
+            if (tg.kind === "clip") tg.v2Id = saveClipLayer(context, tg.v2Id, tab.layer as TabLayerV2, tg.hint, true, tg.clip);
             else saveTrackV2Layers(tg.track, tg.trackName, tg.editCtx, tab, tg.selectionLength);
         };
         const claim = (clips: any[], name: string): boolean => {
@@ -574,7 +601,7 @@ export function activate(activation: ActivationContext) {
             try {
                 if (tab.drumLayer) { const dl = tab.drumLayer; after.push(() => saveDrumLayer(context, tg.storageKey, dl)); }
                 if ("ann" in tab) after.push(() => {   // before the fingering save, which then keeps them
-                    if (tg.kind === "clip") tg.v2Id = saveClipAnn(context, tg.v2Id, tg.hint, sanitizeAnn(tab.ann), annBase(tab, readV2(context, tg.v2Id)), tg.drum ? tg.clip : undefined);
+                    if (tg.kind === "clip") tg.v2Id = saveClipAnn(context, tg.v2Id, tg.hint, sanitizeAnn(tab.ann), annBase(tab, readV2(context, tg.v2Id)), tg.clip);
                     else saveTrackAnn(tg.track, tg.trackName, tg.editCtx, tab.ann, annBase(tab, readLayer(context, tg.storageKey)), tg.selectionLength, tg.drum);
                 });
                 if (!(tab.apply && tab.edits)) {
@@ -909,12 +936,12 @@ export function activate(activation: ActivationContext) {
         if (drum && message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer);
         // annotations (chords, key, title) are saved on every close, whatever happens to the note edits
         if (message && "ann" in message) {
-            try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer), drum ? clip : undefined); }
+            try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer), clip); }
             catch (e) { console.warn("[TAB] annotation save failed:", e); }
         }
         try {
             const saveV2 = () => {
-                if (!drum && message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint);
+                if (!drum && message?.layer && message.layer.v === 2) v2Id = saveClipLayer(context, v2Id, message.layer as TabLayerV2, hint, true, clip);
             };
             if (message?.action === "apply" && message.edits) {
                 const current = clip.notes;
@@ -932,6 +959,7 @@ export function activate(activation: ActivationContext) {
                 }
                 context.withinTransaction(() => { clip.notes = merged.notes as any; });
                 saveV2();
+                refreshHashOnlyLayer(context, v2Id, clip);   // annotations saved above carried the old hashes (Fable review #6)
                 console.log(`[TAB] Apply complete: ${JSON.stringify(merged.stats)}`);
                 await notify(context, applySummary(merged.stats));
                 return;

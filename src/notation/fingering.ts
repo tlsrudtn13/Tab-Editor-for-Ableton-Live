@@ -124,8 +124,21 @@ function l1(values: number[], scale: number): { costs: number[]; sources: number
     return { costs, sources };
 }
 
+/** A lock only holds while its string exists and string + fret still give the note's pitch
+ *  (after a change of instrument, tuning or transpose it would show a wrong fret). */
+function lockFits(n: Note, instrument: InstrumentConfig): boolean {
+    const s = n.s, f = n.f;
+    return typeof s === "number" && typeof f === "number" && s >= 1 && s <= instrument.stringCount
+        && instrument.open[s]! + f === n.p;
+}
+
 export function assignFingering(notes: Note[], instrument: InstrumentConfig): Note[] {
     if (!notes.length) return notes;
+    notes = notes.map(n => {
+        if (!n.lock || lockFits(n, instrument)) return n;
+        const { lock: _drop, ...rest } = n;
+        return rest as Note;
+    });
     const sorted = [...notes].sort((a, b) => a.b !== b.b ? a.b - b.b : b.p - a.p);
     const result = [...sorted];
     const groups: Group[] = [];
