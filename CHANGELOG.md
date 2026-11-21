@@ -10,6 +10,10 @@
 - Fretboard clicks follow the same rules as typed frets: not below the capo, not while Trans is set.
   Shift+click is gone (a plain click already adds a chord tone).
 
+**Fixed**
+- On an 8th-note grid a real 8th rest was drawn as part of the note before it (a deleted 8th note
+  seemed to make the previous note a quarter).
+
 ## 1.0.0 (2026-11-18)
 
 First public release.
