@@ -11,3 +11,6 @@ dist-ui/
 .devstore/
 .claude/
 release-*/
+# Internal agent rules and plans (kept locally, not published)
+AGENTS.md
+RENEWAL_PLAN.md

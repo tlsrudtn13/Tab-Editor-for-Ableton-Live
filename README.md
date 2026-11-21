@@ -12,6 +12,10 @@ undo step. Score rendering by [alphaTab](https://alphatab.net). [한국어 설�
 
 **[⬇ Download Tab Editor 1.0.0 (.ablx)](../../releases/latest)** · free and open source (MIT)
 
+If Tab Editor saves you time, you can support it here:
+
+<a href="https://www.buymeacoffee.com/mockin_i"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=mockin_i&button_colour=FFDD00&font_colour=000000&font_family=Comic&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="45" /></a>
+
 ![Tab Editor: a riff as staff + TAB, a palm-muted range selected, fretboard below](docs/media/hero-edit-dark.png)
 
 ## Highlights
@@ -200,6 +204,10 @@ Live에서 MIDI 클립을 우클릭해 열면 기타·베이스는 오선보와 
 키보드로 고친 뒤 **Apply**를 누르면 바꾼 노트만 클립에 다시 쓰고, Live에서 실행 취소 한 번으로 되돌릴 수 있습니다.
 
 **[⬇ Tab Editor 1.0.0 내려받기 (.ablx)](../../releases/latest)** · 무료, 오픈 소스(MIT)
+
+도움이 되셨다면 커피 한 잔으로 응원해 주세요:
+
+<a href="https://www.buymeacoffee.com/mockin_i"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=mockin_i&button_colour=FFDD00&font_colour=000000&font_family=Comic&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="45" /></a>
 
 ## 주요 기능
 
