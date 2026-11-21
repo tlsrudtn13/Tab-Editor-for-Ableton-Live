@@ -16,15 +16,15 @@ requirements line, 3 install steps. None of them has a video; ours is an extra.
 | `docs/media/tab-light-zoom.png` | gallery 5: TAB only at 125 % |
 | `docs/media/social-preview-1280x640.png` | GitHub social preview (Settings → General → Social preview) |
 | `docs/media/thumbnail-1280x800.png` | liveextensions.co image (16:10) |
-| `docs/media/demo.gif` (700 px, 29 s) | README, under the hero |
-| `tab-editor-demo.mp4` (1400×900, 29 s, not in git) | GitHub release asset, YouTube / Discord |
+| `docs/media/demo.gif` (800 px, 41 s) | README, under the hero |
+| `tab-editor-demo.mp4` (1400×900, 41 s, not in git) | GitHub release asset, YouTube / Discord |
 
-The current video is a draft made from the editor page itself, with title and end cards. For the final version,
+The current video is a real-time recording of the editor page (typed keys shown as keycaps), with title and end cards. For the final version,
 record one take inside Live (see "Final video" below): the first seconds should show the right-click on a clip.
 
 ## GitHub
 
-**Repository name:** `tab-editor` (or `tab-editor-live`; avoid "ableton" in the name)
+**Repository:** github.com/tlsrudtn13/Tab-Editor-for-Ableton-Live (existing repo from 0.9.0)
 
 **About (description):**
 View and edit any MIDI clip as staff, TAB and drum notation inside Ableton Live, then write it back.

@@ -2,22 +2,64 @@
 
 *An extension for Ableton Live:* edit your MIDI clips as guitar and bass TAB, staff and drum notation.
 
-A guitar/bass tablature and standard-notation editor that runs inside Ableton Live 12.
-Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
-Score rendering by [alphaTab](https://alphatab.net).
+[![Release](https://img.shields.io/github/v/release/tlsrudtn13/Tab-Editor-for-Ableton-Live?label=release&color=ff764d)](../../releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Ableton Live 12 Suite beta](https://img.shields.io/badge/Ableton%20Live-12.4.5%2B%20Suite%20beta-444)
+
+Right-click a MIDI clip in Live and it opens as staff + TAB (guitar, bass) or drum notation. Fix the part
+from the keyboard, then **Apply**: only the notes you changed are written back to the clip, in one Live
+undo step. Score rendering by [alphaTab](https://alphatab.net). [한국어 설명은 아래에 있습니다.](#tab-editor-한국어)
+
+**[⬇ Download Tab Editor 1.0.0 (.ablx)](../../releases/latest)** · free and open source (MIT)
 
 ![Tab Editor: a riff as staff + TAB, a palm-muted range selected, fretboard below](docs/media/hero-edit-dark.png)
 
-![29-second tour: techniques, typed frets, chord names, drums, light theme](docs/media/demo.gif)
+## Highlights
 
-> Version 1.0.0. Runs on Ableton Live 12 Suite beta with Extensions. Extensions are still a public beta
-> (SDK 1.0.0-beta.1), so a Live update may need a matching Tab Editor build; check [Releases](../../releases).
+- **Staff, TAB and drum notation:** any MIDI clip, track, scene or arrangement selection opens as staff + TAB
+  (6/7/8/12-string guitar, 4/5/6-string bass, 10 tunings, capo) or as drum notation with your Drum Rack's pads.
+- **Fingering that makes sense:** follows the hand position across a phrase, so runs stay in one position.
+  Move notes between strings without changing the pitch.
+- **Keyboard editing:** type frets, set note values, ties, triplets, rests; palm mute, let ring,
+  hammer-on/pull-off, slide, bends, vibrato, dead notes; drag to select a range.
+- **Back into Live:** Apply writes only the notes you changed, in one Live undo step. Untouched notes keep their
+  exact timing and velocity.
+- **Knows your Live Set:** uses the clip's loop region, Live's Scale Mode for the key signature, locators as
+  rehearsal marks, and Live's light or dark theme.
+- **Ready to print:** chord names suggested from the notes, lyrics, title, scale shapes on the fretboard, PDF and
+  AlphaTex export, playback.
+
+![40-second tour: typed frets, palm mute and slide on a range, string moves, chord names, scales, drums, light theme](docs/media/demo.gif)
+
+| | |
+|---|---|
+| ![Drum notation with the Drum Rack's pad names in the drum map](docs/media/drums-dark.png) | ![Chord names and a C major scale on the fretboard, light theme](docs/media/chords-light.png) |
+| Drums: your Drum Rack's pads in the drum map | Chord names and scales, light theme |
+| ![A melody with ties, slides and chord names](docs/media/melody-dark.png) | ![TAB only at 125 % zoom](docs/media/tab-light-zoom.png) |
+| Melody with chord names | TAB only, zoomed |
 
 ## Requirements
 
 - Ableton Live 12 **Suite**, beta 12.4.5 or later, with Extensions (not Standard, Intro or Lite).
   Extensions come with Live's public beta: see [ableton.com/live/extensions](https://www.ableton.com/en/live/extensions/).
-- Windows 11 (tested). macOS should work but is not tested yet.
+- Windows 11 (tested with Live 12.4.25 beta). macOS should work but is not tested yet.
+
+> Extensions are still a public beta (SDK 1.0.0-beta.1), so a Live update may need a matching Tab Editor
+> build; check [Releases](../../releases).
+
+## Install
+
+1. Download `Tab-Editor-1.0.0.ablx` from [Releases](../../releases/latest).
+2. In Live, open Settings → Extensions and drop the `.ablx` file on the page.
+3. Right-click a MIDI clip: the **Open (Clip) - Edit** entry appears. If not, restart Live, and check that
+   Developer Mode is off (with Developer Mode on, Live does not load installed extensions).
+
+**Upgrading from 0.9.0:** the beta was called "Tab Editor for Ableton Live" and installs as a separate
+extension. Remove it on Settings → Extensions first, or the right-click menu shows both.
+
+Settings that belong to a clip (fingering, techniques, chord names, lyrics, title) are saved in the
+extension's storage folder in Live, not in the Live Set; the MIDI itself only changes when you Apply.
+Report bugs and ideas in [Issues](../../issues).
 
 ## Features
 
@@ -94,17 +136,6 @@ are pieces the clip does not use yet). **Enter** adds or removes a hit, **Delete
 ghost (velocity 35), accent (127) or normal (100). The Value buttons, dot, triplet and + Beat / − Beat work
 as on guitar. Apply writes only new and changed hits; untouched hits keep their exact timing and velocity.
 
-## Install
-
-1. Download the `.ablx` file from [Releases](../../releases).
-2. In Live, open Settings → Extensions and drop the `.ablx` file on the page.
-3. Right-click a MIDI clip: the **Open (Clip) - Edit** entry appears. If not, restart Live, and check that
-   Developer Mode is off (with Developer Mode on, Live does not load installed extensions).
-
-Settings that belong to a clip (fingering, techniques, chord names, lyrics, title) are saved in the
-extension's storage folder in Live, not in the Live Set; the MIDI itself only changes when you Apply.
-Report bugs and ideas in [Issues](../../issues).
-
 ## Use
 
 | Right-click | Menu item | Opens |
@@ -153,10 +184,7 @@ MIT, see [LICENSE](LICENSE).
 - Score rendering and playback: [alphaTab](https://alphatab.net) (MPL-2.0)
 - Sound: Sonivox soundfont bundled with alphaTab, Copyright (c) 2004-2006 Sonic Network Inc. (Apache-2.0)
 - Music font: Bravura by Steinberg (SIL Open Font License 1.1)
-- 악보 글꼴: Steinberg의 Bravura (SIL Open Font License 1.1)
 - PDF: [jsPDF](https://github.com/parallax/jsPDF) (MIT)
-
-Ableton과 Live는 Ableton AG의 상표입니다. Tab Editor는 Ableton과 제휴하거나 승인받지 않은 독립 프로젝트입니다.
 
 Licence texts of these components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) (also inside the `.ablx`).
 
@@ -167,16 +195,41 @@ or endorsed by Ableton.
 
 # Tab Editor (한국어)
 
-Ableton Live 12 안에서 동작하는 기타/베이스 타브·오선보 편집기입니다.
-MIDI 클립이나 트랙을 오선보와 TAB으로 열어 고치고, 바꾼 내용을 클립에 다시 씁니다.
+Ableton Live 12 안에서 동작하는 기타·베이스 TAB, 오선보, 드럼 악보 편집기입니다.
+Live에서 MIDI 클립을 우클릭해 열면 기타·베이스는 오선보와 TAB으로, 드럼은 드럼 악보로 보여 줍니다.
+키보드로 고친 뒤 **Apply**를 누르면 바꾼 노트만 클립에 다시 쓰고, Live에서 실행 취소 한 번으로 되돌릴 수 있습니다.
 
-> 버전 1.0.0. Extensions가 들어 있는 Ableton Live 12 Suite 베타에서 동작합니다. Extensions 자체가 아직 공개 베타(SDK
-> 1.0.0-beta.1)라서 Live가 업데이트되면 맞는 빌드가 필요할 수 있습니다. [Releases](../../releases)를 확인하세요.
+**[⬇ Tab Editor 1.0.0 내려받기 (.ablx)](../../releases/latest)** · 무료, 오픈 소스(MIT)
+
+## 주요 기능
+
+- **오선보·TAB·드럼 악보:** 클립, 트랙, 씬, 어레인지 선택 구간을 오선보+TAB(6/7/8/12현 기타, 4/5/6현 베이스,
+  튜닝 10종, 카포)이나 드럼 악보(내 Drum Rack의 패드 이름)로 엽니다.
+- **자연스러운 운지:** 프레이즈 전체의 손 위치를 따라가서 런이 한 포지션에 머뭅니다. 음높이를 그대로 둔 채 줄만 옮길 수 있습니다.
+- **키보드 편집:** 프렛, 음표 길이, 타이, 셋잇단, 쉼표, 팜 뮤트, let ring, 해머링·풀링, 슬라이드, 벤딩, 비브라토, 데드 노트. 드래그로 범위 선택.
+- **Live로 되돌려 쓰기:** Apply는 바꾼 노트만 쓰고 Live 실행 취소 한 단계입니다. 손대지 않은 노트는 타이밍과 벨로시티가 그대로입니다.
+- **Live 세트를 읽음:** 클립의 루프 구간, Scale Mode(조표), 로케이터(리허설 마크), Live의 라이트·다크 테마를 따릅니다.
+- **인쇄용 정리:** 노트에서 제안하는 코드 이름, 가사, 제목, 지판 스케일, PDF·AlphaTex 내보내기, 재생.
 
 ## 요구 사항
 
 - Ableton Live 12 **Suite** 베타 12.4.5 이상, Extensions 포함 (Standard, Intro, Lite는 안 됨).
-- Windows 11에서 테스트했습니다. macOS는 아직 테스트하지 않았습니다.
+- Windows 11(Live 12.4.25 베타)에서 테스트했습니다. macOS는 아직 테스트하지 않았습니다.
+
+> Extensions 자체가 아직 공개 베타(SDK 1.0.0-beta.1)라서 Live가 업데이트되면 맞는 빌드가 필요할 수 있습니다.
+> [Releases](../../releases)를 확인하세요.
+
+## 설치
+
+1. [Releases](../../releases/latest)에서 `Tab-Editor-1.0.0.ablx`를 받습니다.
+2. Live 설정 → Extensions 페이지에 `.ablx` 파일을 끌어다 놓습니다.
+3. MIDI 클립을 우클릭하면 **Open (Clip) - Edit**이 보입니다. 안 보이면 Live를 다시 켜고, Developer Mode가 꺼져 있는지
+   확인하세요(Developer Mode가 켜져 있으면 설치한 익스텐션을 불러오지 않습니다).
+
+**0.9.0에서 올리는 경우:** 베타 버전은 이름이 "Tab Editor for Ableton Live"라서 별개의 익스텐션으로 설치됩니다.
+설정 → Extensions에서 먼저 지우세요. 그대로 두면 우클릭 메뉴에 두 개가 함께 보입니다.
+
+버그와 제안은 [Issues](../../issues)에 남겨 주세요.
 
 ## 기능
 
@@ -253,15 +306,6 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 **G / A / N**은 고스트(벨로시티 35), 액센트(127), 보통(100)입니다. 음가 버튼, 점, 셋잇단, 박 넣기/지우기는
 기타와 같습니다. Apply는 새로 넣거나 바꾼 타격만 쓰며, 손대지 않은 타격은 원래 타이밍과 벨로시티를 그대로 둡니다.
 
-## 설치
-
-1. [Releases](../../releases)에서 `.ablx` 파일을 받습니다.
-2. Live 설정 → Extensions 페이지에 `.ablx` 파일을 끌어다 놓습니다.
-3. MIDI 클립을 우클릭하면 **Open (Clip) - Edit**이 보입니다. 안 보이면 Live를 다시 켜고, Developer Mode가 꺼져 있는지
-   확인하세요(Developer Mode가 켜져 있으면 설치한 익스텐션을 불러오지 않습니다).
-
-버그와 제안은 [Issues](../../issues)에 남겨 주세요.
-
 ## 사용
 
 | 우클릭 위치 | 메뉴 | 열리는 범위 |
@@ -292,4 +336,7 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 
 - 악보 렌더링·재생: [alphaTab](https://alphatab.net) (MPL-2.0)
 - 소리: alphaTab에 포함된 Sonivox 사운드폰트, Copyright (c) 2004-2006 Sonic Network Inc. (Apache-2.0)
+- 악보 글꼴: Steinberg의 Bravura (SIL Open Font License 1.1)
 - PDF: [jsPDF](https://github.com/parallax/jsPDF) (MIT)
+
+Ableton과 Live는 Ableton AG의 상표입니다. Tab Editor는 Ableton과 제휴하거나 승인받지 않은 독립 프로젝트입니다.
