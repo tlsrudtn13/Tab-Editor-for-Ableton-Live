@@ -31,8 +31,6 @@
     --fb-border:      #b0b0b0;
     --fb-string:      #8a8a8a;
     --fb-cell-border: #cfcfcf;
-    :root.light .fc.scale .nd { background: #4a9ead; color: #000000; }
-    :root.light .fc.scale-root .nd { background: var(--p-live-accent-primary); color: #fff; }
   }
 
 
@@ -282,7 +280,7 @@ body { display:flex; flex-direction:row; }
 .fc[data-f="0"] { width:28px; min-width:28px; background:var(--p-live-input-bg); border-right:3px double #444; }
 .fc:hover { background:rgba(255,255,255,.05); }
 .fc.dot::before {
-  content:''; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
+  content:''; position:absolute; bottom:-3px; left:50%; transform:translateX(-50%);
   width:6px; height:6px; background:#666; border-radius:50%; pointer-events:none; z-index:0;
 }
 .fc[data-f="12"].dot::before {
@@ -290,7 +288,7 @@ body { display:flex; flex-direction:row; }
   box-shadow:-5px 0 0 #666, 5px 0 0 #666;
 }
 .nd {
-  width:14px; height:14px; border-radius:50%; font-size:8px; font-weight:900;
+  width:14px; height:14px; border-radius:50%; font-size:8px; font-weight:900; letter-spacing:-0.4px;
   display:flex; align-items:center; justify-content:center; z-index:3;
   background:var(--p-live-text-secondary); color:#000;
   opacity:0; transform:scale(0.3); transition:opacity .1s, transform .1s;
@@ -325,11 +323,12 @@ body { display:flex; flex-direction:row; }
 }
 /* Bar toggle: the other notes of the current bar, dimmed */
 .fc.bar .nd {
-  width: 15px; height: 15px; opacity: 1; transform: scale(1);
-  background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.45); border-radius: 50%;
-  color: #9fdff2; font-size: 8px; font-weight: 700;
+  width: 16px; height: 16px; opacity: 1; transform: scale(1);
+  background: #0c2b36; border: 1.5px solid #00c8ff; border-radius: 50%;
+  color: #e6fbff; font-size: 8px; font-weight: 800;
 }
-:root.light .fc.bar .nd { background: rgba(0,122,158,0.10); border-color: rgba(0,122,158,0.5); color: #00506a; }
+:root.light .fc.bar .nd { background: #e3f6fc; border-color: #007a9e; color: #00384a; }
+:root.light .fc.scale:not(.scale-root):not(.lit):not(.beat):not(.bar) .nd { background: #cde0e5; color: #163f4a; opacity: 1; }
 /* ✅ MIDI 활성(lit): selected note */
 .fc.lit .nd {
   width: 18px;
@@ -363,13 +362,13 @@ body { display:flex; flex-direction:row; }
 /* Hover: the note under the mouse, without clicking (name from data-n) */
 .fc:hover:not(.lit):not(.beat) .nd {
   width: 16px; height: 16px; opacity: 1; transform: scale(1);
-  background: rgba(0,200,255,0.18); border: 1px dashed #00c8ff; border-radius: 50%;
+  background: #133540; border: 1px dashed #00c8ff; border-radius: 50%;
   font-size: 0; color: transparent;
 }
 .fc:hover:not(.lit):not(.beat) .nd::after {
   content: attr(data-n); font-size: 8px; font-weight: 900; color: #e8faff;
 }
-:root.light .fc:hover:not(.lit):not(.beat) .nd { background: rgba(0,122,158,0.15); border-color: #007a9e; }
+:root.light .fc:hover:not(.lit):not(.beat) .nd { background: #d9f0f7; border-color: #007a9e; }
 :root.light .fc:hover:not(.lit):not(.beat) .nd::after { color: #003040; }
 #fb-hover-label { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--p-live-text-secondary); margin-left: 6px; }
 .str-label {

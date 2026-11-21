@@ -1,5 +1,6 @@
 import { state } from "./state";
-import { log } from "./log";
+import { log, status } from "./log";
+import { noteAtCursor } from "./cursor";
 import { NOTE_NAMES, SCALES, pitchToName } from "./musicUi";
 import { applyFretboardHeight } from "./panelSize";
 
@@ -65,7 +66,8 @@ function bindFretHover(grid: HTMLElement) {
   grid.addEventListener("mouseover", function(ev) {
     var cell = (ev.target as HTMLElement).closest(".fc") as HTMLElement | null;
     var lbl = document.getElementById("fb-hover-label");
-    if (!cell || !lbl) return;
+    if (!lbl) return;
+    if (!cell) { lbl.textContent = ""; return; }
     var s = parseInt(cell.getAttribute("data-s") || "0", 10), f = parseInt(cell.getAttribute("data-f") || "0", 10);
     lbl.textContent = fretHoverText(s, f, getOpenStrings()[s] || 40, state.uiCapo || 0);
   });
@@ -188,21 +190,18 @@ export function bindScaleControls() {
 export function fretClick(s, f, ev?: MouseEvent) {
   var keys = window.__editKeys as any;
   if (state.curTrack && state.curTrack.edit && keys) {
-    // move cursor to clicked string at same slot
     const c = state.cursor;
-    if (c && keys.setCursor) keys.setCursor(c.b, s);
-    // Guitar Pro: click an empty fret = add, click the note that is there = remove,
-    // click another fret on a string that already sounds at this beat = move it there
-    const notes = state.curTrack.notes || [];
-    const b = c ? c.b : 0;
-    const there = notes.find((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
-    if (there && there.f === f) { keys.deleteNoteAt(s, b); return; }
-    if (ev && ev.shiftKey) {
-      if (!keys.insertNote(s, f, true)) log("String " + s + " is already used at this beat");
-      return;
-    }
-    if (there) { keys.setSelectedStringFret(s, f); }
-    else { keys.insertNote(s, f, false); }
+    if (!c) { status("Click the score first to place the cursor"); return; }
+    keys.setCursor(c.b, s);   // cursor to the clicked string at the same beat
+    // Guitar Pro: click an empty fret = add (a chord when other strings sound), click the note that is
+    // there = remove, click another fret on a string that already sounds at this beat = move it there.
+    // Same lookup as the keyboard (noteAtCursor), so the lit note is the one that gets removed.
+    const hit = noteAtCursor();
+    if (hit && hit.note.f === f) { keys.deleteNoteIndex(hit.index); return; }
+    if (state.uiTranspose !== 0) { status("Set Trans to 0 to enter notes on the fretboard"); return; }
+    if (f < (state.uiCapo || 0)) { status("Fret " + f + " is below the capo"); return; }
+    if (hit) keys.setSelectedStringFret(s, f);
+    else keys.insertNote(s, f, false);
     return;
   }
   log("Fret: String " + s + " / Fret " + f);

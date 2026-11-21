@@ -122,9 +122,11 @@ Report bugs and ideas in [Issues](../../issues).
 | Esc | Clear the selection |
 
 A cyan cursor box shows the current beat slot and string on the TAB. Click a note, rest or string
-position to place the cursor, or drag to select a range of notes (Shift+drag adds). Clicking a fret
-on the fretboard sets or inserts the note at the cursor's slot on that string; Shift + click adds a
-chord tone. Use the **Keys** button for a quick reference.
+position to place the cursor, or drag to select a range of notes (Shift+drag adds). On the fretboard,
+as in Guitar Pro, clicking a fret adds a note at the cursor's beat on that string (a chord tone when other
+strings already sound), clicking that note again removes it, and clicking another fret on the same string
+moves it. Hover a fret to see its note name; **Bar** also shows the other notes of the current bar. Use the
+**Keys** button for a quick reference.
 **Techniques** are shown on the score, saved with the clip's TAB layout, and do not change the MIDI.
 With a range selected, a technique key or palette button applies to the whole selection.
 Overlapping arpeggio notes are marked let ring automatically.
@@ -300,9 +302,10 @@ Live에서 MIDI 클립을 우클릭해 열면 기타·베이스는 오선보와 
 | Esc | 선택 해제 |
 
 TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍니다. 노트, 쉼표, 줄 위치를 클릭해 커서를
-놓거나, 드래그해 음 범위를 선택할 수 있습니다(Shift+드래그로 추가). 프렛보드 칸을 누르면 커서 슬롯의
-해당 줄에 노트를 넣거나 바꾸고, Shift를 누른 채 누르면 화음 음을 추가합니다. **Keys** 버튼으로 단축키를
-빠르게 볼 수 있습니다.
+놓거나, 드래그해 음 범위를 선택할 수 있습니다(Shift+드래그로 추가). 프렛보드는 기타 프로처럼 동작합니다.
+칸을 누르면 커서 박자의 그 줄에 음을 넣고(다른 줄에 음이 있으면 화음이 됩니다), 같은 음을 다시 누르면
+지우고, 같은 줄의 다른 프렛을 누르면 그리로 옮깁니다. 칸에 마우스를 올리면 음이름이 보이고, **Bar**를 켜면
+지금 마디의 다른 음도 함께 보입니다. **Keys** 버튼으로 단축키를 빠르게 볼 수 있습니다.
 **기법 표기**는 악보에 그려지고 클립의 TAB 설정과 함께 저장되며, MIDI는 바꾸지 않습니다. 범위를 선택한
 상태에서는 기법 키나 팔레트 버튼이 선택 전체에 적용됩니다.
 겹쳐 울리는 아르페지오에는 let ring이 자동으로 붙습니다.

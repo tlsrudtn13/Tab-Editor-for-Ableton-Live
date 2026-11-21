@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Fretboard** (works like Guitar Pro's)
+- Hover a fret to see its note name; the header shows string, fret and note with octave.
+- Click a note on the fretboard again to remove it; another fret on the same string moves it.
+- Scale tones are shown with their names (the root as a gold square); before, only the root was visible.
+- **Bar** checkbox: also shows the other notes of the current bar.
+- Fretboard clicks follow the same rules as typed frets: not below the capo, not while Trans is set.
+  Shift+click is gone (a plain click already adds a chord tone).
+
 ## 1.0.0 (2026-11-18)
 
 First public release.

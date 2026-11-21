@@ -140,7 +140,8 @@ export function moveString(dir) {
       var n = state.curTrack.notes[state.selectedNoteIndices[i]];
       if (n) { lightFret(n.s, n.f); sel.push({ f: n.f, s: n.s, p: n.p }); }
     }
-    if (sel.length) lightBar(state.curTrack.notes[state.selectedNoteIndices[0]].b);
+    var firstSel = state.selectedNoteIndices.map(function(ii){ return state.curTrack.notes[ii]; }).filter(Boolean)[0];
+    if (firstSel) lightBar(firstSel.b);
     showSelection(sel);
   } else {
     log("Move: 이동 불가 (범위 밖 또는 줄 충돌)");

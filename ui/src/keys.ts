@@ -112,7 +112,7 @@ export function highlightSelection() {
   } else {
     ns.forEach(n => lightFret(n.s, n.f, undefined, { p: n.p }));
   }
-  lightBar(ns.length ? ns[0].b : state.cursor ? state.cursor.b : null);
+  lightBar(state.cursor ? state.cursor.b : ns.length ? ns[0].b : null);
   showSelection(ns.map(n => ({ f:n.f, s:n.s, p:n.p })), ns.length === 1);
   document.querySelectorAll("#note-tbody tr.sel").forEach(r => r.classList.remove("sel"));
   state.selectedNoteIndices.forEach(i => { const r=document.getElementById("nr-"+i); if(r) r.classList.add("sel"); });
@@ -307,10 +307,9 @@ function deleteSelectionOrCursor() {
 }
 
 /** Fretboard click on a note that is already there: remove it (Guitar Pro fretboard behaviour). */
-export function deleteNoteAt(s: number, b: number) {
-  if (!active()) return false;
-  const i = state.curTrack.notes.findIndex((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
-  if (i < 0) return false;
+export function deleteNoteIndex(i: number) {
+  if (!active() || !state.curTrack.notes[i]) return false;
+  const s = state.curTrack.notes[i].s, b = state.curTrack.notes[i].b || 0;
   const before = state.curTrack.notes.map((n:any)=>({...n})), deletedBefore = state.deletedOids.slice();
   const n = state.curTrack.notes[i];
   if (n.oid !== undefined) state.deletedOids.push(n.oid);
@@ -723,7 +722,7 @@ export function bindKeys(){
     setSelectedStringFret,
     updateEditUi,
     insertNote,
-    deleteNoteAt,
+    deleteNoteIndex,
     setCursor: (b:number,s:number)=>{ setCursor(b,s); state.selectionAnchor=b; syncFromCursor(); try{overlaySelectedNotes();}catch{} },
     cursor: ()=> state.cursor ? { b: state.cursor.b, s: state.cursor.s } : null,
     setValueByDen,
