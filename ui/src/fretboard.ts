@@ -43,12 +43,36 @@ export function buildFretboard() {
       }
       html += '<div class="fc' + dotClass + '" id="fc-' + s + "-" + f + '"'
            +  ' data-s="' + s + '" data-f="' + f + '"'
-           +  ' onclick="fretClick(' + s + "," + f + ',event)"><div class="nd">' + f + "</div></div>";
+           +  ' onclick="fretClick(' + s + "," + f + ',event)"><div class="nd" data-n="'
+           +  NOTE_NAMES[(openMidi + f) % 12] + '">' + f + "</div></div>";
     }
     html += "</div>";
   }
   grid!.innerHTML = html;
+  bindFretHover(grid!);
   applyFretboardHeight();   // string count may change: refit to the saved panel height
+}
+
+/** Hover shows the note under the mouse without clicking (Guitar Pro): the name in the cell (CSS, data-n)
+ *  and string / fret / note with octave in the fretboard header. */
+export function fretHoverText(s: number, f: number, open: number, capo: number) {
+  var tabFret = f - (capo || 0);
+  return "String " + s + " · Fret " + (tabFret >= 0 ? tabFret : f + " (below capo)") + " · " + pitchToName(open + f);
+}
+function bindFretHover(grid: HTMLElement) {
+  if ((grid as any).__hoverBound) return;
+  (grid as any).__hoverBound = true;
+  grid.addEventListener("mouseover", function(ev) {
+    var cell = (ev.target as HTMLElement).closest(".fc") as HTMLElement | null;
+    var lbl = document.getElementById("fb-hover-label");
+    if (!cell || !lbl) return;
+    var s = parseInt(cell.getAttribute("data-s") || "0", 10), f = parseInt(cell.getAttribute("data-f") || "0", 10);
+    lbl.textContent = fretHoverText(s, f, getOpenStrings()[s] || 40, state.uiCapo || 0);
+  });
+  grid.addEventListener("mouseleave", function() {
+    var lbl = document.getElementById("fb-hover-label");
+    if (lbl) lbl.textContent = "";
+  });
 }
 
 export function clearFretboard() {
@@ -100,7 +124,7 @@ export function updateScaleOverlay() {
         c.classList.add("scale");
         if (iv === 0) c.classList.add("scale-root");
       }
-      if (nd && !active) nd.textContent = (iv === 0) ? NOTE_NAMES[pc] : "";   // 스케일 모드: 루트만 음이름
+      if (nd && !active) nd.textContent = (ivs.indexOf(iv) !== -1) ? NOTE_NAMES[pc] : "";   // scale tones show their names
     } else {
       if (nd && !active) nd.textContent = String(f);        // 기본 모드: fret 번호
     }
@@ -126,15 +150,17 @@ export function fretClick(s, f, ev?: MouseEvent) {
     // move cursor to clicked string at same slot
     const c = state.cursor;
     if (c && keys.setCursor) keys.setCursor(c.b, s);
+    // Guitar Pro: click an empty fret = add, click the note that is there = remove,
+    // click another fret on a string that already sounds at this beat = move it there
+    const notes = state.curTrack.notes || [];
+    const b = c ? c.b : 0;
+    const there = notes.find((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
+    if (there && there.f === f) { keys.deleteNoteAt(s, b); return; }
     if (ev && ev.shiftKey) {
       if (!keys.insertNote(s, f, true)) log("String " + s + " is already used at this beat");
       return;
     }
-    // if note exists at cursor slot on this string, change it; else insert
-    const notes = state.curTrack.notes || [];
-    const b = c ? c.b : 0;
-    const has = notes.some((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
-    if (has) { keys.setSelectedStringFret(s, f); }
+    if (there) { keys.setSelectedStringFret(s, f); }
     else { keys.insertNote(s, f, false); }
     return;
   }

@@ -305,6 +305,23 @@ function deleteSelectionOrCursor() {
   render();
 }
 
+/** Fretboard click on a note that is already there: remove it (Guitar Pro fretboard behaviour). */
+export function deleteNoteAt(s: number, b: number) {
+  if (!active()) return false;
+  const i = state.curTrack.notes.findIndex((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6);
+  if (i < 0) return false;
+  const before = state.curTrack.notes.map((n:any)=>({...n})), deletedBefore = state.deletedOids.slice();
+  const n = state.curTrack.notes[i];
+  if (n.oid !== undefined) state.deletedOids.push(n.oid);
+  state.curTrack.notes.splice(i, 1);
+  state.selectedNoteIndices = [];
+  saveUndo(before, deletedBefore);
+  setCursor(b, s);
+  state.selectionAnchor = b;
+  render();
+  return true;
+}
+
 function selectNotesInRange(a: number, b: number) {
   const lo = Math.min(a,b)-1e-6, hi = Math.max(a,b)+1e-6;
   const idxs: number[] = [];
@@ -705,6 +722,7 @@ export function bindKeys(){
     setSelectedStringFret,
     updateEditUi,
     insertNote,
+    deleteNoteAt,
     setCursor: (b:number,s:number)=>{ setCursor(b,s); state.selectionAnchor=b; syncFromCursor(); try{overlaySelectedNotes();}catch{} },
     cursor: ()=> state.cursor ? { b: state.cursor.b, s: state.cursor.s } : null,
     setValueByDen,

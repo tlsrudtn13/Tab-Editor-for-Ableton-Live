@@ -298,22 +298,22 @@ body { display:flex; flex-direction:row; }
 
 /* ★ v3: Scale 오버레이 — 스케일 구성음 = 흰/회색, 루트 = 흰색 강조
    (정의 순서 중요: .lit 이 아래에 있어 MIDI 하이라이트(주황)가 항상 우선) */
-/* ✅ 스케일음: 6px hollow rings */
+/* Scale tones: filled circles with the note name; root = gold square (Guitar Pro scale display) */
 .fc.scale .nd {
-  width: 6px;
-  height: 6px;
-  opacity: 0.55;
+  width: 15px;
+  height: 15px;
+  opacity: 0.9;
   transform: scale(1);
-  background: transparent;
-  border: 1.5px solid #3d7885;
-  color: transparent;
-  font-size: 0;
-  font-weight: 600;
+  background: #2c6672;
+  border: none;
+  color: #e6f4f6;
+  font-size: 7.5px;
+  font-weight: 700;
 }
-/* ✅ 루트: 12px gold discs */
 .fc.scale-root .nd {
-  width: 12px;
-  height: 12px;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
   opacity: 0.95;
   transform: scale(1);
   background: #f5a623;
@@ -353,6 +353,18 @@ body { display:flex; flex-direction:row; }
 :root.light .fc.beat .nd {
   color: #003040;
 }
+/* Hover: the note under the mouse, without clicking (name from data-n) */
+.fc:hover:not(.lit):not(.beat) .nd {
+  width: 16px; height: 16px; opacity: 1; transform: scale(1);
+  background: rgba(0,200,255,0.18); border: 1px dashed #00c8ff; border-radius: 50%;
+  font-size: 0; color: transparent;
+}
+.fc:hover:not(.lit):not(.beat) .nd::after {
+  content: attr(data-n); font-size: 8px; font-weight: 900; color: #e8faff;
+}
+:root.light .fc:hover:not(.lit):not(.beat) .nd { background: rgba(0,122,158,0.15); border-color: #007a9e; }
+:root.light .fc:hover:not(.lit):not(.beat) .nd::after { color: #003040; }
+#fb-hover-label { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--p-live-text-secondary); margin-left: 6px; }
 .str-label {
   width:20px; min-width:20px; display:flex; align-items:center; justify-content:center;
   font-size:8.5px; color:var(--p-live-text-secondary); border-right:1px solid #2a2a2a;
