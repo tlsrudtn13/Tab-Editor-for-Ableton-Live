@@ -1,19 +1,5 @@
 # Changelog
 
-## Unreleased
-
-**Fretboard** (works like Guitar Pro's)
-- Hover a fret to see its note name; the header shows string, fret and note with octave.
-- Click a note on the fretboard again to remove it; another fret on the same string moves it.
-- Scale tones are shown with their names (the root as a gold square); before, only the root was visible.
-- **Bar** checkbox: also shows the other notes of the current bar.
-- Fretboard clicks follow the same rules as typed frets: not below the capo, not while Trans is set.
-  Shift+click is gone (a plain click already adds a chord tone).
-
-**Fixed**
-- On an 8th-note grid a real 8th rest was drawn as part of the note before it (a deleted 8th note
-  seemed to make the previous note a quarter).
-
 ## 1.0.0 (2026-11-18)
 
 First public release.
@@ -41,6 +27,14 @@ First public release.
 - **Apply** writes only the changed notes back to the clip in one Live undo step; untouched notes keep
   their exact timing and velocity. Fingering, techniques, chords, lyrics and title are saved per clip.
 
+**Fretboard** (works like Guitar Pro's)
+- Hover a fret to see its note name; the header shows string, fret and note with octave.
+- Click an empty fret to add a note (a chord tone when other strings sound), click the note again to
+  remove it, click another fret on the same string to move it. Same rules as typed frets: not below the
+  capo, not while Trans is set.
+- Scale tones are shown with their names, the root as a gold square.
+- **Bar** checkbox: also shows the other notes of the current bar.
+
 **Release preparation** (designer and Fable review)
 - Toolbar rows wrap at large zoom instead of hiding Close; clearer labels (Grid, Key, AlphaTex, Refinger,
   + Beat / − Beat, Ring); Data and Log are quieter.
@@ -53,6 +47,7 @@ First public release.
 - Track view keeps each clip's own title and key; chords and lyrics outside the shown part are kept.
 - Clips with the same name no longer share chords, lyrics and title (layers are matched by the notes).
 - In track and selection views a note can move into the next clip (Apply moves it there).
+- On an 8th-note grid a real 8th rest is no longer drawn as part of the note before it.
 - Undo after an instrument change; names with `$` or `<`; Ctrl+D past the clip end; lyrics entry when switching tabs.
 - Active buttons in Live's solid orange, flat scrollbars, monochrome theme icon, cleaner fretboard string names.
 
