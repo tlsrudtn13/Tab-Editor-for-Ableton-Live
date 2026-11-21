@@ -1,6 +1,6 @@
 # Tab Editor
 
-*An extension for Ableton Live:* Guitar Pro–style TAB, staff and drum notation for your MIDI clips.
+*An extension for Ableton Live:* edit your MIDI clips as guitar and bass TAB, staff and drum notation.
 
 A guitar/bass tablature and standard-notation editor that runs inside Ableton Live 12.
 Opens a MIDI clip or track as staff + TAB, lets you fix the part, and writes the changes back to the clip.
@@ -125,8 +125,7 @@ Click inside the editor once before pressing Play: the browser engine starts aud
 ## Known limitations
 
 - Overlapping notes are written as one voice (with a let-ring mark).
-- New notes go only into rests; use Shift + fret click for chord tones.
-- In track and selection views a note cannot move from one clip into another; a new note outside every clip is dropped. Applying a selection keeps the clips' saved fingering for the notes outside the selection.
+- In track and selection views notes can move into a neighbouring clip (Alt + ← / →), but not into the gap between two clips, and new notes go only inside a clip. Applying a selection keeps the clips' saved fingering for the notes outside the selection.
 - Very long tracks (thousands of notes) take a few seconds to render.
 - Fingering, techniques, chord names, lyrics and title are found again by the clip's notes. If you rewrite most of a
   clip in Live's piano roll, they start fresh. Two identical copies of a clip on one track share them.
@@ -283,8 +282,7 @@ TAB 위의 청록색 커서 박스가 현재 비트 슬롯과 줄을 보여 줍�
 ## 알려진 제한
 
 - 겹쳐 울리는 음은 한 성부로 표기됩니다 (let ring 표시와 함께).
-- 새 노트는 쉼표 자리에만 넣을 수 있습니다. 화음 음은 Shift + 프렛 클릭을 쓰세요.
-- 트랙 보기와 선택 구간 보기에서 노트를 다른 클립으로 옮길 수는 없고, 어느 클립에도 속하지 않는 새 노트는 버려집니다. 선택 구간을 반영해도 선택 밖 노트의 저장된 운지는 그대로 둡니다.
+- 트랙 보기와 선택 구간 보기에서 노트를 옆 클립으로 옮길 수는 있지만(Alt + ← / →) 클립 사이 빈 곳으로는 옮길 수 없고, 새 노트도 클립 안에만 넣을 수 있습니다. 선택 구간을 반영해도 선택 밖 노트의 저장된 운지는 그대로 둡니다.
 - 노트가 수천 개인 긴 트랙은 그리는 데 몇 초가 걸립니다.
 - 운지, 기법, 코드 이름, 가사, 제목은 클립의 노트로 다시 찾습니다. Live 피아노 롤에서 클립 대부분을 새로 쓰면
   처음부터 다시 시작합니다. 한 트랙에 똑같은 클립이 두 개 있으면 이 정보를 같이 씁니다.

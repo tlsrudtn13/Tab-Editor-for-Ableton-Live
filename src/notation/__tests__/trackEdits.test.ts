@@ -41,4 +41,28 @@ describe("track view clips", () => {
         const merged0 = mergeClipEdits([], perClip[0]!.edits, perClip[0]!.regionStart);
         expect(merged0.notes).toEqual([{ pitch: 60, startTime: 4, duration: 1, velocity: 90 }]);
     });
+    it("moves a note into another clip: deleted from its own clip, added to the other (Known limitation fix)", () => {
+        const spans = [{ index: 0, start: 0, end: 8, offset: 0 }, { index: 1, start: 16, end: 24, offset: 14 }];
+        const refs = [{ cref: 0, oid: 0 }, { cref: 0, oid: 1 }];
+        const raw0 = [{ pitch: 60, startTime: 1, duration: 0.5, velocity: 100 }, { pitch: 62, startTime: 7, duration: 0.75, velocity: 80 }];
+        const { perClip, dropped } = splitTrackEdits({
+            changed: [{ oid: 1, pitch: 62, velocity: 80, start: 17 }],   // duration kept (undefined)
+            deleted: [], added: [],
+        }, refs, spans, ref => raw0[ref.oid]!.duration);
+        expect(dropped).toBe(0);
+        expect(perClip.map(c => c.cref)).toEqual([0, 1]);
+        expect(perClip[0]!.edits).toEqual({ changed: [], added: [], deleted: [1] });
+        const merged1 = mergeClipEdits([], perClip[1]!.edits, perClip[1]!.regionStart);
+        expect(merged1.notes).toEqual([{ pitch: 62, startTime: 3, duration: 0.75, velocity: 80 }]); // 17 - 14
+        const merged0 = mergeClipEdits(raw0, perClip[0]!.edits, perClip[0]!.regionStart);
+        expect(merged0.notes).toEqual([raw0[0]]);
+    });
+
+    it("keeps a note moved into a gap between clips in its own clip", () => {
+        const spans = [{ index: 0, start: 0, end: 8, offset: 0 }, { index: 1, start: 16, end: 24, offset: 14 }];
+        const { perClip } = splitTrackEdits({ changed: [{ oid: 0, pitch: 60, velocity: 100, start: 10 }], deleted: [], added: [] },
+            [{ cref: 0, oid: 0 }], spans, () => 1);
+        expect(perClip.length).toBe(1);
+        expect(perClip[0]!.edits.changed).toEqual([{ oid: 0, pitch: 60, velocity: 100, start: 10 }]);
+    });
 });

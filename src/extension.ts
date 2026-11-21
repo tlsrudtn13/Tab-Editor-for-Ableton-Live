@@ -417,9 +417,13 @@ export function activate(activation: ActivationContext) {
     type ClipWrite = { clip: any; notes: any[] };
     /** Merge a track's edits into its arrangement clips without writing; "stale" when a clip changed while open. */
     function prepareTrackEdits(rawTrack: any, editCtx: TrackEditContext, edits: any): { writes: ClipWrite[]; total: ApplyStats } | "stale" {
-        const { perClip, dropped } = splitTrackEdits(edits, editCtx.refs, editCtx.spans);
-        const total: ApplyStats = { changed: 0, added: 0, deleted: 0, dropped };
         const clips: any[] = rawTrack.arrangementClips ?? [];
+        const opened = new Map<number, any[]>();   // clip notes as opened (the snapshot), for moved notes' durations
+        const { perClip, dropped } = splitTrackEdits(edits, editCtx.refs, editCtx.spans, ref => {
+            if (!opened.has(ref.cref)) { try { opened.set(ref.cref, JSON.parse(editCtx.snapshots.get(ref.cref) ?? "[]")); } catch { opened.set(ref.cref, []); } }
+            return Number(opened.get(ref.cref)![ref.oid]?.duration);
+        });
+        const total: ApplyStats = { changed: 0, added: 0, deleted: 0, dropped };
         for (const part of perClip) {
             const clip = clips[part.cref];
             if (!clip || JSON.stringify(clip.notes ?? []) !== editCtx.snapshots.get(part.cref)) {

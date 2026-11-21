@@ -20,7 +20,7 @@ First public release.
 - PDF and AlphaTex export. Dark and light themes, zoom 80–200 %, resizable fretboard and drum map.
 
 **Edit**
-- Guitar Pro style cursor and keyboard: frets, note values, dot, triplet, tie, rest, insert/delete beat,
+- Cursor and keyboard editing: frets, note values, dot, triplet, tie, rest, insert/delete beat,
   copy/paste, string moves, techniques (let ring, palm mute, hammer-on/pull-off, slide, dead note,
   vibrato, bends), range selection by drag.
 - Drum editing: add/remove hits, change the piece, ghost/accent/normal velocity.
@@ -38,6 +38,7 @@ First public release.
 - Typed frets count from the capo, as the TAB shows them.
 - Track view keeps each clip's own title and key; chords and lyrics outside the shown part are kept.
 - Clips with the same name no longer share chords, lyrics and title (layers are matched by the notes).
+- In track and selection views a note can move into the next clip (Apply moves it there).
 - Undo after an instrument change; names with `$` or `<`; Ctrl+D past the clip end; lyrics entry when switching tabs.
 - Active buttons in Live's solid orange, flat scrollbars, monochrome theme icon, cleaner fretboard string names.
 

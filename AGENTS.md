@@ -4,7 +4,7 @@ Rules for every agent (Claude orchestrator, OpenCode workers, Codex, Antigravity
 local orchestrator) working in this repo.
 
 ## Product goal (order matters)
-1. **Viewer**: a MIDI clip/track in Live opens as a correct, readable Guitar Pro–style
+1. **Viewer**: a MIDI clip/track in Live opens as a correct, readable
    staff + TAB (fingering, rhythm, bass/guitar, Live scale/cue points).
 2. **MIDI editing**: change notes in the editor and write them back to the Live clip
    (one undo step), keeping string choices.

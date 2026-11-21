@@ -7,6 +7,13 @@
 - From the 1.0 bug review, not fixed yet: in a selection tab, Insert beat / paste near the selection end can
   shift notes onto unshown notes of the same clip; a drum pad remap is stored per clip in clip view but per
   track in track / scene views; notes moved before a clip's region start (negative clip time) are skipped.
+- Playback with your own SoundFont (.sf2) instead of the built-in General MIDI one.
+
+**Playback through Live's own instruments** (asked 2026-11-21, blocked by the SDK). The Extensions API
+(1.0.0-beta.1) has no transport control (play, stop, position, loop) and renders audio only from audio
+tracks, before effects (`renderPreFxAudio`), so a MIDI track cannot be played or rendered through its
+instrument, and the editor is a modal dialog while Live plays. Until the SDK adds this, the editor plays
+with alphaTab's General MIDI sounds. Revisit with each SDK release.
 
 ## 2.0: guides, presets and learning material for players
 
@@ -33,6 +40,6 @@ bassists and drummers write and learn one inside Live.
 
 **Also considered** (from the v1 reviews)
 - Guitar Pro (.gp) / MusicXML import and export.
-- Multi-voice notation; adding notes into non-rest slots.
+- Multi-voice notation.
 - Technique suggestions from MIDI (overlap → hammer-on, short soft notes → palm mute / ghost).
 - Ukulele and custom tunings; localised UI (English / Korean).

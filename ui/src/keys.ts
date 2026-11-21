@@ -188,13 +188,17 @@ export function moveTime(steps: number, wholeBeats = false) {
   const sel = new Set(selIdx);
   const moved = selIdx.map(i => notes[i]).filter(Boolean);
   if (moved.some((n: any) => n.b + delta < -1e-6)) { log("Move: already at the start"); return; }
-  if (moved.some((n: any) => { const from = spanIndex(n.b), to = spanIndex(n.b + delta); return to < 0 || to !== from; })) {
-    log("Move: notes cannot leave their clip"); return;
-  }
+  // track view: a note may move into the next clip (Apply moves it there); never into a gap between clips
+  if (moved.some((n: any) => spanIndex(n.b + delta) < 0)) { log("Move: there is no clip there"); return; }
   const clash = moved.find((n: any) => notes.some((o: any, j: number) => !sel.has(j) && o.s === n.s && Math.abs(o.b - (n.b + delta)) < unit / 2));
   if (clash) { log("Move: string " + clash.s + " is already used there"); return; }
   const before = notes.map((n: any) => ({ ...n }));
-  moved.forEach((n: any) => { n.b = Math.max(0, n.b + delta); if (n.oid !== undefined) n.dirty = true; });
+  moved.forEach((n: any) => {
+    const from = spanIndex(n.b);
+    n.b = Math.max(0, n.b + delta); if (n.oid !== undefined) n.dirty = true;
+    const sp = spanOf(n.b);
+    if (sp && spanIndex(n.b) !== from) n.d = clampDurToSpan(n.d, n.b, sp.end);   // keep it inside its new clip
+  });
   saveUndo(before);
   const c = ensureCursor(); if (c) c.b = Math.max(0, c.b + delta);
   state.selectionAnchor = c ? c.b : state.selectionAnchor;
