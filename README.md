@@ -12,7 +12,10 @@ undo step. Score rendering by [alphaTab](https://alphatab.net). [한국어 설�
 
 **[⬇ Download Tab Editor 1.0.0 (.ablx)](../../releases/latest)** · free and open source (MIT)
 
-If Tab Editor saves you time, you can support it here:
+**What's next.** Tab Editor stays free and open source. For 2.0 I'm working on tools that help you *write and
+learn* parts inside Live: drum beats and chord progressions you can insert as real MIDI, bass lines from your
+chords, chord progression analysis, and a practice mode (loop a range, slow it down, count-in).
+See the [roadmap](docs/ROADMAP.md). If Tab Editor saves you time, a coffee helps me spend more of it on 2.0:
 
 <a href="https://www.buymeacoffee.com/mockin_i"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=mockin_i&button_colour=FFDD00&font_colour=000000&font_family=Comic&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="45" /></a>
 
@@ -205,7 +208,10 @@ Live에서 MIDI 클립을 우클릭해 열면 기타·베이스는 오선보와 
 
 **[⬇ Tab Editor 1.0.0 내려받기 (.ablx)](../../releases/latest)** · 무료, 오픈 소스(MIT)
 
-도움이 되셨다면 커피 한 잔으로 응원해 주세요:
+**다음 계획.** Tab Editor는 앞으로도 무료, 오픈 소스입니다. 2.0에서는 Live 안에서 파트를 *쓰고 연습하는* 기능을
+준비하고 있습니다. 드럼 비트와 코드 진행을 실제 MIDI로 넣기, 코드에 맞춘 베이스 라인, 코드 진행 분석, 연습 모드(구간 반복,
+느리게 재생, 카운트인)입니다. 자세한 내용은 [로드맵](docs/ROADMAP.md)에 있습니다.
+도움이 되셨다면 커피 한 잔이 2.0 개발 시간에 보탬이 됩니다:
 
 <a href="https://www.buymeacoffee.com/mockin_i"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=mockin_i&button_colour=FFDD00&font_colour=000000&font_family=Comic&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="45" /></a>
 
