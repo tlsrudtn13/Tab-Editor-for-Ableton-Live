@@ -1,6 +1,6 @@
 import { state } from "./state";
 import { log, status } from "./log";
-import { clearFretboard, getOpenStrings, getStringCount, lightFret } from "./fretboard";
+import { clearFretboard, getOpenStrings, getStringCount, lightFret, lightBar } from "./fretboard";
 import { showSelection } from "./overlay";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
@@ -81,6 +81,7 @@ export function adjustDuration(mode) {
     } else {
       selNotes.forEach(function(n:any){ lightFret(n.s,n.f,undefined,{p:n.p}); });
     }
+    if (selNotes.length) lightBar(selNotes[0].b);
     for (var i = 0; i < selNotes.length; i++) { var sn = selNotes[i]; if (sn) sel.push({ f: sn.f, s: sn.s, p: sn.p }); }
     showSelection(sel, sel.length === 1);
   }
@@ -139,6 +140,7 @@ export function moveString(dir) {
       var n = state.curTrack.notes[state.selectedNoteIndices[i]];
       if (n) { lightFret(n.s, n.f); sel.push({ f: n.f, s: n.s, p: n.p }); }
     }
+    if (sel.length) lightBar(state.curTrack.notes[state.selectedNoteIndices[0]].b);
     showSelection(sel);
   } else {
     log("Move: 이동 불가 (범위 밖 또는 줄 충돌)");

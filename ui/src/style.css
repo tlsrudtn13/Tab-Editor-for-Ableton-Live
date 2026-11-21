@@ -323,6 +323,13 @@ body { display:flex; flex-direction:row; }
   border: none;
   box-shadow: none;
 }
+/* Bar toggle: the other notes of the current bar, dimmed */
+.fc.bar .nd {
+  width: 15px; height: 15px; opacity: 1; transform: scale(1);
+  background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.45); border-radius: 50%;
+  color: #9fdff2; font-size: 8px; font-weight: 700;
+}
+:root.light .fc.bar .nd { background: rgba(0,122,158,0.10); border-color: rgba(0,122,158,0.5); color: #00506a; }
 /* ✅ MIDI 활성(lit): selected note */
 .fc.lit .nd {
   width: 18px;

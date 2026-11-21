@@ -75,16 +75,57 @@ function bindFretHover(grid: HTMLElement) {
   });
 }
 
+/* ── "Bar" toggle: also show the other notes of the current bar, dimmed (kept per computer) ── */
+var BAR_KEY = "tabEditor.fretboardBar";
+var showBar = (function() { try { return localStorage.getItem(BAR_KEY) === "1"; } catch { return false; } })();
+
+/** Start and length (in beats) of the bar that holds beat b; bars count from the clip start. */
+export function barRange(b: number, beatsPerBar: number) {
+  var len = beatsPerBar > 0 ? beatsPerBar : 4;
+  var start = Math.floor((b + 1e-6) / len) * len;
+  return { start: start, end: start + len };
+}
+function beatsPerBar() {
+  var ts = state.uiTimeSig || (state.curTrack && state.curTrack.timeSig) || { beats: 4, type: 4 };
+  return ts.beats * 4 / ts.type;
+}
+/** Dim the notes of the bar around beat b (cells already lit as selection/beat stay as they are). */
+export function lightBar(b: number | null | undefined) {
+  if (!showBar || typeof b !== "number" || !state.curTrack || !Array.isArray(state.curTrack.notes)) return;
+  var r = barRange(b, beatsPerBar());
+  state.curTrack.notes.forEach(function(n: any) {
+    var nb = n.b || 0;
+    if (nb < r.start - 1e-6 || nb >= r.end - 1e-6) return;
+    var cell = document.getElementById("fc-" + n.s + "-" + n.f);
+    if (!cell || cell.classList.contains("lit") || cell.classList.contains("beat")) return;
+    cell.classList.add("bar");
+    var nd = cell.querySelector(".nd");
+    if (nd) nd.textContent = NOTE_NAMES[((n.p % 12) + 12) % 12];
+  });
+}
+export function bindBarToggle(refresh: () => void) {
+  var cb = document.getElementById("ui-fb-bar") as HTMLInputElement | null;
+  if (!cb) return;
+  cb.checked = showBar;
+  cb.addEventListener("change", function() {
+    showBar = cb!.checked;
+    try { localStorage.setItem(BAR_KEY, showBar ? "1" : "0"); } catch { /* storage off */ }
+    refresh();
+  });
+}
+
 export function clearFretboard() {
-  var cells = document.querySelectorAll(".fc.lit, .fc.beat");
+  var cells = document.querySelectorAll(".fc.lit, .fc.beat, .fc.bar");
   for (var i = 0; i < cells.length; i++) {
     cells[i].classList.remove("lit");
     cells[i].classList.remove("beat");
+    cells[i].classList.remove("bar");
     var nd = cells[i].querySelector(".nd");
     if (nd) nd.textContent = String(cells[i].getAttribute("data-f") || "");
   }
   var lbl = document.getElementById("fb-note-label");
   if (lbl) lbl.textContent = "";
+  updateScaleOverlay();   // freed cells get their scale names (or fret numbers) back
 }
 
 export function lightFret(s: any, f: any, label?: any, opts?: { beat?: boolean; p?: number }) {
@@ -117,7 +158,7 @@ export function updateScaleOverlay() {
     c.classList.remove("scale", "scale-root");
     var pitch = (OPEN[s] || 40) + f;
     var pc    = ((pitch % 12) + 12) % 12;
-    var active = c.classList.contains("lit") || c.classList.contains("beat");
+    var active = c.classList.contains("lit") || c.classList.contains("beat") || c.classList.contains("bar");
     if (ivs) {
       var iv = ((pc - state.uiScaleRoot) + 12) % 12;
       if (ivs.indexOf(iv) !== -1) {

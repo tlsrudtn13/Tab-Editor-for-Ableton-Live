@@ -1,6 +1,6 @@
 import { state } from "./state";
 import { onDragSelection } from "./dragSelect";
-import { getOpenStrings, getStringCount, clearFretboard, lightFret } from "./fretboard";
+import { getOpenStrings, getStringCount, clearFretboard, lightFret, lightBar } from "./fretboard";
 import { rebuildScore } from "./score";
 import { renderInspector } from "./inspector";
 import { showSelection, overlaySelectedNotes, clearNoteOverlays } from "./overlay";
@@ -112,6 +112,7 @@ export function highlightSelection() {
   } else {
     ns.forEach(n => lightFret(n.s, n.f, undefined, { p: n.p }));
   }
+  lightBar(ns.length ? ns[0].b : state.cursor ? state.cursor.b : null);
   showSelection(ns.map(n => ({ f:n.f, s:n.s, p:n.p })), ns.length === 1);
   document.querySelectorAll("#note-tbody tr.sel").forEach(r => r.classList.remove("sel"));
   state.selectedNoteIndices.forEach(i => { const r=document.getElementById("nr-"+i); if(r) r.classList.add("sel"); });

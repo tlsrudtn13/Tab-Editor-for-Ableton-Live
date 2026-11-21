@@ -18,7 +18,7 @@ import { initLog, log, status } from "./log";
 import { getAtRes, initTheme, syncThemeBtn, toggleTheme } from "./theme";
 import { initZoom } from "./uiZoom";
 import { initFretboardSplitter } from "./panelSize";
-import { bindScaleControls, buildFretboard, clearFretboard, fretClick, updateScaleOverlay } from "./fretboard";
+import { bindBarToggle, bindScaleControls, buildFretboard, clearFretboard, fretClick, updateScaleOverlay } from "./fretboard";
 import { clearNoteOverlays, showSelection } from "./overlay";
 import { bindControls, bindInstrument, instrumentKeyOf, rebuildScore, refingerNotes, renderScore, setInstrument, setMode } from "./score";
 import { moveString } from "./editing";
@@ -28,7 +28,7 @@ import { stopPlay, togglePlay } from "./player";
 import { isMulti, restoreSession, stashSession, toggleApplyMark } from "./multiApply";
 import { bindAnnotations, refreshAnnUi, closeLyricsForTabSwitch } from "./annotate";
 import { startDevReporter } from "./devReporter";
-import { annSnapshot, bindKeys, toggleTech } from "./keys";
+import { annSnapshot, bindKeys, highlightSelection, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
@@ -87,6 +87,7 @@ log("Tracks: " + (state.tracks ? state.tracks.length : "NONE"));
 
 buildFretboard();
 bindScaleControls();
+bindBarToggle(function() { if (state.curTrack) highlightSelection(); });
 
 renderTrackList();
 bindInstrument();
