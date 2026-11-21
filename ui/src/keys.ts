@@ -166,6 +166,9 @@ export function insertNote(s: number, f: number, chord = false) {
     const sl = currentSlot();
     if (!sl) return false;
     b = sl.b; d = sl.isRest ? (state.defaultInsertDur || sl.d) : sl.d;
+    if (state.curTrack.notes.some((n: any) => n.s === s && Math.abs((n.b || 0) - b) < 1e-6)) {
+      log("String " + s + " is already used at this beat"); return false;
+    }
     const sp = spanOf(b);
     if (!sp) { log("Insert: that rest is outside every clip"); return false; }
     d = clampDurToSpan(d, b, sp.end);

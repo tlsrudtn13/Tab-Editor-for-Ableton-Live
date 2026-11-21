@@ -18,3 +18,12 @@ describe("toMusicXml user duration (de)", () => {
     expect(xml).toContain("<rest/>");
   });
 });
+
+describe("toMusicXml auto-legato on the 8th grid", () => {
+  it("keeps a real 8th rest (a deleted 8th note) instead of stretching the note before it", () => {
+    // 8ths at 0 and 0.5, the 8th at 1 deleted, next note at 1.5 -> an 8th rest at 1
+    const notes = [n(0, 0.5, 40, { s: 6 }), n(0.5, 0.5, 40, { s: 6 }), n(1.5, 0.5, 45, { s: 5 }), n(2, 0.5, 40, { s: 6 })];
+    const xml = toMusicXml(notes, 120, { quantize: 8, skipVoicing: true, instrument: { name: "6-String Guitar", stringCount: 6, open: [0,64,59,55,50,45,40] } as any });
+    expect(xml).toContain("<rest/>");
+  });
+});

@@ -305,7 +305,9 @@ export function toMusicXml(
     // Auto-Legato 임계: 16분음표(0.25박) 이하의 미세 갭은 직전 노트를 늘려 흡수
     // 32-grid: 1/32·1/16 쉼표 제거 / 16-grid: 1/16 쉼표 제거 → 깔끔한 악보
     // (의도적인 8분음표 이상 쉼표는 그대로 유지)
-    const legatoUnits = Math.round(0.25 * divisions);
+    // floor, not round: on the 8th grid (divisions 2) round(0.5) = 1 unit = an 8th, which swallowed real 8th
+    // rests (a deleted 8th note vanished into the note before it; found in Live, 2026-11-21)
+    const legatoUnits = Math.floor(0.25 * divisions);
 
     // ── 4. 타임라인 → 마디 토큰 ───────────────────────────────────────────
     const BPB = timeSig.beats;

@@ -1,6 +1,6 @@
 import { state } from "./state";
 import { log, status } from "./log";
-import { noteAtCursor } from "./cursor";
+import { noteAtCursor, slotAt } from "./cursor";
 import { NOTE_NAMES, SCALES, pitchToName } from "./musicUi";
 import { applyFretboardHeight } from "./panelSize";
 
@@ -192,7 +192,10 @@ export function fretClick(s, f, ev?: MouseEvent) {
   if (state.curTrack && state.curTrack.edit && keys) {
     const c = state.cursor;
     if (!c) { status("Click the score first to place the cursor"); return; }
-    keys.setCursor(c.b, s);   // cursor to the clicked string at the same beat
+    // cursor to the clicked string, on the start of the slot that holds the cursor beat: after a delete the
+    // note before can be drawn longer, and the old beat is then inside that slot (found in Live, 2026-11-21)
+    const sl = slotAt(c.b);
+    keys.setCursor(sl ? sl.b : c.b, s);
     // Guitar Pro: click an empty fret = add (a chord when other strings sound), click the note that is
     // there = remove, click another fret on a string that already sounds at this beat = move it there.
     // Same lookup as the keyboard (noteAtCursor), so the lit note is the one that gets removed.
