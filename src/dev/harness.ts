@@ -35,7 +35,8 @@ const TEST_TRACK_BIG = "TAB-TEST-BIG";
 /** Drum Rack track (docs/DRUMS.md), and a plain MIDI track named "Drums" for the name heuristic. */
 const TEST_TRACK_DRUMS = "TAB-TEST-DRUMS";
 const TEST_TRACK_DRUMS_NORACK = "TAB-TEST Drums";
-const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_TRACK_DRUMS, TEST_TRACK_DRUMS_NORACK].includes(t?.name);
+const TEST_TRACK_ADJ = "TAB-TEST-ADJ";
+const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_TRACK_DRUMS, TEST_TRACK_DRUMS_NORACK, TEST_TRACK_ADJ].includes(t?.name);
 
 let devDir = "";
 let tempDir = "";
@@ -208,6 +209,23 @@ async function createDrumFixture(ctx: Ctx) {
     return { track: TEST_TRACK_DRUMS, steps, detected: drumRackInfo(track), plainDetected: drumRackInfo(plain), created };
 }
 
+/** Two touching arrangement clips (beats 0-8 and 8-16) for moving a note from one clip into the next. */
+async function createAdjacentFixture(ctx: Ctx) {
+    const song: any = ctx.application.song;
+    for (const t of [...song.tracks]) if (t?.name === TEST_TRACK_ADJ) await song.deleteTrack(t);
+    const track: any = await song.createMidiTrack();
+    track.name = TEST_TRACK_ADJ;
+    const fx = FIXTURES[0]!;
+    const created: string[] = [];
+    for (const [start, name] of [[0, "ADJ A"], [8, "ADJ B"]] as const) {
+        const clip: any = await track.createMidiClip(start, 8);
+        clip.name = name;
+        clip.notes = fx.notes.filter((n: any) => n.startTime < 8);
+        created.push(`arrangement @${start}: ${name} (${clip.notes.length} notes)`);
+    }
+    return { track: TEST_TRACK_ADJ, created };
+}
+
 async function cleanup(ctx: Ctx) {
     const song: any = ctx.application.song;
     let removed = 0;
@@ -271,6 +289,7 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
         case "cleanup":  return cleanup(ctx);
         case "bigFixture": return createBigFixture(ctx, Number(cmd.clip ?? 2000));
         case "drumFixture": return createDrumFixture(ctx);
+        case "adjFixture": return createAdjacentFixture(ctx);
         case "drumInfo": {
             // Drum detection for every track (Drum Rack search, pads, pad labels)
             return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));

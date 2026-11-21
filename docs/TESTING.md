@@ -49,6 +49,7 @@ Release builds (`npm run build`, `npm run package`) contain none of it.
    node scripts/dev-cmd.mjs drumInfo                  # Drum Rack detection for every track (pads, pad labels)
    node scripts/dev-cmd.mjs payload "TT drums rock" --full   # drum payload: pieces + AlphaTex
    node scripts/dev-cmd.mjs rawNotes "TT drums human"        # the clip's notes exactly as Live holds them (write-back checks)
+   node scripts/dev-cmd.mjs adjFixture                # "TAB-TEST-ADJ": touching clips "ADJ A" (0-8) and "ADJ B" (8-16), for moving a note into the next clip
    node scripts/dev-cmd.mjs cleanup                   # deletes the TAB-TEST* test tracks
    ```
    Files land in `.devstore/**/dev/`. `ui-score-latest.html` holds the rendered score SVG
