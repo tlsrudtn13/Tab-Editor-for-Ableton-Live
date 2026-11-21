@@ -136,7 +136,8 @@ function hashEntries(clip: any): TabLayerV2["notes"] {
 /** After notes were written: a layer that only lists hashes (no fingering) gets the clip's new hashes. */
 function refreshHashOnlyLayer(context: any, id: string | undefined, clip: any) {
     const layer = readV2(context, id); if (!layer || !id) return;
-    if (layer.notes.some(n => n.k !== 0)) return;          // real fingering entries: saved by their own path
+    // only files that list bare hashes; entries with a lock, techniques or a bend belong to the fingering save
+    if (layer.notes.some(n => n.k !== 0 || (n.t && n.t.length) || n.bd !== undefined)) return;
     try { const file = v2File(context, id); if (file) fs.writeFileSync(file, JSON.stringify({ ...layer, notes: hashEntries(clip) }), "utf8"); }
     catch (e) { console.warn("[TAB] layer hash refresh failed:", e); }
 }
@@ -558,6 +559,15 @@ export function activate(activation: ActivationContext) {
         }
     }
 
+    function refreshTrackHashes(rawTrack: any, editCtx: TrackEditContext) {
+        const clips: any[] = rawTrack.arrangementClips ?? [];
+        for (const span of editCtx.spans) { const clip = clips[span.index]; if (clip) refreshHashOnlyLayer(context, editCtx.v2Ids.get(span.index), clip); }
+    }
+    function refreshTargetHashes(tg: MultiTarget) {
+        if (tg.kind === "clip") refreshHashOnlyLayer(context, tg.v2Id, tg.clip);
+        else refreshTrackHashes(tg.track, tg.editCtx);
+    }
+
     async function openMulti(payloads: TrackPayload[], targets: Map<string, MultiTarget>, emptyMessage: string): Promise<void> {
         if (!payloads.length) { await showEditor(context, [], emptyMessage); return; }
         const result = await showEditor(context, payloads);
@@ -582,6 +592,7 @@ export function activate(activation: ActivationContext) {
         const after: (() => void)[] = [];          // layer / kit map saves: only once the clips are written
         const total: ApplyStats = { changed: 0, added: 0, deleted: 0, dropped: 0 };
         const skipped: string[] = [];
+        const refreshTargets: MultiTarget[] = [];
         const owner = new Map<any, string>();      // clip -> tab that writes it (two tabs must never write one clip)
         let applied = 0;
         const add = (st: ApplyStats) => { total.changed += st.changed; total.added += st.added; total.deleted += st.deleted; total.dropped += st.dropped; };
@@ -625,6 +636,7 @@ export function activate(activation: ActivationContext) {
                     writes.push(...prep.writes);
                 }
                 applied++;
+                refreshTargets.push(tg);
                 after.push(() => saveLayers(tg, tab));
             } catch (e) {
                 // e.g. the clip was deleted while the editor was open: skip this tab, keep the others
@@ -634,6 +646,8 @@ export function activate(activation: ActivationContext) {
         }
         if (writes.length) context.withinTransaction(() => { for (const w of writes) w.clip.notes = w.notes as any; });
         for (const f of after) { try { f(); } catch (e) { console.warn("[TAB] layer save failed:", e); } }
+        // annotation-only (hash) files of the clips just written get their new note hashes (Fable final review #1)
+        for (const tg of refreshTargets) { try { refreshTargetHashes(tg); } catch (e) { console.warn("[TAB] hash refresh failed:", e); } }
         console.log(`[TAB] multi apply: ${applied} tab(s), ${writes.length} clip(s), ${JSON.stringify(total)}, skipped: ${skipped.length}`);
         const skipText = skipped.length ? ` Not applied (the clip changed or is shared with another tab; reopen and try again): ${skipped.join(", ")}.` : "";
         if (writes.length) await notify(context, applySummary(total).replace("Applied to clip:", `Applied to ${writes.length} clip(s) in ${applied} tab(s):`) + skipText, skipped.length ? 5000 : undefined);
@@ -760,7 +774,7 @@ export function activate(activation: ActivationContext) {
         if (message?.action === "apply" && message.edits) {
             try {
                 const ok = await applyTrackEdits(track, editCtx, message.edits);
-                if (ok) saveTrackV2Layers(track, name, editCtx, message);
+                if (ok) { saveTrackV2Layers(track, name, editCtx, message); refreshTrackHashes(track, editCtx); }
             } catch (e) {
                 console.warn("[TAB] Track apply failed:", e);
                 await notify(context, "Apply failed: " + (e instanceof Error ? e.message : String(e)), 4000);
