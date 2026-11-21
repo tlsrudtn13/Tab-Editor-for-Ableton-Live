@@ -38,6 +38,14 @@ bassists and drummers write and learn one inside Live.
 - Practice mode: loop a range, slow it down (50–100 %), count-in.
 - Chord diagrams over the score; scale and arpeggio shapes on the fretboard.
 
+**Edit**
+- Customisable shortcuts (owner 2026-11-21). The default stays Guitar Pro-style, since the editor is mostly
+  for tab players. A "Live MIDI editor" preset remaps the keys that mean something else in Live's piano roll
+  (↑/↓ transpose, Shift+←/→ note length, Ctrl+1..6 grid, ←/→ move notes). Any command can be rebound, with a
+  warning when two commands share a key and a "reset to defaults" button. Help and tooltips show the
+  current bindings. Needs the key handling (`keys.ts` `onKey`, `techUi.ts` `TECH_KEY`, `drums.ts`) moved
+  into one command list plus a keymap first.
+
 **Also considered** (from the v1 reviews)
 - Guitar Pro (.gp) / MusicXML import and export.
 - Multi-voice notation.
