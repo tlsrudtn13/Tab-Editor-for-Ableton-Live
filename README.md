@@ -84,6 +84,7 @@ Report bugs and ideas in [Issues](../../issues).
 - Time signatures 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (Session clips use their scene's signature).
 - Shows only the clip's loop region. Live locators appear as rehearsal marks.
 - Fretboard with scale overlay, chord names, note table, playback, PDF and AlphaTex export.
+  Exported files go straight to your Downloads folder, named after the clip (no save dialog yet).
 
 **Editing (Open (Clip) - Edit and Open (Track) - Edit)**
 
@@ -263,6 +264,7 @@ Live에서 MIDI 클립을 우클릭해 열면 기타·베이스는 오선보와 
 - 박자표 4/4, 3/4, 2/4, 5/4, 6/8, 7/8, 9/8, 12/8 (세션 클립은 씬의 박자를 따름).
 - 클립의 루프 구간만 보여 주고, Live 로케이터는 리허설 마크로 표시합니다.
 - 프렛보드 스케일 표시, 코드 이름, 노트 표, 재생, PDF·AlphaTex 내보내기.
+  내보낸 파일은 저장 창 없이 다운로드 폴더에 클립 이름으로 바로 저장됩니다.
 - 악보용 코드 이름·조성·제목 편집 (코드 이름은 노트를 보고 후보를 제안합니다).
 
 **편집 (Open (Clip) - Edit과 Open (Track) - Edit)**
