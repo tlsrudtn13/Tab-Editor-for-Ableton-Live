@@ -16,6 +16,7 @@ import { PROGRESSIONS } from "../../src/notation/progressions.js";
 import { COMP_PATTERNS } from "../../src/notation/comping.js";
 import { DRUM_PATTERNS } from "../../src/notation/drumPresets.js";
 import { kickOnsets } from "../../src/notation/bandBass.js";
+import { fitToKit, kickPitches, kitPitchMap } from "../../src/notation/drumKit.js";
 import { suggestNext } from "../../src/notation/chordSuggest.js";
 import { romanOf, type ChordTier } from "../../src/notation/harmonyAnalysis.js";
 import { chordName, keyRefFromKeyInfo, PC_NAMES, type ChordSym, type KeyRef } from "../../src/notation/harmony.js";
@@ -149,15 +150,25 @@ function request(): { req: InsertRequest; range: { start: number; end: number; b
   };
   if (part === "bass" && req.bassStyle === "kick") {
     const dt = (state.tracks || [])[ui.kickTrack];
-    req.kicks = dt ? kickOnsets(dt.notes || []) : [];
+    req.kicks = dt ? kickOnsets(dt.notes || [], { kickPitches: kickPitches(kitOf(dt), dt.drum && dt.drum.override, dt.drum && dt.drum.hints) }) : [];
   }
   return { req, range };
+}
+
+/** Pitches a drum track can play: its Drum Rack pads, else the pitches its clip uses. */
+function kitOf(t: any): number[] {
+  const pads = t && t.drum && Array.isArray(t.drum.pads) ? t.drum.pads : [];
+  return pads.concat((t && t.notes || []).map((n: any) => n.p));
 }
 
 function preview() {
   const r = request(); if (!r) return null;
   try {
     const res = buildInsert(r.req);
+    if (r.req.part === "drums" && isDrumTrack(state.curTrack)) {
+      const t = state.curTrack;   // GM hits onto the pads the drum map says play those pieces
+      res.notes = fitToKit(res.notes, kitPitchMap(kitOf(t), t.drum.override, t.drum.hints));
+    }
     res.notes = res.notes.filter(n => n.b < r.range.end - 1e-6).map(n => ({ ...n, d: Math.min(n.d, Math.max(0.05, r.range.end - n.b)) }));
     return { ...r, res };
   } catch (e: any) { return { ...r, res: { notes: [], chords: [], warnings: [String(e.message || e)] } }; }
