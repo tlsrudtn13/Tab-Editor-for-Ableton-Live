@@ -157,7 +157,7 @@ body { display:flex; flex-direction:row; }
   display:flex; align-items:center; gap:4px; user-select:none;
 }
 .numlab input {
-  width:42px; height:20px; background:var(--p-live-control-bg);
+  width:36px; height:20px; background:var(--p-live-control-bg);   /* 36: toolbar stays one row at 1400 px with the Insert button (D020) */
   color:var(--p-live-text-primary); border:1px solid var(--p-live-control-border);
   padding:2px; font-size:11px; text-align:center; border-radius:2px; font-family:inherit;
 }

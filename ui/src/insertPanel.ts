@@ -274,7 +274,7 @@ function sourceSelect(): string {
     { label: "Progressions (major)", items: PROGRESSIONS.filter(p => p.mode === "major").map(p => ["preset:" + p.id, p.name] as [string, string]) },
     { label: "Progressions (minor)", items: PROGRESSIONS.filter(p => p.mode === "minor").map(p => ["preset:" + p.id, p.name] as [string, string]) },
   ];
-  const items: [string, string][] = tracks.map((x: any) => ["track:" + x.i, "Chords of " + (x.t === state.curTrack ? "this clip" : x.t.name)] as [string, string]);
+  const items: [string, string][] = tracks.map((x: any) => ["track:" + x.i, x.t === state.curTrack ? "From this clip" : "From track: " + x.t.name] as [string, string]);
   if (ui.customChords.length) items.unshift(["custom", "My progression: " + ui.customChords.map(chordName).join(" ")]);
   return select("source", ui.source, items, groups);
 }
@@ -282,11 +282,7 @@ function sourceSelect(): string {
 function optionsBlock(chords: PlacedChordIn[], key: KeyRef): string {
   const o = ui.opts[ui.part];
   const h: string[] = [];
-  if (ui.part !== "drums") {
-    h.push('<div class="ip-label">Chords</div>' + sourceSelect());
-    h.push(chordStrip(chords, key));
-    h.push(nextChips(chords, key));
-  }
+  if (ui.part !== "drums") h.push(nextChips(chords, key));
   if (ui.part === "chords") {
     h.push('<div class="ip-label">Guitar voicing</div>' + seg("voicing", o.voicing || "open", [["open", "Open"], ["barre", "Barre"], ["power", "Power"], ["triad", "Triad"]]));
     h.push('<div class="ip-label">Strum</div>' + select("pattern", o.pattern || "pop", COMP_PATTERNS.map(p => [p.id, p.name] as [string, string])));
@@ -341,7 +337,7 @@ export function render() {
   const feels = FEELS[ui.part];
   const can = editable() && !!p;
   el.innerHTML =
-    '<div class="ip-head"><span class="ip-title">Insert</span>' + keySelect(cur) + '<button class="btn ip-x" data-act="close" title="Close the Insert panel">✕</button></div>' +
+    '<div class="ip-head"><span class="ip-title">Insert</span>' + (ui.part === "drums" ? '<span class="ip-sp"></span>' : keySelect(cur)) + '<button class="btn ip-x" data-act="close" title="Close the Insert panel">✕</button></div>' +
     '<div class="ip-parts">' + PARTS.map(x => {
       const off = drum ? x.id !== "drums" : x.id === "drums";
       return '<button class="' + (x.id === ui.part ? "on" : "") + '" data-part="' + x.id + '"' + (off ? ' disabled title="' + (drum ? "This is a drum track" : "Open a drum track for drums") + '"' : "") + ">" + x.label + "</button>";
@@ -350,8 +346,9 @@ export function render() {
     '<div class="ip-row"><span class="ip-label">Where</span>' + select("target", ui.target, [["1", "1 bar from cursor"], ["2", "2 bars from cursor"], ["4", "4 bars from cursor"], ["8", "8 bars from cursor"], ["sel", "Selected bars"], ["clip", "Whole clip"]]) + "</div>" +
     '<div class="ip-label">Feel</div><div class="ip-feels">' + feels.map(f =>
       '<button class="' + (!ui.custom[ui.part] && ui.feel[ui.part] === f.id ? "on" : "") + '" data-feel="' + f.id + '" title="' + esc(f.hint) + '">' + esc(f.label) + "</button>").join("") +
-    "</div>" + (ui.custom[ui.part] ? '<div class="ip-note">Custom settings</div>' : "") +
-    '<details class="ip-more"' + (ui.moreOpen ? " open" : "") + '><summary>More: ' + (ui.part === "drums" ? "groove, energy, fills" : "chords, " + (ui.part === "chords" ? "voicing, strum" : ui.part === "bass" ? "rhythm, line" : "position, shape")) + "</summary>" +
+    "</div>" + '<div class="ip-note">' + esc(feelSummary(p ? p.range.bars : 0)) + "</div>" +
+    (ui.part !== "drums" ? '<div class="ip-label">Chords</div>' + sourceSelect() + chordStrip(chords, p ? p.req.key : cur.key) : "") +
+    '<details class="ip-more"' + (ui.moreOpen ? " open" : "") + '><summary>More: ' + (ui.part === "drums" ? "groove, energy, fills" : "next chords, " + (ui.part === "chords" ? "voicing, strum" : ui.part === "bass" ? "rhythm, line" : "position, shape")) + "</summary>" +
     optionsBlock(chords, p ? p.req.key : cur.key) + "</details>" +
     warn + "</div>" +
     '<div class="ip-foot"><div class="ip-util">' +
@@ -360,6 +357,21 @@ export function render() {
     '<span class="ip-count">' + (p ? p.res.notes.length + " notes · " + p.range.bars + (p.range.bars === 1 ? " bar" : " bars") : editable() ? "Put the cursor in the clip" : "Open a clip to insert") + "</span></div>" +
     '<div class="ip-main"><button class="btn" data-act="replace"' + (can ? "" : " disabled") + ' title="Remove the notes in these bars, then insert">Replace</button>' +
     '<button class="btn ip-go" data-act="insert"' + (can ? "" : " disabled") + ">+ Insert " + PART_NOUN[ui.part] + "</button></div></div>";
+}
+
+/** One line under the feels: what the current settings play (design D020). */
+function feelSummary(bars: number): string {
+  const o = ui.opts[ui.part];
+  const name = (list: readonly { id: string; name: string }[], id?: string) => (list.find(x => x.id === id) || { name: id || "" }).name;
+  const parts: string[] = [];
+  if (ui.custom[ui.part]) parts.push("Custom");
+  if (ui.part === "chords") parts.push((o.voicing || "open").replace(/^./, c => c.toUpperCase()) + " chords", name(COMP_PATTERNS, o.pattern || "pop"));
+  else if (ui.part === "bass") parts.push(o.bassStyle === "kick" ? "Follows the kick" + (o.fill && o.fill !== "none" ? " + " + o.fill : "") :
+    ({ root: "Root notes", rootEighths: "Root 8ths", rootFifth: "Root and 5th", octave: "Octaves", walking: "Walking line" } as any)[o.bassStyle || "root"]);
+  else if (ui.part === "riff") parts.push("Frets " + (o.position ?? 5) + "–" + ((o.position ?? 5) + 4), o.scale === "key" ? "whole key" : "pentatonic", "busy " + (o.complexity ?? 3));
+  else parts.push(name(DRUM_PATTERNS, o.groove || "rock"), "energy " + (o.energy ?? 3), o.fillEvery ? "fill every " + o.fillEvery : "no fills");
+  if (bars) parts.push(bars + (bars === 1 ? " bar" : " bars"));
+  return parts.join(" · ");
 }
 
 function setOpt(name: string, v: string) {

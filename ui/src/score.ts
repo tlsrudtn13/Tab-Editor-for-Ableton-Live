@@ -128,7 +128,8 @@ export function colorizeOutOfRange(score) {
                 if (!n.isGhost && !dirty && !ins) return;
                 var style = new alphaTab.model.NoteStyle();
                 var useColor = dirty ? alphaTab.model.Color.fromJson("#ff764d") : ins ? alphaTab.model.Color.fromJson(state.isLight ? INS_COLOR_LIGHT : INS_COLOR) : col;
-                style.colors.set(NS.StandardNotationNoteHead, useColor);
+                // inserted chords: violet TAB numbers only, stacked violet note heads read as one blob (D020)
+                if (!(ins && (bt.notes || []).length > 2)) style.colors.set(NS.StandardNotationNoteHead, useColor);
                 style.colors.set(NS.GuitarTabFretNumber, useColor);
                 n.style = style;
               });
