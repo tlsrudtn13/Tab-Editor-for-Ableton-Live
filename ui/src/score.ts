@@ -104,6 +104,7 @@ export function applyStaffMode(score) {
 //   tie 괄호 프렛은 기본색 유지 → 빨간색 = 음역 밖으로 즉시 식별
 // out of range = red warning (designer D011); edited, not yet applied = Live orange
 var OOR_COLOR = "#e05252", OOR_COLOR_LIGHT = "#c62828";
+const INS_COLOR = "#c084fc", INS_COLOR_LIGHT = "#7c3aed";
 export function colorizeOutOfRange(score) {
   try {
     var col = alphaTab.model.Color.fromJson(state.isLight ? OOR_COLOR_LIGHT : OOR_COLOR);
@@ -114,15 +115,19 @@ export function colorizeOutOfRange(score) {
           (bar.voices || []).forEach(function(v) {
             (v.beats || []).forEach(function(bt) {
               (bt.notes || []).forEach(function(n) {
-                var dirty = false;
+                var dirty = false, ins = false;
                 if (state.curTrack && Array.isArray(state.curTrack.notes)) {
                   var bp: number | null = null; try { bp = (bar.masterBar.start + bt.playbackStart) / 960; } catch(e) {}
                   var pitch = n.realValue !== undefined ? n.realValue : n.displayValue;
-                  dirty = state.curTrack.notes.some(function(tn) { return tn.dirty && (bp === null || Math.abs(tn.b-bp)<0.03) && tn.p === pitch; });
+                  var at = function(tn, tol) { return (bp === null || Math.abs(tn.b-bp)<tol) && tn.p === pitch; };
+                  dirty = state.curTrack.notes.some(function(tn) { return tn.dirty && at(tn, 0.03); });
+                  // notes from the Insert panel: violet until Apply (design D019); a strum spreads its
+                  // strings up to ~0.1 beat after the beat the score shows them on
+                  ins = !dirty && state.curTrack.notes.some(function(tn) { return tn.ins && (bp === null || tn.b >= bp - 0.03) && at(tn, 0.13); });
                 }
-                if (!n.isGhost && !dirty) return;
+                if (!n.isGhost && !dirty && !ins) return;
                 var style = new alphaTab.model.NoteStyle();
-                var useColor = dirty ? alphaTab.model.Color.fromJson("#ff764d") : col;
+                var useColor = dirty ? alphaTab.model.Color.fromJson("#ff764d") : ins ? alphaTab.model.Color.fromJson(state.isLight ? INS_COLOR_LIGHT : INS_COLOR) : col;
                 style.colors.set(NS.StandardNotationNoteHead, useColor);
                 style.colors.set(NS.GuitarTabFretNumber, useColor);
                 n.style = style;

@@ -738,6 +738,7 @@ export function bindKeys(){
     copySelection,
     pasteAtCursor,
     updateRhythmToolbar,
+    undo,
   };
   updateEditUi();
 }

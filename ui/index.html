@@ -58,6 +58,7 @@
     <!-- Group 4: Panels & Export -->
     <button class="btn pdf" onclick="exportPDF()" title="Save as PDF">&#x1F5B6; PDF</button>
     <button class="btn" onclick="exportAlphaTex()" title="Download AlphaTex (text tab format)">AlphaTex</button>
+    <button class="btn" id="btn-insert" title="Insert chords, bass, a riff or drums into this clip">+ Insert</button>
     <button class="btn quiet" id="btn-data" onclick="togglePanel('inspector','btn-data')" title="MIDI note data table">Data</button>
     <button class="btn quiet" id="btn-log"  onclick="togglePanel('log-panel','btn-log')"  title="Debug log">Log</button>
     <select class="tsel" id="ui-zoom" title="Zoom: text, toolbars and score (Ctrl + / Ctrl - / Ctrl 0)"></select>
@@ -94,7 +95,10 @@
     <input type="text" id="ui-title" class="ui-title" maxlength="120" placeholder="Title" title="Title above the score and in the PDF (empty = tab name)" /></span>
   </div>
 
-  <div id="viewer"><div id="alphaTab"></div></div>
+  <div id="viewer-row">
+    <div id="viewer"><div id="alphaTab"></div></div>
+    <aside id="insert-panel" class="hidden" aria-label="Insert"></aside>
+  </div>
 
   <!-- 선택 정보 바: 화음 표시 + 코드명 + 길이 편집 + 줄옮김 -->
   <div id="selection-bar">

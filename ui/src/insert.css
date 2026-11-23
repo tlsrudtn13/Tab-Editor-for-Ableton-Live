@@ -1,0 +1,76 @@
+/* Insert panel (design D019): right-side drawer next to the score; the fretboard stays full width. */
+#viewer-row { flex:1; display:flex; flex-direction:row; min-height:0; overflow:hidden; }
+#viewer-row > #viewer { flex:1; min-width:0; }
+
+:root {
+  --ip-safe: #3dd68c; --ip-tension: #ffb43a; --ip-color: #d770f5;
+  --ip-card: #1e1e1e; --ip-line: #383838; --ip-muted: #8e8e8e; --ip-on-bg: #382518;
+}
+:root.light {
+  --ip-safe: #0e8a4a; --ip-tension: #b86800; --ip-color: #8e25b8;
+  --ip-card: #ffffff; --ip-line: #c8c8c8; --ip-muted: #6a6a6a; --ip-on-bg: #fff0e5;
+}
+
+#insert-panel {
+  width:320px; min-width:320px; display:flex; flex-direction:column;
+  background:var(--p-live-control-bg); border-left:1px solid var(--p-live-control-border);
+  font-size:11px; color:var(--p-live-text-primary);
+}
+#insert-panel.hidden { display:none; }
+#insert-panel button { font:inherit; cursor:pointer; }
+#insert-panel button:disabled { opacity:.45; cursor:default; }
+
+.ip-head { display:flex; align-items:center; gap:6px; height:34px; padding:6px 10px; border-bottom:1px solid var(--p-live-control-border); flex-shrink:0; }
+.ip-title { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--p-live-text-secondary); }
+.ip-head .ip-sel { flex:1; min-width:0; }
+.ip-x { width:20px; height:20px; padding:0; }
+
+.ip-parts { display:flex; gap:2px; padding:4px 10px; flex-shrink:0; }
+.ip-parts button, .ip-seg button {
+  flex:1; height:22px; padding:0 4px; border:1px solid var(--ip-line); background:var(--ip-card);
+  color:var(--p-live-text-secondary); border-radius:2px; white-space:nowrap;
+}
+.ip-parts button.on { background:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); color:#1a1a1a; font-weight:700; }
+
+.ip-body { flex:1; overflow-y:auto; padding:2px 10px 8px; }
+.ip-row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+.ip-row .ip-sel { flex:1; }
+.ip-sel { width:100%; height:20px; }
+.ip-label { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ip-muted); margin:8px 0 3px; }
+.ip-row .ip-label { margin:0; }
+.ip-note { font-size:9.5px; color:var(--ip-muted); margin-top:3px; }
+
+.ip-feels { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.ip-feels button {
+  height:26px; border:1px solid var(--ip-line); background:var(--ip-card); color:var(--p-live-text-primary);
+  border-radius:2px; font-size:10.5px; font-weight:700; text-align:left; padding:0 8px;
+}
+.ip-feels button.on, .ip-seg button.on { border:1.5px solid var(--p-live-accent-primary); background:var(--ip-on-bg); color:var(--p-live-accent-primary); }
+
+.ip-seg { display:flex; gap:2px; }
+.ip-more { margin-top:8px; border-top:1px solid var(--ip-line); padding-top:4px; }
+.ip-more > summary { cursor:pointer; font-size:10px; color:var(--p-live-text-secondary); padding:3px 0; }
+
+.ip-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:6px; }
+.ip-card { position:relative; height:42px; padding:5px 7px; background:var(--ip-card); border:1px solid var(--ip-line); border-radius:2px; display:flex; flex-direction:column; justify-content:center; }
+.ip-card b { font-size:12px; }
+.ip-card i, .ip-chip i { font-style:normal; font-size:9px; color:var(--ip-muted); }
+.ip-card .ip-dot { position:absolute; top:5px; right:5px; }
+.ip-dot { display:inline-block; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.ip-dot.t-safe { background:var(--ip-safe); } .ip-dot.t-tension { background:var(--ip-tension); } .ip-dot.t-color { background:var(--ip-color); }
+.ip-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.ip-chip { height:22px; display:inline-flex; align-items:center; gap:4px; padding:0 7px; background:var(--ip-card); border:1px solid var(--ip-line); color:var(--p-live-text-primary); border-radius:2px; font-size:10px; }
+.ip-chip:hover { border-color:var(--p-live-accent-primary); }
+.ip-empty { font-size:10px; color:var(--ip-muted); margin:6px 0; }
+.ip-warn { margin-top:8px; font-size:10px; color:var(--ip-tension); }
+
+.ip-foot { flex-shrink:0; padding:6px 10px; border-top:1px solid var(--p-live-control-border); background:var(--ip-card); }
+.ip-util { display:flex; align-items:center; gap:6px; height:22px; }
+.ip-util .btn { height:20px; padding:0 7px; }
+.ip-count { margin-left:auto; font-size:9.5px; color:var(--ip-muted); }
+.ip-main { display:flex; gap:6px; margin-top:6px; }
+.ip-main .btn { height:26px; }
+.ip-main .btn:first-child { width:72px; }
+.ip-go { flex:1; background:var(--p-live-accent-primary); border:1px solid var(--p-live-accent-primary); color:#181818; font-weight:700; font-size:11.5px; }
+/* the score keeps its 960 px minimum without the panel; with it, it fits the narrower column */
+body.insert-open #alphaTab { min-width:0; }

@@ -32,6 +32,7 @@ import { annSnapshot, bindKeys, highlightSelection, toggleTech } from "./keys";
 import { bindApply } from "./apply";
 import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
+import { bindInsertPanel, refreshInsertPanel } from "./insertPanel";
 
 // Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
 function adjustDuration(mode: string) {
@@ -118,6 +119,7 @@ bindRb("rb-rest", () => ek()?.restAtCursor?.());
 bindRb("rb-ins", () => ek()?.insertBeatAtCursor?.());
 bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 bindDrums();
+bindInsertPanel();
 bindAnnotations();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
@@ -196,6 +198,7 @@ export function loadTrack(id) {
   // ★ v3: notes 가 있으면 항상 웹뷰에서 재생성 (Quantize 1/16 기본 적용)
   if (Array.isArray(trk.notes) && trk.notes.length > 0) rebuildScore();
   else renderScore();
+  refreshInsertPanel();
 }
 
 /* ── Window handlers (must stay on window) ────────────────────────────────── */

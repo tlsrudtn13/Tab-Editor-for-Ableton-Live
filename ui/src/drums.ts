@@ -162,7 +162,7 @@ function renderLegend(trk: any) {
   if (!el) {
     el = document.createElement("div");
     el.id = "drum-legend";
-    const viewer = document.getElementById("viewer");
+    const viewer = document.getElementById("viewer-row") || document.getElementById("viewer");
     if (viewer && viewer.parentElement) viewer.parentElement.insertBefore(el, viewer.nextSibling);
     else document.body.appendChild(el);
     // drag its top edge to resize, like Live's Clip / Device view; the table scales to fill
