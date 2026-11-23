@@ -5,26 +5,26 @@ export type BassStyle = "root" | "rootEighths" | "rootFifth" | "octave" | "walki
 export type BassChord = ChordSym & { b: number; d: number };
 export type BassNote = { b: number; d: number; p: number; v: number };
 
-function mod12(n: number): number {
+export function mod12(n: number): number {
   return ((n % 12) + 12) % 12;
 }
 
-function roundB(n: number): number {
+export function roundB(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }
 
-function anchorPitch(pc: number, low: number): number {
+export function anchorPitch(pc: number, low: number): number {
   const base = low + mod12(pc - mod12(low));
   return base < low ? base + 12 : base;
 }
 
-function clampToRange(p: number, low: number, high: number): number {
+export function clampToRange(p: number, low: number, high: number): number {
   while (p < low) p += 12;
   while (p > high) p -= 12;
   return p;
 }
 
-function nearestPitch(pc: number, prev: number, low: number, high: number): number {
+export function nearestPitch(pc: number, prev: number, low: number, high: number): number {
   // octave of pc nearest to prev (ties -> lower), kept within [low, high]
   let best = clampToRange(anchorPitch(pc, low), low, high);
   let bestDist = Math.abs(best - prev);
@@ -40,13 +40,13 @@ function nearestPitch(pc: number, prev: number, low: number, high: number): numb
   return best;
 }
 
-function chordEnd(chords: BassChord[], i: number): number {
+export function chordEnd(chords: BassChord[], i: number): number {
   const end = chords[i]!.b + chords[i]!.d;
   const next = chords[i + 1];
   return next ? Math.min(end, next.b) : end;
 }
 
-function isWholeBeat(b: number): boolean {
+export function isWholeBeat(b: number): boolean {
   return Math.abs(b - Math.round(b)) < 1e-9;
 }
 
