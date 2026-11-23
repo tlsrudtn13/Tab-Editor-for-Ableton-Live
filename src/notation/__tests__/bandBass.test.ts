@@ -50,23 +50,23 @@ describe("lockedBassLine", () => {
     expect(notes[2]).toMatchObject({ b: 3, p: 31 });
   });
 
-  it('fill "fifth": 2 and 2.5 in C get G (43); 0 keeps C 36; G first onset at 4 keeps G 31', () => {
+  it('fill "fifth": the off-beat kick 2.5 in C gets G (43); beats 0 and 2 keep C 36; G first onset at 4 keeps G 31', () => {
     const notes = lockedBassLine([C(0, 4), G(4, 4)], rockKicks, {
       inst: BASS,
       fill: "fifth",
     });
     expect(notes.find((n) => n.b === 0)!.p).toBe(36);
-    expect(notes.find((n) => n.b === 2)!.p).toBe(43);
+    expect(notes.find((n) => n.b === 2)!.p).toBe(36);
     expect(notes.find((n) => n.b === 2.5)!.p).toBe(43);
     expect(notes.find((n) => n.b === 4)!.p).toBe(31);
   });
 
-  it('fill "octave": 2 and 2.5 in C -> 48', () => {
+  it('fill "octave": off-beat 2.5 in C -> 48, beat 2 keeps 36', () => {
     const notes = lockedBassLine([C(0, 4), G(4, 4)], rockKicks, {
       inst: BASS,
       fill: "octave",
     });
-    expect(notes.find((n) => n.b === 2)!.p).toBe(48);
+    expect(notes.find((n) => n.b === 2)!.p).toBe(36);
     expect(notes.find((n) => n.b === 2.5)!.p).toBe(48);
   });
 
@@ -97,5 +97,12 @@ describe("lockedBassLine", () => {
         }
       }
     }
+  });
+});
+
+describe("fill alternates on off-beat kicks", () => {
+  it("funk kicks 0, 0.5, 1.5, 2.5, 3.25 in C: root, fifth, root, fifth, root", () => {
+    const notes = lockedBassLine([C(0, 4)], [0, 0.5, 1.5, 2.5, 3.25], { inst: BASS, fill: "fifth" });
+    expect(notes.map((n) => n.p)).toEqual([36, 43, 36, 43, 36]);
   });
 });

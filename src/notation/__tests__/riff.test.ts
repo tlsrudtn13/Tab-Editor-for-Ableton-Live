@@ -121,3 +121,15 @@ describe("riff", () => {
     }
   });
 });
+
+describe("riffs move", () => {
+  it("never plays the same pitch three times in a row (seeds 1..10)", () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const r = generateRiff({ inst: GUITAR_6, key: { root: 9, mode: "minor" },
+        chords: [{ root: 9, quality: "m", b: 0, d: 16 }], startBeat: 0, bars: 4, position: 5, complexity: 3, seed });
+      for (let i = 2; i < r.length; i++) {
+        expect(r[i]!.p === r[i - 1]!.p && r[i - 1]!.p === r[i - 2]!.p).toBe(false);
+      }
+    }
+  });
+});

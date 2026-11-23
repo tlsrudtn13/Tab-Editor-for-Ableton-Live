@@ -141,16 +141,21 @@ function baseRoman(chord: ChordSym, key: KeyRef): { roman: string; degree: numbe
 
 function secondaryDominant(chord: ChordSym, key: KeyRef, diatonic: boolean): RomanLabel | undefined {
   if (diatonic) return undefined;
-  if (!["7", "9"].includes(chord.quality)) return undefined;
+  const triad = chord.quality === "";
+  if (!triad && !["7", "9"].includes(chord.quality)) return undefined;
+  // In a minor key the major IV (dorian, e.g. D in A minor) reads better as IV than as V/VII.
+  if (triad && key.mode === "minor" && mod12(chord.root - key.root) === 5) return undefined;
   const targetRoot = mod12(chord.root + 5);
   const scale = scaleOfMode(key);
   const targetDeg = scale.indexOf(mod12(targetRoot - key.root));
   if (targetDeg === undefined || targetDeg < 0) return undefined;
   if (targetDeg === 0) return undefined; // not I/i
+  // A diminished degree (vii° in major, ii° in minor) is not tonicised.
+  if ((key.mode === "major" && targetDeg === 6) || (key.mode === "minor" && targetDeg === 1)) return undefined;
   // target numeral in key - use diatonic case for that degree
   const targetMinorCase = key.mode === "major" ? [1, 2, 5, 6].includes(targetDeg) : [0, 1, 3, 4].includes(targetDeg);
   const targetNumeral = numeralForDegree(targetDeg, targetMinorCase);
-  const roman = "V7/" + targetNumeral;
+  const roman = (triad ? "V/" : "V7/") + targetNumeral;
   return { roman, fn: "D", tier: "color", diatonic: false };
 }
 
@@ -265,7 +270,9 @@ export function analyzeChords(notes: ChordNote[], opts: {
     }
   }
 
-  const labelKey = opts.key ?? (analyzeKeys(notes, { start: opts.start, end: opts.end, beatsPerBar })[0]?.key);
+  const found = analyzeKeys(notes, { start: opts.start, end: opts.end, beatsPerBar })[0]?.key;
+  const chordsOnly = merged.filter((m) => m.name !== "N.C." && m.sym).map((m) => ({ sym: m.sym!, d: m.d }));
+  const labelKey = opts.key ?? (found ? pickRelative(found, chordsOnly) : undefined);
   const segs: ChordSegment[] = [];
   for (const m of merged) {
     if (m.name === "N.C." || !m.sym) continue;
@@ -275,6 +282,31 @@ export function analyzeChords(notes: ChordNote[], opts: {
   }
   return segs;
 }
+
+/**
+ * A major key and its relative minor share every note, so the pitch profile alone often cannot tell
+ * G major from E minor. The chords can: the key whose tonic chord opens or closes the passage, or sounds
+ * longest, wins. Ties keep the profile's answer.
+ */
+function pickRelative(key: KeyRef, chords: { sym: ChordSym; d: number }[]): KeyRef {
+  if (chords.length === 0) return key;
+  const rel: KeyRef = key.mode === "major"
+    ? { root: mod12(key.root + 9), mode: "minor" }
+    : { root: mod12(key.root + 3), mode: "major" };
+  const isTonic = (c: ChordSym, k: KeyRef) =>
+    c.root === k.root && (k.mode === "major" ? !MINORISH.has(c.quality) : MINORISH.has(c.quality));
+  const score = (k: KeyRef) => {
+    let sc = 0;
+    if (isTonic(chords[0]!.sym, k)) sc += 1;
+    if (isTonic(chords[chords.length - 1]!.sym, k)) sc += 1;
+    const total = chords.reduce((a, c) => a + c.d, 0) || 1;
+    sc += chords.filter((c) => isTonic(c.sym, k)).reduce((a, c) => a + c.d, 0) / total;
+    return sc;
+  };
+  return score(rel) > score(key) ? rel : key;
+}
+
+const MINORISH = new Set(["m", "m6", "m7", "m9", "mMaj7"]);
 
 // Krumhansl-Kessler
 const KK_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
@@ -331,6 +363,9 @@ function viterbiKeys(windows: KeyState[][], changePenalty: number): number[] {
   return path;
 }
 
+/** Added to a key whose tonic is the bass note at the window start. */
+const TONIC_BASS_BONUS = 0.15;
+
 export function analyzeKeys(notes: ChordNote[], opts: {
   start: number; end: number; beatsPerBar?: number; windowBars?: number; changePenalty?: number;
 }): KeySegment[] {
@@ -348,12 +383,20 @@ export function analyzeKeys(notes: ChordNote[], opts: {
 
   const windows: KeyState[][] = [];
   for (const t of winStarts) {
-    const wEnd = Math.min(t + winLen, opts.end);
+    // Near the end, slide the window back so it still spans winLen beats (a short tail window of one chord
+    // would otherwise "find" that chord's key).
+    const wStart = Math.max(opts.start, Math.min(t, opts.end - winLen));
+    const wEnd = Math.min(wStart + winLen, opts.end);
     const hist = new Array(12).fill(0) as number[];
     for (const n of notes) {
-      const ov = Math.min(n.b + n.d, wEnd) - Math.max(n.b, t);
+      const ov = Math.min(n.b + n.d, wEnd) - Math.max(n.b, wStart);
       if (ov > 1e-9) hist[mod12(n.p)] += ov;
     }
+    // Relative major/minor share their notes; the lowest note sounding at the window start breaks the tie
+    // (G-D-Em-C over a G bass reads as G major, not E minor).
+    let bassP = Infinity;
+    for (const n of notes) if (n.b <= t + 1e-6 && n.b + n.d > t + 1e-6 && n.p < bassP) bassP = n.p;
+    const bassPc = Number.isFinite(bassP) ? mod12(bassP) : -1;
     const states: KeyState[] = [];
     for (let root = 0; root < 12; root++) {
       const majProfile: number[] = [];
@@ -363,8 +406,9 @@ export function analyzeKeys(notes: ChordNote[], opts: {
         majProfile.push(KK_MAJOR[rel]!);
         minProfile.push(KK_MINOR[rel]!);
       }
-      states.push({ key: { root, mode: "major" }, score: pearson(hist, majProfile) });
-      states.push({ key: { root, mode: "minor" }, score: pearson(hist, minProfile) });
+      const bonus = root === bassPc ? TONIC_BASS_BONUS : 0;
+      states.push({ key: { root, mode: "major" }, score: pearson(hist, majProfile) + bonus });
+      states.push({ key: { root, mode: "minor" }, score: pearson(hist, minProfile) + bonus });
     }
     windows.push(states);
   }

@@ -37,7 +37,10 @@ function round6(n: number): number {
 }
 
 function normalizePattern(pattern: CompPattern | string, beatsPerBar: number): string {
-  const steps = typeof pattern === "string" ? pattern : pattern.steps;
+  // A string is a preset id (like the drum presets) or, if no preset has that id, the raw steps.
+  const steps = typeof pattern === "string"
+    ? (COMP_PATTERNS.find((p) => p.id === pattern)?.steps ?? pattern)
+    : pattern.steps;
   const expected = beatsPerBar * 4;
   let out = steps;
   if (beatsPerBar === 4) {

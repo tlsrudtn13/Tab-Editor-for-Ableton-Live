@@ -101,9 +101,13 @@ export function lockedBassLine(
 
   const notes: { b: number; d: number; p: number; v: number }[] = [];
   let prevPitch: number | null = null;
+  // Fill tones go on off-beat kicks only, alternating with the bass note (root, fifth, root, …),
+  // so the line keeps its root on the beats.
+  let fillTurn = 0;
 
   for (let i = 0; i < onsets.length; i++) {
     const o = onsets[i]!;
+    if (o.firstOfChord) fillTurn = 0;
     const ch = sorted[o.chordIndex]!;
     const end = chordEnd(sorted, o.chordIndex);
     if (o.b >= end - 1e-9) continue;
@@ -118,7 +122,9 @@ export function lockedBassLine(
 
     let p = bassNotePitch;
     const downbeat = isBarDownbeat(o.b, beatsPerBar);
-    if (!o.firstOfChord && !downbeat && fill !== "none") {
+    const offBeat = Math.abs(o.b - Math.round(o.b)) > 1e-6;
+    const useFill = !o.firstOfChord && !downbeat && offBeat && fill !== "none" && fillTurn++ % 2 === 0;
+    if (useFill) {
       if (fill === "fifth") {
         const fpc = mod12(ch.root + fifthInterval(ch.quality));
         let delta = mod12(fpc - mod12(bassNotePitch));

@@ -170,6 +170,7 @@ export function generateRiff(opts: {
   const totalBeats = opts.bars * beatsPerBar;
   const notes: RiffNote[] = [];
   let prev: RiffNote | undefined;
+  let prev2: RiffNote | undefined;
 
   for (let i = 0; i < onsetSet.length; i++) {
     const b = onsetSet[i]!;
@@ -197,7 +198,9 @@ export function generateRiff(opts: {
       const r = rnd();
       const prevP = prev ? prev.p : target;
       const jump = Math.abs(cand.p - prevP);
-      const cost = Math.abs(cand.p - target) + 0.5 * jump + (jump > 7 ? 3 : 0) + 0.8 * r;
+      // Repeating the last note (and more so the last two) costs extra, so riffs move.
+      const repeat = prev && cand.p === prev.p ? (prev2 && prev2.p === prev.p ? 50 : 1.5) : 0;
+      const cost = Math.abs(cand.p - target) + 0.5 * jump + (jump > 7 ? 3 : 0) + repeat + 0.8 * r;
       costs.push({ cand, cost });
       if (cost < bestCost) {
         bestCost = cost;
@@ -224,7 +227,8 @@ export function generateRiff(opts: {
         for (const cand of rootCands) {
           const prevP = prev ? prev.p : target;
           const jump = Math.abs(cand.p - prevP);
-          const cost = Math.abs(cand.p - target) + 0.5 * jump + (jump > 7 ? 3 : 0);
+          const repeat = prev && cand.p === prev.p ? (prev2 && prev2.p === prev.p ? 50 : 1.5) : 0;
+          const cost = Math.abs(cand.p - target) + 0.5 * jump + (jump > 7 ? 3 : 0) + repeat;
           if (cost < bestRootCost) {
             bestRootCost = cost;
             bestRoot = cand;
@@ -280,6 +284,7 @@ export function generateRiff(opts: {
       f: chosen.f,
     };
     notes.push(note);
+    prev2 = prev;
     prev = note;
   }
 

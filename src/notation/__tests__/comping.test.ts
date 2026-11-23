@@ -91,3 +91,12 @@ describe("compChords", () => {
     expect(() => compChords([{ b: 0, d: 4, notes: C }], "D---Z-----------")).toThrow();
   });
 });
+
+describe("pattern by id", () => {
+  it("a preset id string resolves to that preset's steps", () => {
+    const C = voiceChord({ root: 0, quality: "" }, "open", GUITAR_6);
+    const byId = compChords([{ b: 0, d: 4, notes: C }], "pop");
+    const byObj = compChords([{ b: 0, d: 4, notes: C }], COMP_PATTERNS.find((p) => p.id === "pop")!);
+    expect(byId).toEqual(byObj);
+  });
+});

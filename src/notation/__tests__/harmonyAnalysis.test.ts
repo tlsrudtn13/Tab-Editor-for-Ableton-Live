@@ -135,3 +135,49 @@ describe("analyzeKeys", () => {
     expect(Math.abs(segs[1]!.b - 32)).toBeLessThanOrEqual(4);
   });
 });
+
+describe("secondary dominant triads", () => {
+  it("labels major triads a fifth above a diatonic degree as V/x", () => {
+    const C = { root: 0, mode: "major" as const };
+    expect(romanOf({ root: 2, quality: "" }, C)).toMatchObject({ roman: "V/V", fn: "D", tier: "color" });
+    expect(romanOf({ root: 4, quality: "" }, C).roman).toBe("V/vi");
+    expect(romanOf({ root: 9, quality: "" }, C).roman).toBe("V/ii");
+  });
+  it("keeps the dorian IV in minor and never tonicises a diminished degree", () => {
+    const Am = { root: 9, mode: "minor" as const };
+    expect(romanOf({ root: 2, quality: "" }, Am).roman).toBe("IV");
+    const C = { root: 0, mode: "major" as const };
+    expect(romanOf({ root: 6, quality: "7" }, C).roman).not.toMatch(/\/vii/);
+  });
+});
+
+describe("relative major / minor tie-break", () => {
+  it("G-D-Em-C block chords over a G bass read as G major", () => {
+    const blk = (b: number, ps: number[]) => ps.map((p) => ({ b, d: 4, p, v: 100 }));
+    const notes = [0, 16].flatMap((o) => [
+      ...blk(o, [43, 50, 55, 59]), ...blk(o + 4, [38, 45, 50, 54]),
+      ...blk(o + 8, [40, 47, 52, 55]), ...blk(o + 12, [36, 43, 48, 52]),
+    ]);
+    const keys = analyzeKeys(notes, { start: 0, end: 32 });
+    expect(keys[0]!.key).toEqual({ root: 7, mode: "major" });
+    expect(analyzeChords(notes, { start: 0, end: 32 }).map((s) => s.roman).slice(0, 4)).toEqual(["I", "V", "vi", "IV"]);
+  });
+});
+
+describe("relative key from the chords", () => {
+  it("strummed open G-D-Em-C reads as I-V-vi-IV in G", async () => {
+    const { realizeProgression } = await import("../progressions.js");
+    const { voiceChord } = await import("../chordVoicing.js");
+    const { compChords } = await import("../comping.js");
+    const { GUITAR_6 } = await import("../instruments.js");
+    const prog = realizeProgression("pop", { root: 7, mode: "major" }, { startBeat: 0, repeat: 2 });
+    const comp = compChords(prog.map((c) => ({ b: c.b, d: c.d, notes: voiceChord(c, "open", GUITAR_6) })), "pop");
+    expect(analyzeChords(comp, { start: 0, end: 32 }).map((s) => s.roman).slice(0, 4)).toEqual(["I", "V", "vi", "IV"]);
+  });
+  it("Am-F-C-G (starting and ending on Am) stays in A minor", () => {
+    const blk = (b: number, ps: number[]) => ps.map((p) => ({ b, d: 4, p, v: 100 }));
+    const notes = [...blk(0, [45, 52, 57, 60]), ...blk(4, [41, 48, 53, 57]), ...blk(8, [48, 52, 55, 60]),
+      ...blk(12, [43, 50, 55, 59]), ...blk(16, [45, 52, 57, 60])];
+    expect(analyzeChords(notes, { start: 0, end: 20 })[0]!.roman).toBe("i");
+  });
+});
