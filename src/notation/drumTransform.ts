@@ -50,13 +50,15 @@ export function drumEnergy(
   let out: DrumHit[] = hits.map((h) => ({ ...h }));
 
   if (level === 3) return sortHits(out);
+  // a swung groove (hits on the triplet grid, not on 16ths) keeps its triplets at every energy level
+  const triplet = hits.some((h) => !isOnGrid(h.b - startBeat, 0.25) && isOnGrid(h.b - startBeat, 1 / 3));
 
   if (level === 2 || level === 1) {
     out = out.filter((h) => {
       if (h.v <= 50) return false;
       if (h.p === 42 || h.p === 46) {
         const offset = h.b - startBeat;
-        if (!isOnGrid(offset, 0.5)) return false;
+        if (!isOnGrid(offset, 0.5) && !(triplet && isOnGrid(offset, 1 / 3))) return false;
       }
       return true;
     });
@@ -84,9 +86,11 @@ export function drumEnergy(
       const barStart = startBeat + bar * beatsPerBar;
       // 2 ghost snares per bar on random empty 16th e/a positions
       const candidates: number[] = [];
-      for (let step = 0; step < beatsPerBar / 0.25; step++) {
-        const offsetInBar = step * 0.25;
-        if (!isEorA(offsetInBar)) continue;
+      const ghostStep = triplet ? 1 / 3 : 0.25;
+      for (let step = 0; step < Math.round(beatsPerBar / ghostStep); step++) {
+        const offsetInBar = step * ghostStep;
+        // straight grooves: 16th e/a; swung grooves: the middle triplet of each beat
+        if (triplet ? step % 3 !== 1 : !isEorA(offsetInBar)) continue;
         const b = roundBeat(barStart + offsetInBar);
         const hasSnare = out.some((h) => h.p === 38 && Math.abs(h.b - b) < EPS);
         if (!hasSnare) candidates.push(b);
@@ -107,7 +111,7 @@ export function drumEnergy(
       // open hat on last 8th of every 2nd bar replacing a closed hat there
       const isSecond = (bar + 1) % 2 === 0; // 2nd,4th,...
       if (isSecond) {
-        const b = roundBeat(barStart + beatsPerBar - 0.5);
+        const b = roundBeat(barStart + beatsPerBar - (triplet ? 1 / 3 : 0.5));
         out = out.filter((h) => !(h.p === 42 && Math.abs(h.b - b) < EPS));
         // only add if not already open hat
         if (!out.some((h) => h.p === 46 && Math.abs(h.b - b) < EPS)) {
@@ -122,7 +126,7 @@ export function drumEnergy(
       const hatPositions = out
         .filter((h) => (h.p === 42 || h.p === 46) && inRange(h.b, startBeat, bars, beatsPerBar))
         .map((h) => h.b);
-      for (const hb of hatPositions) {
+      for (const hb of triplet ? [] : hatPositions) {
         const offset = hb - startBeat;
         if (!isOnGrid(offset, 0.5)) continue;
         const next16 = roundBeat(hb + 0.25);
@@ -202,8 +206,9 @@ export function addFills(
 
 export function humanize(
   hits: DrumHit[],
-  opts: { seed: number; timing?: number; velocity?: number },
+  opts: { seed: number; timing?: number; velocity?: number; min?: number /* 0: earliest beat a hit may move to */ },
 ): DrumHit[] {
+  const min = opts.min ?? 0;
   const rnd = mulberry32(opts.seed);
   const timing = opts.timing ?? 0.01;
   const velocity = opts.velocity ?? 8;
@@ -219,7 +224,7 @@ export function humanize(
       // Better consume rng in a stable way. We'll always consume timing and velocity.
       rnd(); // consume timing
     }
-    if (b < 0) b = 0;
+    if (b < min) b = min;
     const vOff = Math.round((rnd() * 2 - 1) * velocity);
     const v = Math.max(1, Math.min(127, Math.round(h.v + vOff)));
     return { ...h, b: roundBeat(b), v };

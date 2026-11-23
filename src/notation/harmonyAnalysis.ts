@@ -326,6 +326,41 @@ function pearson(a: number[], b: number[]): number {
   return den === 0 ? 0 : num / den;
 }
 
+/**
+ * How sure the key is, 0..1: how far the key's pitch profile beats the best other key over the range.
+ * The relative key does not count as a rival (it shares every note). Few pitch classes (a riff on 3-4
+ * notes, a bass line of roots) fit many keys, so they never read as sure.
+ */
+export function keyConfidence(notes: ChordNote[], key: KeyRef, opts: { start: number; end: number }): number {
+  const hist = new Array(12).fill(0) as number[];
+  for (const n of notes) {
+    const ov = Math.min(n.b + n.d, opts.end) - Math.max(n.b, opts.start);
+    if (ov > 1e-9) hist[mod12(n.p)] += ov;
+  }
+  const pcs = hist.filter((x) => x > 1e-9).length;
+  if (pcs === 0) return 0;
+  const scoreOf = (root: number, mode: "major" | "minor") => {
+    const prof = mode === "major" ? KK_MAJOR : KK_MINOR;
+    return pearson(hist, hist.map((_, pc) => prof[mod12(pc - root)]!));
+  };
+  const own = scoreOf(key.root, key.mode);
+  const relRoot = key.mode === "major" ? mod12(key.root + 9) : mod12(key.root + 3);
+  let rival = -Infinity;
+  for (let root = 0; root < 12; root++) {
+    for (const mode of ["major", "minor"] as const) {
+      if ((root === key.root && mode === key.mode) || (root === relRoot && mode !== key.mode)) continue;
+      rival = Math.max(rival, scoreOf(root, mode));
+    }
+  }
+  let conf = Math.max(0, Math.min(1, (own - rival) / KEY_SURE_MARGIN));
+  if (pcs < 5) conf = Math.min(conf, 0.4);
+  else if (pcs < 6) conf = Math.min(conf, 0.7);
+  return Math.round(conf * 100) / 100;
+}
+
+/** Profile margin over the best rival key that counts as fully sure. */
+const KEY_SURE_MARGIN = 0.25;
+
 type KeyState = { key: KeyRef; score: number };
 
 function viterbiKeys(windows: KeyState[][], changePenalty: number): number[] {

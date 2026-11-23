@@ -57,6 +57,7 @@ export function lockedBassLine(
     velocity?: number /* 100 */;
     fill?: LockedFill /* "none" */;
     minNote?: number /* 0.25 */;
+    snap?: number /* 0.125: a kick this close to a chord change plays on the change */;
   },
 ): { b: number; d: number; p: number; v: number }[] {
   const beatsPerBar = opts.beatsPerBar ?? 4;
@@ -66,8 +67,14 @@ export function lockedBassLine(
   const low = opts.inst.open[opts.inst.stringCount]!;
   const high = low + 24;
 
+  const snap = opts.snap ?? 0.125;
   const sorted = [...chords].sort((a, b) => a.b - b.b);
   if (sorted.length === 0) return [];
+  // A played (unquantized) kick a little before or after a chord change belongs to that change.
+  kicks = kicks.map((k) => {
+    for (const ch of sorted) if (Math.abs(k - ch.b) <= snap + 1e-9) return ch.b;
+    return k;
+  });
 
   type Onset = { b: number; chordIndex: number; firstOfChord: boolean };
   const onsets: Onset[] = [];
@@ -98,6 +105,18 @@ export function lockedBassLine(
   }
 
   onsets.sort((a, b) => a.b - b.b || a.chordIndex - b.chordIndex);
+  // Onsets closer than minNote (a flam, a doubled kick) become one note; a chord change wins over a kick.
+  const merged: Onset[] = [];
+  for (const o of onsets) {
+    const last = merged[merged.length - 1];
+    if (last && o.b - last.b < minNote - 1e-9) {
+      if (o.firstOfChord && !last.firstOfChord) merged[merged.length - 1] = o;
+      continue;
+    }
+    merged.push(o);
+  }
+  onsets.length = 0;
+  onsets.push(...merged);
 
   const notes: { b: number; d: number; p: number; v: number }[] = [];
   let prevPitch: number | null = null;

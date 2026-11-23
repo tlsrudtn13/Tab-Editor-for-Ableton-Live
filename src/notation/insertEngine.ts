@@ -1,5 +1,5 @@
 import { PC_NAMES, chordName, type ChordSym, type KeyRef } from "./harmony.js";
-import { analyzeChords, analyzeKeys, type ChordSegment } from "./harmonyAnalysis.js";
+import { analyzeChords, analyzeKeys, keyConfidence, type ChordSegment } from "./harmonyAnalysis.js";
 import { PROGRESSIONS, realizeProgression } from "./progressions.js";
 import { voiceChord, type VoicingStyle } from "./chordVoicing.js";
 import { compChords } from "./comping.js";
@@ -106,9 +106,44 @@ export function analyzeClip(
 
   const key = best!.key;
   const keyName = `${PC_NAMES[key.root]} ${key.mode}`;
-  const confidence = Math.round(clamp01(best!.d / (opts.end - opts.start)) * 100) / 100;
+  // share of the range in this key x how clearly its notes beat the other keys
+  const share = clamp01(best!.d / (opts.end - opts.start));
+  const confidence = Math.round(share * keyConfidence(notes, key, opts) * 100) / 100;
   const chords = analyzeChords(notes, { start: opts.start, end: opts.end, beatsPerBar, key });
   return { key, keyName, confidence, chords };
+}
+
+/**
+ * Onsets of a looping clip (beats inside [0, period)) repeated over [start, end): a 1-bar drum loop
+ * gives its kicks in every bar of the range, as Live plays it.
+ */
+export function loopOnsets(onsets: number[], period: number, start: number, end: number): number[] {
+  if (!(period > 1e-9)) return onsets.filter((b) => b >= start - 1e-9 && b < end - 1e-9);
+  const out = new Set<number>();
+  for (const b0 of onsets) {
+    const base = ((b0 % period) + period) % period;
+    for (let k = Math.floor((start - base) / period); base + k * period < end - 1e-9; k++) {
+      const b = base + k * period;
+      if (b >= start - 1e-9) out.add(round6(b));
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/** Chords of a looping clip (beats inside [0, period)) repeated over [start, end) and cut to it. */
+export function loopChords<T extends { b: number; d: number }>(chords: T[], period: number, start: number, end: number): T[] {
+  if (!(period > 1e-9)) return chords.slice();
+  const out: T[] = [];
+  for (const c of chords) {
+    const base = ((c.b % period) + period) % period;
+    const d = Math.min(c.d, period);
+    for (let k = Math.floor((start - base - d) / period); base + k * period < end - 1e-9; k++) {
+      const b = base + k * period;
+      const b1 = Math.max(b, start), e1 = Math.min(b + d, end);
+      if (e1 - b1 > 1e-9) out.push({ ...c, b: round6(b1), d: round6(e1 - b1) });
+    }
+  }
+  return out.sort((a, b) => a.b - b.b);
 }
 
 export function resolveChords(
@@ -254,6 +289,7 @@ export function buildInsert(req: InsertRequest): InsertResult {
     if (humanizeAmount > 0) {
       hits = humanize(hits, {
         seed,
+        min: req.startBeat,
         timing: 0.01 * humanizeAmount,
         velocity: Math.round(8 * humanizeAmount),
       });
@@ -313,6 +349,8 @@ export function buildInsert(req: InsertRequest): InsertResult {
       const kicks = req.kicks;
       if (!kicks || kicks.length === 0) {
         warnings.push("No kick found: one note per chord");
+      } else if (!kicks.some((k) => k >= start - 1e-9 && k < end - 1e-9)) {
+        warnings.push("No kick in these bars: one note per chord");
       }
       raw = lockedBassLine(resolved, kicks ?? [], {
         inst: req.inst,

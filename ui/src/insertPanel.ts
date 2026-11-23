@@ -10,7 +10,7 @@ import { refreshAnnUi } from "./annotate";
 import { isDrumTrack } from "./drums";
 import { getOpenStrings, getStringCount } from "./fretboard";
 import "./insert.css";
-import { analyzeClip, buildInsert, mergeInsert, type ChordSource, type ClipAnalysis, type InsertRequest, type PlacedChordIn } from "../../src/notation/insertEngine.js";
+import { analyzeClip, buildInsert, loopChords, loopOnsets, mergeInsert, type ChordSource, type ClipAnalysis, type InsertRequest, type PlacedChordIn } from "../../src/notation/insertEngine.js";
 import { FEELS, feelOf, type FeelOptions, type InsertPart } from "../../src/notation/insertFeels.js";
 import { PROGRESSIONS } from "../../src/notation/progressions.js";
 import { COMP_PATTERNS } from "../../src/notation/comping.js";
@@ -45,7 +45,7 @@ const ui = {
 };
 for (const p of PARTS) ui.opts[p.id] = { ...(feelOf(p.id, ui.feel[p.id])?.opts || {}) };
 
-const analysisCache = new WeakMap<any, { n: number; a: ClipAnalysis }>();
+const analysisCache = new WeakMap<any, { sig: string; a: ClipAnalysis }>();
 
 function esc(v: unknown): string {
   return String(v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -64,15 +64,43 @@ function drumTracks(): { t: any; i: number }[] {
   return (state.tracks || []).map((t: any, i: number) => ({ t, i })).filter(x => isDrumTrack(x.t) && x.t.notes && x.t.notes.length);
 }
 
+/** Loop length of a Session clip tab (its notes repeat every this many beats in Live), else 0. */
+function loopOf(t: any): number {
+  const e = t && t.edit;
+  return e && e.mode === "clip" && typeof e.regionLength === "number" && e.regionLength > 0 ? e.regionLength : 0;
+}
+
+/** Changes whenever a note's time, length or pitch does (the analysis is redone then). */
+function notesSig(t: any): string {
+  let h = 0;
+  for (const n of t.notes) h = (h * 31 + Math.round(n.b * 480) * 7 + Math.round(n.d * 480) * 3 + n.p) % 2147483647;
+  return t.notes.length + ":" + h + ":" + beatsPerBar() + ":" + loopOf(t);
+}
+
 function analysisOf(t: any): ClipAnalysis | null {
   if (!pitchedTrack(t)) return null;
+  const sig = notesSig(t);
   const c = analysisCache.get(t);
-  if (c && c.n === t.notes.length) return c.a;
-  const end = t.notes.reduce((m: number, n: any) => Math.max(m, n.b + n.d), 0);
+  if (c && c.sig === sig) return c.a;
+  const end = loopOf(t) || t.notes.reduce((m: number, n: any) => Math.max(m, n.b + n.d), 0);
   const a = analyzeClip(t.notes, { start: 0, end, beatsPerBar: beatsPerBar() });
-  analysisCache.set(t, { n: t.notes.length, a });
+  analysisCache.set(t, { sig, a });
   return a;
 }
+
+/** Chords sound at once in most of the track (a guitar strum, pads), not a single line. */
+function chordalTrack(t: any): boolean {
+  if (!pitchedTrack(t)) return false;
+  const ns = t.notes.slice().sort((a: any, b: any) => a.b - b.b);
+  let together = 0;
+  for (let i = 0; i < ns.length; i++) {
+    const n = ns[i];
+    if ((i > 0 && n.b - ns[i - 1].b < 0.08) || (i + 1 < ns.length && ns[i + 1].b - n.b < 0.08)) together++;
+  }
+  return together >= 0.4 * ns.length && (analysisOf(t)?.chords.length || 0) > 0;
+}
+
+const sureWord = (c: number) => c >= 0.7 ? "sure" : c >= 0.4 ? "likely" : "a guess";
 function sourceTrack(): any {
   if (!ui.source.startsWith("track:")) return null;
   return (state.tracks || [])[Number(ui.source.slice(6))] || null;
@@ -89,7 +117,7 @@ function currentKey(): { key: KeyRef; from: string } {
     try { return { key: keyRefFromKeyInfo({ fifths: fixed.fifths, mode: fixed.minor ? "minor" : "major" } as any), from: "clip key" }; } catch {}
   }
   const a = analysisOf(sourceTrack()) || analysisOf(state.curTrack);
-  if (a && a.key) return { key: a.key, from: Math.round(a.confidence * 100) + "% sure" };
+  if (a && a.key) return { key: a.key, from: sureWord(a.confidence) };
   return { key: { root: 0, mode: "major" }, from: "default" };
 }
 
@@ -101,8 +129,10 @@ function targetRange(): { start: number; end: number; bars: number } | null {
   const spans: { start: number; end: number }[] = e.mode === "track" ? (e.spans || []) :
     [{ start: 0, end: typeof e.regionLength === "number" ? e.regionLength : Math.max(16, ...t.notes.map((n: any) => n.b + n.d)) }];
   if (!spans.length) return null;
-  const c = state.cursor ? state.cursor.b : spans[0]!.start;
+  let c = state.cursor ? state.cursor.b : spans[0]!.start;
   const span = spans.find(s => c >= s.start - 1e-6 && c < s.end - 1e-6) || spans[0]!;
+  // a cursor parked at (or past) the clip end, e.g. after playback: start from the clip start
+  if (c < span.start - 1e-6 || c >= span.end - 1e-6) c = span.start;
   const barStart = (b: number) => span.start + Math.floor((b - span.start + 1e-6) / bpb) * bpb;
   let start = barStart(c), end: number;
   if (ui.target === "clip") { start = span.start; end = span.end; }
@@ -131,7 +161,10 @@ function chordSource(key: KeyRef, start: number, bars: number): { src: ChordSour
   if (tr) {
     const a = analysisOf(tr);
     if (!a || !a.chords.length) return null;
-    return { src: { kind: "list", chords: a.chords.map(c => ({ root: c.root, quality: c.quality, ...(c.bass !== undefined ? { bass: c.bass } : {}), b: c.b, d: c.d })) }, key };
+    const list = a.chords.map(c => ({ root: c.root, quality: c.quality, ...(c.bass !== undefined ? { bass: c.bass } : {}), b: c.b, d: c.d }));
+    // a looping Session clip repeats its chords under the whole range
+    const end = start + bars * bpb;
+    return { src: { kind: "list", chords: loopOf(tr) ? loopChords(list, loopOf(tr), start, end) : list }, key };
   }
   const id = ui.source.startsWith("preset:") ? ui.source.slice(7) : "pop";
   const p = PROGRESSIONS.find(x => x.id === id) || PROGRESSIONS[0]!;
@@ -150,7 +183,9 @@ function request(): { req: InsertRequest; range: { start: number; end: number; b
   };
   if (part === "bass" && req.bassStyle === "kick") {
     const dt = (state.tracks || [])[ui.kickTrack];
-    req.kicks = dt ? kickOnsets(dt.notes || [], { kickPitches: kickPitches(kitOf(dt), dt.drum && dt.drum.override, dt.drum && dt.drum.hints) }) : [];
+    const kicks = dt ? kickOnsets(dt.notes || [], { kickPitches: kickPitches(kitOf(dt), dt.drum && dt.drum.override, dt.drum && dt.drum.hints) }) : [];
+    // a 1-bar drum loop plays its kicks in every bar: repeat them over the range
+    req.kicks = dt && loopOf(dt) && kicks.length ? loopOnsets(kicks, loopOf(dt), range.start, range.end) : kicks;
   }
   return { req, range };
 }
@@ -177,6 +212,7 @@ function preview() {
 /* ── Insert / replace / vary / undo ──────────────────────────────────────── */
 function doInsert(mode: "add" | "replace") {
   if (!editable()) { status("Open a clip to insert"); return; }
+  if (state.uiCapo) { status("Set Capo to 0 first"); log("Insert: set Capo to 0 first (inserted chords and open strings would sit below the capo)"); return; }
   if (state.uiTranspose !== 0) { status("Set Trans to 0 first"); log("Insert: set Trans to 0 first (TAB positions are for the clip's pitches)"); return; }
   if (ui.part === "drums" ? !isDrumTrack(state.curTrack) : isDrumTrack(state.curTrack)) {
     status(ui.part === "drums" ? "Drums go into a drum track" : "Open a guitar or bass track"); return;
@@ -193,7 +229,7 @@ function doInsert(mode: "add" | "replace") {
     src: tmpl.src || "ses", clip: tmpl.clip || "", ins: true }));
   t.notes = m.keep.concat(added as any[]);
   saveUndo(before, deletedBefore);
-  if (ui.part === "chords") writeChordNames(p.res.chords);
+  if (ui.part === "chords") writeChordNames(p.res.chords, mode === "replace" ? p.range : null);
   ui.lastInsert = { histLen: state.editHistory.length, mode };
   rebuildScore(); renderInspector(t);
   (window.__editKeys as any)?.updateEditUi?.();
@@ -202,12 +238,14 @@ function doInsert(mode: "add" | "replace") {
   render();
 }
 
-/** Chord names above the staff for the inserted chords (only where the tab has none). */
-function writeChordNames(chords: PlacedChordIn[]) {
+/** Chord names above the staff for the inserted chords (only where the tab has none). Replace first drops
+ *  the automatic names inside its range, so the names follow the new chords; names the user typed stay. */
+function writeChordNames(chords: PlacedChordIn[], replaced: { start: number; end: number } | null) {
   const t = state.curTrack; if (!chords.length) return;
   const a = t.ann || (t.ann = {});
-  const list = (a.chords || []).slice();
-  let n = 0;
+  const old = a.chords || [];
+  const list = replaced ? old.filter((x: any) => !(x.auto && x.b >= replaced.start - 1e-6 && x.b < replaced.end - 1e-6)) : old.slice();
+  let n = list.length !== old.length ? 1 : 0;
   for (const c of chords) {
     if (list.some((x: any) => Math.abs(x.b - c.b) < 1e-6)) continue;
     list.push({ b: c.b, name: chordName(c), auto: true }); n++;
@@ -216,6 +254,15 @@ function writeChordNames(chords: PlacedChordIn[]) {
   list.sort((x: any, y: any) => x.b - y.b);
   a.chords = list; t._annDirty = true;
   try { refreshAnnUi(); } catch {}
+}
+
+/** The seed changes the result: riffs, drums with ghost notes (energy 4-5) or a human feel. Chords and bass
+ *  lines follow the chords exactly, so Vary would insert the same notes again. */
+function varies(): boolean {
+  const o = ui.opts[ui.part];
+  if (ui.part === "riff") return true;
+  if (ui.part === "drums") return (o.energy ?? 3) >= 4 || (o.humanizeAmount ?? 0) > 0;
+  return false;
 }
 
 function lastIsInsert(): boolean { return !!ui.lastInsert && ui.lastInsert.histLen === state.editHistory.length; }
@@ -311,6 +358,13 @@ function optionsBlock(chords: PlacedChordIn[], key: KeyRef): string {
   return h.join("");
 }
 
+/** Says so when a progression of the other mode is played in the relative key (same notes, other home chord). */
+function relativeNote(key: KeyRef, used: KeyRef): string {
+  if (used.root === key.root && used.mode === key.mode) return "";
+  return '<div class="ip-note">' + esc((used.mode === "major" ? "Major" : "Minor") + " progression: played in " + keyLabel(used) +
+    " (same notes as " + keyLabel(key) + "). Pick a " + key.mode + " one to stay in " + keyLabel(key) + ".") + "</div>";
+}
+
 function keySelect(cur: { key: KeyRef; from: string }): string {
   const items: [string, string][] = [["auto", "Key: " + keyLabel(cur.key) + (ui.keyChoice === "auto" ? " (" + cur.from + ")" : "")]];
   const groups = [
@@ -347,12 +401,13 @@ export function render() {
     '<div class="ip-label">Feel</div><div class="ip-feels">' + feels.map(f =>
       '<button class="' + (!ui.custom[ui.part] && ui.feel[ui.part] === f.id ? "on" : "") + '" data-feel="' + f.id + '" title="' + esc(f.hint) + '">' + esc(f.label) + "</button>").join("") +
     "</div>" + '<div class="ip-note">' + esc(feelSummary(p ? p.range.bars : 0)) + "</div>" +
-    (ui.part !== "drums" ? '<div class="ip-label">Chords</div>' + sourceSelect() + chordStrip(chords, p ? p.req.key : cur.key) : "") +
+    (ui.part !== "drums" ? '<div class="ip-label">Chords</div>' + sourceSelect() + chordStrip(chords, p ? p.req.key : cur.key) + relativeNote(cur.key, p ? p.req.key : cur.key) : "") +
     '<details class="ip-more"' + (ui.moreOpen ? " open" : "") + '><summary>More: ' + (ui.part === "drums" ? "groove, energy, fills" : "next chords, " + (ui.part === "chords" ? "voicing, strum" : ui.part === "bass" ? "rhythm, line" : "position, shape")) + "</summary>" +
     optionsBlock(chords, p ? p.req.key : cur.key) + "</details>" +
     warn + "</div>" +
     '<div class="ip-foot"><div class="ip-util">' +
-    '<button class="btn" data-act="vary" title="New variation (replaces the last insert)">⚄ Vary</button>' +
+    (varies() ? '<button class="btn" data-act="vary" title="New variation (replaces the last insert)">⚄ Vary</button>'
+      : '<button class="btn" data-act="vary" disabled title="This feel plays the same every time: pick another feel or change More">⚄ Vary</button>') +
     '<button class="btn" data-act="undo"' + (lastIsInsert() ? "" : " disabled") + ' title="Take back the last insert">↩ Undo</button>' +
     '<span class="ip-count">' + (p ? p.res.notes.length + " notes · " + p.range.bars + (p.range.bars === 1 ? " bar" : " bars") : editable() ? "Put the cursor in the clip" : "Open a clip to insert") + "</span></div>" +
     '<div class="ip-main"><button class="btn" data-act="replace"' + (can ? "" : " disabled") + ' title="Remove the notes in these bars, then insert">Replace</button>' +
@@ -430,10 +485,14 @@ function onChange(e: Event) {
 }
 
 /** Until the user picks a chord source: bass and riffs follow another track's chords, chords start from a progression. */
+/** Bass/Riff follow another track's chords when one plays chords (not a single line); otherwise, and for
+ *  Chords, a progression in the clip's mode (a minor clip gets a minor progression). */
 function defaultSource() {
   if (ui.sourceSet || ui.source === "custom") return;
-  const other = (state.tracks || []).findIndex((t: any) => t !== state.curTrack && pitchedTrack(t));
-  ui.source = ui.part !== "chords" && other >= 0 ? "track:" + other : "preset:pop";
+  const other = (state.tracks || []).findIndex((t: any) => t !== state.curTrack && chordalTrack(t));
+  if (ui.part !== "chords" && other >= 0) { ui.source = "track:" + other; return; }
+  ui.source = "preset:pop";   // so currentKey() reads this clip, not the previously chosen track
+  ui.source = currentKey().key.mode === "minor" ? "preset:epic" : "preset:pop";
 }
 
 export function toggleInsertPanel(force?: boolean) {
