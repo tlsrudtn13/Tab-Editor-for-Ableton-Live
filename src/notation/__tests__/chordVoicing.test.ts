@@ -98,3 +98,14 @@ describe("chordVoicing", () => {
     expect(v.map(n => n.p)).toEqual(barre.map(n => n.p));
   });
 });
+
+describe("fifth follows the chord quality", () => {
+  it("power and rootFifth use b5 for dim / m7b5 and #5 for aug", () => {
+    const bdim = voiceChord({ root: 11, quality: "dim" }, "power", GUITAR_6);
+    expect(bdim[1]!.p - bdim[0]!.p).toBe(6);
+    const em7b5 = voiceChord({ root: 4, quality: "m7b5" }, "rootFifth", GUITAR_6);
+    expect(em7b5.map((n) => n.p)).toEqual([40, 46]);
+    const caug = voiceChord({ root: 0, quality: "aug" }, "rootFifth", GUITAR_6);
+    expect(caug[1]!.p - caug[0]!.p).toBe(8);
+  });
+});

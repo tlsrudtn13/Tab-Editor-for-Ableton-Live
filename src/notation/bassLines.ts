@@ -1,4 +1,4 @@
-import { chordPcs, type ChordSym } from "./harmony.js";
+import { chordPcs, fifthInterval, type ChordSym } from "./harmony.js";
 import type { InstrumentConfig } from "./instruments.js";
 
 export type BassStyle = "root" | "rootEighths" | "rootFifth" | "octave" | "walking";
@@ -85,7 +85,12 @@ export function bassLine(
       if (len < 2 - 1e-9) {
         notes.push({ b: roundB(ch.b), d: roundB(len), p: anchor, v: velocity });
       } else {
-        const fifth = anchor + 7 > high ? anchor - 5 : anchor + 7;
+        // The chord's own fifth (b5 for dim, #5 for aug), the nearest one above the bass note;
+        // for a slash chord whose bass already is that fifth (C/G), the root instead.
+        let fpc = mod12(ch.root + fifthInterval(ch.quality));
+        if (fpc === mod12(anchor)) fpc = mod12(ch.root);
+        let fifth = anchor + (mod12(fpc - anchor) || 12);
+        if (fifth > high) fifth -= 12;
         for (let t = ch.b; t < end - 1e-9; t += 2) {
           const half = Math.floor(((t - ch.b) / 2) + 1e-9) % 2; // 0 for first half, 1 for second
           const p = half === 0 ? anchor : fifth;

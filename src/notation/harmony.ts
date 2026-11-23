@@ -65,6 +65,13 @@ export function chordName(c: ChordSym): string {
   return name;
 }
 
+/** Semitones from the root to the chord's fifth: 6 for dim / m7b5 / dim7, 8 for aug, else 7. */
+export function fifthInterval(quality: string): number {
+  if (quality === "dim" || quality === "m7b5" || quality === "dim7") return 6;
+  if (quality === "aug") return 8;
+  return 7;
+}
+
 export function chordPcs(c: ChordSym): number[] {
   const intervals = CHORD_INTERVALS[c.quality];
   if (!intervals) throw new Error(`Unknown chord quality: ${c.quality}`);

@@ -1,4 +1,4 @@
-import { PC_NAMES, chordPcs } from "./harmony.js";
+import { PC_NAMES, chordPcs, fifthInterval } from "./harmony.js";
 import type { ChordSym } from "./harmony.js";
 import type { InstrumentConfig } from "./instruments.js";
 
@@ -67,7 +67,7 @@ function voiceRootFifth(chord: ChordSym, inst: InstrumentConfig, maxFret: number
     const fifthString = rs - 1;
     let fifthNote: VoicedNote | null = null;
     if (fifthString >= 1) {
-      const targetFifthPitch = chordRootPitch + 7;
+      const targetFifthPitch = chordRootPitch + fifthInterval(chord.quality);
       fifthNote = place(targetFifthPitch, fifthString, open, maxFret);
       if (!fifthNote) fifthNote = place(targetFifthPitch, rs, open, maxFret);
     }
@@ -98,8 +98,8 @@ function voicePower(chord: ChordSym, inst: InstrumentConfig, maxFret: number): V
     const chordRootPitch = actualRootPitch.p;
     const fifthString = rs - 1;
     if (fifthString < 1) continue;
-    let fifthNote = place(chordRootPitch + 7, fifthString, open, maxFret);
-    if (!fifthNote) fifthNote = place(chordRootPitch + 7, rs, open, maxFret);
+    let fifthNote = place(chordRootPitch + fifthInterval(chord.quality), fifthString, open, maxFret);
+    if (!fifthNote) fifthNote = place(chordRootPitch + fifthInterval(chord.quality), rs, open, maxFret);
     if (!fifthNote) continue;
     if (fifthNote.s === rootNote.s) continue;
     const notes: VoicedNote[] = [rootNote, fifthNote];

@@ -123,3 +123,16 @@ describe("bassLine", () => {
     }
   });
 });
+
+describe("rootFifth uses the chord's own fifth", () => {
+  const ps = (c: BassChord) => bassLine([c], "rootFifth", { inst: BASS }).map((n) => n.p);
+  it("b5 for a diminished chord", () => {
+    expect(ps({ root: 11, quality: "dim", b: 0, d: 4 })).toEqual([35, 41]);
+  });
+  it("slash chord C/E: E in the bass, then the chord's fifth G above it", () => {
+    expect(ps({ root: 0, quality: "", bass: 4, b: 0, d: 4 })).toEqual([28, 31]);
+  });
+  it("C/G: the bass already is the fifth, so the root C follows", () => {
+    expect(ps({ root: 0, quality: "", bass: 7, b: 0, d: 4 })).toEqual([31, 36]);
+  });
+});
