@@ -11,7 +11,7 @@ vi.mock("./overlay.js", () => ({ findBeatBoundsAt: () => null, overlaySelectedNo
 vi.mock("./cursor.js", () => ({ setCursor: () => {} }));
 vi.mock("./log.js", () => ({ status: () => {}, log: () => {} }));
 
-import { barBeatLabel, cadenceShort, chordRole, fnWords, pdfRows } from "./analysisView.js";
+import { barBeatLabel, cadenceShort, chordRole, fnWords, pdfRows, scaleCell } from "./analysisView.js";
 import type { ProgressionAnalysis } from "./analysisView.js";
 
 describe("analysisView helpers", () => {
@@ -78,5 +78,14 @@ describe("analysisView helpers", () => {
     expect(chordRole({ root: 9, roman: "IV", fn: "other", borrowed: { label: "x" } }, em)).toBe("Borrowed colour");
     expect(chordRole({ root: 11, roman: "V", fn: "D" }, em)).toBe("Pulls home (dominant)");
     expect(chordRole({ root: 9, roman: "iv", fn: "S" }, em)).toBe("Moves away (subdominant)");
+  });
+
+  it("scaleCell names the clip scale on the first in-key row and dashes borrowed rows", () => {
+    const r: any = { key: { root: 4, mode: "minor" }, cadences: [], scale: { name: "E Dorian" }, chords: [
+      { root: 4, quality: "", roman: "I", fn: "other", tier: "color", borrowed: { from: "major", label: "x" } },
+      { root: 2, quality: "", roman: "VII", fn: "D", tier: "tension" },
+      { root: 7, quality: "", roman: "III", fn: "T", tier: "safe" },
+    ] };
+    expect([0, 1, 2].map(i => scaleCell(r, i))).toEqual(["—", "E Dorian", ""]);
   });
 });

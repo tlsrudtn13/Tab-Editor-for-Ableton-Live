@@ -153,9 +153,14 @@ function barBoundsForRange(start: number, end: number): any[] {
   const out: any[] = [];
   const seen = new Set<string>();
   for (let b = start; b < end - 1e-6; b += bpb) {
-    const bar = masterBarBoundsAt(b + 1e-6);   // staff and TAB together (design D024)
-    const vb = bar && bar.visualBounds;
-    if (!vb) continue;
+    const mb = masterBarBoundsAt(b + 1e-6);   // staff and TAB together (design D024)
+    // union of the staves' bar bounds: the master bar's own bounds include the system header (tuning, diagrams)
+    const parts = (mb && mb.bars || []).map((x: any) => x && x.visualBounds).filter(Boolean);
+    if (!parts.length) continue;
+    const x0 = Math.min(...parts.map((v: any) => v.x)), y0 = Math.min(...parts.map((v: any) => v.y));
+    const x1 = Math.max(...parts.map((v: any) => v.x + v.w)), y1 = Math.max(...parts.map((v: any) => v.y + v.h));
+    const vb = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    const bar = { visualBounds: vb };
     const key = `${Math.round(vb.x)}:${Math.round(vb.y)}:${Math.round(vb.w)}:${Math.round(vb.h)}`;
     if (seen.has(key)) continue;
     seen.add(key);

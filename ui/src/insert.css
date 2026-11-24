@@ -58,6 +58,7 @@
 .ip-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:6px; position:relative; }
 .ip-card { position:relative; height:42px; padding:5px 7px; background:var(--ip-card); border:1px solid var(--ip-line); border-radius:2px; display:flex; flex-direction:column; justify-content:center; text-align:left; width:100%; color:var(--p-live-text-primary); }
 .ip-card:hover, .ip-card:focus { border-color:var(--p-live-accent-primary); outline:none; }
+.ip-card.open { border:1.5px solid #ff764d; background:var(--ip-on-bg); }
 .ip-card b { font-size:12px; }
 .ip-card i, .ip-chip i { font-style:normal; font-size:9px; color:var(--ip-muted); }
 .ip-card .ip-dot { position:absolute; top:5px; right:5px; }

@@ -312,7 +312,7 @@ function chordStrip(chords: PlacedChordIn[], key: KeyRef): string {
     const r = romanOf(c, key);
     const roman = displayRoman(r.roman, key);
     const rm = syms.length > 1 ? '<span class="ip-card-rm" data-remove="' + i + '" title="Remove chord">×</span>' : "";
-    return '<button class="ip-card" data-card="' + i + '" title="' + esc(TIER_HINT[r.tier]) + '">' +
+    return '<button class="ip-card' + (ui.popCard === i ? " open" : "") + '" data-card="' + i + '" title="' + esc(TIER_HINT[r.tier]) + '">' +
       '<span class="ip-dot ' + TIER_CLASS[r.tier] + '"></span><b>' + esc(name) + '</b><i>' + esc(roman) + "</i>" + rm + "</button>";
   });
   const pop = ui.popCard !== null ? popoverHtml(key, ui.popCard, syms[ui.popCard]!, syms.length) : "";
@@ -437,7 +437,9 @@ function positionPopover() {
   pop.style.top = (cr.bottom + 4) + "px";
   pop.style.bottom = "auto";
   const pr = pop.getBoundingClientRect();
-  if (pr.bottom > window.innerHeight - 4) {
+  const foot = document.querySelector("#insert-panel .ip-foot") as HTMLElement | null;
+  const limit = Math.min(window.innerHeight - 4, foot ? foot.getBoundingClientRect().top - 4 : Infinity);
+  if (pr.bottom > limit) {
     pop.style.top = (cr.top - pr.height - 4) + "px";
   }
 }

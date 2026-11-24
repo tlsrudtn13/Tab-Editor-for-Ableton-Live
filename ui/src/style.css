@@ -524,6 +524,8 @@ tbody tr.sel td { background:rgba(255,140,0,.12) !important; color:var(--p-live-
 .an-table tbody tr:hover td { background:rgba(255,255,255,.04); }
 .an-table tbody tr.sel { background:rgba(255,118,77,0.12); }
 .an-table tbody tr.sel td:first-child { box-shadow:inset 2px 0 0 #ff764d; }
+:root.light .an-table tbody td { border-bottom-color:rgba(0,0,0,.06); }
+:root.light .an-table tbody tr:hover td { background:rgba(0,0,0,.04); }
 .an-col-bar { width:52px; min-width:52px; max-width:52px; }
 .an-col-chord { width:76px; min-width:76px; max-width:76px; font-weight:700; }
 .an-col-num { width:78px; min-width:78px; max-width:78px; }

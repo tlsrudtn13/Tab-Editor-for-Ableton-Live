@@ -64,6 +64,14 @@ export const CADENCE_TOOLTIP: Record<CadenceKind, string> = {
   "ii-V-I": "ii–V–I — the classic jazz/pop turn home",
 };
 
+/** The clip's scale on the first in-key row; a borrowed or colour chord gets a dash (the clip scale clashes with it). */
+export function scaleCell(result: ProgressionAnalysis, i: number): string {
+  const ch = result.chords[i]; if (!ch) return "";
+  if (ch.borrowed || ch.tier === "color") return "—";
+  const first = result.chords.findIndex(c => !c.borrowed && c.tier !== "color");
+  return i === first ? result.scale.name : "";
+}
+
 export type PdfRow = {
   bar: string;
   chord: string;
@@ -83,7 +91,7 @@ export function pdfRows(result: ProgressionAnalysis, bpb: number): PdfRow[] {
       chord: chordName(ch),
       numeral: displayRoman(ch.roman, result.key) + (ch.borrowed ? " · borrowed" : ""),
       fn: cadence ? `${fn}; ${cadenceShort(cadence)}` : fn,
-      scale: i === 0 ? result.scale.name : "",
+      scale: scaleCell(result, i),
     };
   });
 }
@@ -215,9 +223,15 @@ export function drawAnalysisOverlay() {
       el.className = "analysis-overlay an-numeral";
       const roman = displayRoman(ch.roman, result.key);
       el.textContent = roman;
-      const firstInBar = Math.abs(vb.x - barVb.x) < 16;   // the bar number sits there on bars 1, 5, 9 ...
-      el.style.left = (vb.x + (firstInBar ? 12 : 0)) + "px";
-      el.style.top = (Math.min(barVb.y, vb.y) - 18) + "px";
+      // the bar number sits at the start of bars 1, 5, 9 ... (every four bars)
+      const barIndex = fb?.beat?.voice?.bar?.index;
+      const onNumber = typeof barIndex === "number" && barIndex % 4 === 0 && Math.abs(vb.x - barVb.x) < 16;
+      let top = Math.min(barVb.y, vb.y);
+      for (const nb of (fb?.bounds?.notes || [])) {
+        const hb = nb?.noteHeadBounds; if (hb && typeof hb.y === "number") top = Math.min(top, hb.y);
+      }
+      el.style.left = (vb.x + (onNumber ? 12 : 0)) + "px";
+      el.style.top = (top - 16) + "px";
       el.style.color = tierColor(ch.tier);
       if (ch.tier === "color") el.style.borderBottom = `1px dotted ${tierColor(ch.tier)}`;
       const borrowed = ch.borrowed ? `\n${ch.borrowed.label}` : "";
@@ -308,7 +322,7 @@ function renderAnalysisPanel() {
     const roman = result ? displayRoman(ch.roman, result.key) : ch.roman;
     html += '<td class="an-col-num" style="color:' + tierColor(ch.tier) + '">' + esc(roman) + borrowed + '</td>';
     html += '<td class="an-col-fn">' + fnCell + '</td>';
-    html += '<td class="an-col-scale">' + (i === 0 ? esc(scaleName) : "") + '</td>';
+    html += '<td class="an-col-scale">' + esc(result ? scaleCell(result, i) : "") + '</td>';
     html += '</tr>';
   });
   if (!rows.length) {
