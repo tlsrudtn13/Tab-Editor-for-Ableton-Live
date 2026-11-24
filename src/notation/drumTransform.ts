@@ -1,4 +1,4 @@
-import { renderDrumPattern, type DrumHit } from "./drumPresets.js";
+import { renderDrumPattern, type DrumHit, DRUM_PATTERNS } from "./drumPresets.js";
 import { mulberry32 } from "./rng.js";
 
 export type EnergyLevel = 1 | 2 | 3 | 4 | 5;
@@ -183,7 +183,9 @@ export function addFills(
     }
 
     // add fill pattern
-    const fillHits = renderDrumPattern(fillId, { startBeat: barStart, bars: 1 });
+    const fillLen = DRUM_PATTERNS.find((x) => x.id === fillId)?.beatsPerBar ?? 4;
+    const fillHits = renderDrumPattern(fillId, { startBeat: barEnd - fillLen, bars: 1 })
+      .filter((h) => h.b >= barStart - EPS && h.b < barEnd - EPS);
     for (const fh of fillHits) {
       if (!out.some((h) => h.p === fh.p && Math.abs(h.b - fh.b) < EPS)) out.push({ ...fh });
     }

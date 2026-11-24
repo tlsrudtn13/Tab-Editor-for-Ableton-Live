@@ -4,7 +4,7 @@
 
 :root {
   --ip-safe: #3dd68c; --ip-tension: #ffb43a; --ip-color: #d770f5;
-  --ip-card: #1e1e1e; --ip-line: #383838; --ip-muted: #8e8e8e; --ip-on-bg: #382518;
+  --ip-card: #1e1e1e; --ip-line: #383838; --ip-muted: #a8a8a8; --ip-on-bg: #382518;
 }
 :root.light {
   --ip-safe: #0e8a4a; --ip-tension: #b86800; --ip-color: #8e25b8;
@@ -18,7 +18,7 @@
 }
 #insert-panel.hidden { display:none; }
 #insert-panel button { font:inherit; cursor:pointer; }
-#insert-panel button:disabled { opacity:.45; cursor:default; }
+#insert-panel button:disabled, #insert-panel button.is-off { opacity:.45; cursor:default; }
 
 .ip-head { display:flex; align-items:center; gap:6px; height:34px; padding:6px 10px; border-bottom:1px solid var(--p-live-control-border); flex-shrink:0; }
 .ip-title { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--p-live-text-secondary); }
@@ -39,6 +39,7 @@
 .ip-label { font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ip-muted); margin:8px 0 3px; }
 .ip-row .ip-label { margin:0; }
 .ip-note { font-size:10px; color:var(--ip-muted); margin-top:4px; min-height:16px; }
+.ip-rel { color:var(--p-live-text-primary); border-left:2px solid var(--ip-tension); padding-left:6px; min-height:0; }
 .ip-sp { flex:1; }
 
 .ip-feels { display:grid; grid-template-columns:1fr 1fr; gap:4px; }

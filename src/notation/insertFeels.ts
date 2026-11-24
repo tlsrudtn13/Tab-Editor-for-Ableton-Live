@@ -13,7 +13,7 @@ export const FEELS: Readonly<Record<InsertPart, readonly Feel[]>> = {
     { id: "folk", label: "Acoustic Folk", hint: "Open chords, down-up strum", opts: { voicing: "open", pattern: "pop" } },
     { id: "rock", label: "Driving Rock", hint: "Power chords, straight 8ths", opts: { voicing: "power", pattern: "rock8" } },
     { id: "funk", label: "Soul / Funk", hint: "Small triads, 16th strum", opts: { voicing: "triad", pattern: "funk16" } },
-    { id: "ballad", label: "Sad Ballad", hint: "Open chords, picked 8ths", opts: { voicing: "open", pattern: "arpUp" } },
+    { id: "ballad", label: "Picked Ballad", hint: "Open chords, picked 8ths", opts: { voicing: "open", pattern: "arpUp" } },
     { id: "skank", label: "Indie Skank", hint: "Barre chords on the off-beat", opts: { voicing: "barre", pattern: "reggae" } },
     { id: "ambient", label: "Ambient Arp", hint: "Open chords, 16th arpeggio", opts: { voicing: "open", pattern: "arp16" } },
   ],

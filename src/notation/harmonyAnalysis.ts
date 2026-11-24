@@ -354,7 +354,7 @@ export function keyConfidence(notes: ChordNote[], key: KeyRef, opts: { start: nu
   }
   let conf = Math.max(0, Math.min(1, (own - rival) / KEY_SURE_MARGIN));
   if (pcs < 5) conf = Math.min(conf, 0.4);
-  else if (pcs < 6) conf = Math.min(conf, 0.7);
+  else if (pcs < 6) conf = Math.min(conf, 0.69);   // five notes fit several keys: "likely" at most
   return Math.round(conf * 100) / 100;
 }
 

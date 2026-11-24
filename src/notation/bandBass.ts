@@ -58,6 +58,7 @@ export function lockedBassLine(
     fill?: LockedFill /* "none" */;
     minNote?: number /* 0.25 */;
     snap?: number /* 0.125: a kick this close to a chord change plays on the change */;
+    barOrigin?: number /* 0: a bar line falls on barOrigin + k * beatsPerBar (the insert range start) */;
   },
 ): { b: number; d: number; p: number; v: number }[] {
   const beatsPerBar = opts.beatsPerBar ?? 4;
@@ -68,6 +69,8 @@ export function lockedBassLine(
   const high = low + 24;
 
   const snap = opts.snap ?? 0.125;
+  const origin = opts.barOrigin ?? 0;
+  const barLineAfter = (b: number) => origin + nextBarLine(b - origin, beatsPerBar);
   const sorted = [...chords].sort((a, b) => a.b - b.b);
   if (sorted.length === 0) return [];
   // A played (unquantized) kick a little before or after a chord change belongs to that change.
@@ -96,6 +99,11 @@ export function lockedBassLine(
       // normalize kicks very close to chord.b to chord.b
       const bk = Math.abs(k - ch.b) < 1e-6 ? ch.b : k;
       if (!chordOnsets.some((x) => Math.abs(x - bk) < 1e-6)) chordOnsets.push(bk);
+    }
+    chordOnsets.sort((a, b) => a - b);
+    // a chord held over several bars: a bar with no kick still gets its root on the downbeat
+    for (let bl = barLineAfter(ch.b); bl < end - 1e-9; bl += beatsPerBar) {
+      if (!chordOnsets.some((x) => x >= bl - 1e-9 && x < bl + beatsPerBar - 1e-9)) chordOnsets.push(bl);
     }
     chordOnsets.sort((a, b) => a - b);
 
@@ -140,7 +148,7 @@ export function lockedBassLine(
     }
 
     let p = bassNotePitch;
-    const downbeat = isBarDownbeat(o.b, beatsPerBar);
+    const downbeat = isBarDownbeat(o.b - origin, beatsPerBar);
     const offBeat = Math.abs(o.b - Math.round(o.b)) > 1e-6;
     const useFill = !o.firstOfChord && !downbeat && offBeat && fill !== "none" && fillTurn++ % 2 === 0;
     if (useFill) {
@@ -163,7 +171,7 @@ export function lockedBassLine(
     if (p > high) p -= 12;
 
     const nextOnsetB = onsets[i + 1]?.b;
-    const barLine = nextBarLine(o.b, beatsPerBar);
+    const barLine = barLineAfter(o.b);
     let dEnd = end;
     if (nextOnsetB !== undefined) dEnd = Math.min(dEnd, nextOnsetB);
     dEnd = Math.min(dEnd, barLine);

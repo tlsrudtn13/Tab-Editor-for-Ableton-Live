@@ -22,6 +22,8 @@ import { romanOf, type ChordTier } from "../../src/notation/harmonyAnalysis.js";
 import { chordName, keyRefFromKeyInfo, PC_NAMES, type ChordSym, type KeyRef } from "../../src/notation/harmony.js";
 
 type Target = "sel" | "1" | "2" | "4" | "8" | "clip";
+type Range = { start: number; end: number; bars: number };
+const VARY_OFF = "This feel plays the same every time: pick another feel or change More";
 const PARTS: { id: InsertPart; label: string }[] = [
   { id: "chords", label: "Chords" }, { id: "bass", label: "Bass" }, { id: "riff", label: "Riff" }, { id: "drums", label: "Drums" },
 ];
@@ -41,7 +43,8 @@ const ui = {
   kickTrack: -1,                 // index in state.tracks, -1 = none
   seed: 1,
   moreOpen: false,
-  lastInsert: null as null | { histLen: number; mode: "add" | "replace" },
+  // the last insert: its undo entry and tab (so Undo/Vary never take back another edit), where it went and what it played
+  lastInsert: null as null | { entry: any; track: any; mode: "add" | "replace"; range: Range; part: InsertPart; sig: string },
 };
 for (const p of PARTS) ui.opts[p.id] = { ...(feelOf(p.id, ui.feel[p.id])?.opts || {}) };
 
@@ -70,10 +73,10 @@ function loopOf(t: any): number {
   return e && e.mode === "clip" && typeof e.regionLength === "number" && e.regionLength > 0 ? e.regionLength : 0;
 }
 
-/** Changes whenever a note's time, length or pitch does (the analysis is redone then). */
+/** Changes whenever a note's time, length, pitch or velocity does (the analysis is redone then). */
 function notesSig(t: any): string {
   let h = 0;
-  for (const n of t.notes) h = (h * 31 + Math.round(n.b * 480) * 7 + Math.round(n.d * 480) * 3 + n.p) % 2147483647;
+  for (const n of t.notes) h = (h * 31 + Math.round(n.b * 480) * 7 + Math.round(n.d * 480) * 3 + n.p * 5 + (n.v || 0)) % 2147483647;
   return t.notes.length + ":" + h + ":" + beatsPerBar() + ":" + loopOf(t);
 }
 
@@ -100,7 +103,7 @@ function chordalTrack(t: any): boolean {
   return together >= 0.4 * ns.length && (analysisOf(t)?.chords.length || 0) > 0;
 }
 
-const sureWord = (c: number) => c >= 0.7 ? "sure" : c >= 0.4 ? "likely" : "a guess";
+const sureWord = (c: number) => c >= 0.7 ? "sure" : c >= 0.4 ? "likely" : "est.";
 function sourceTrack(): any {
   if (!ui.source.startsWith("track:")) return null;
   return (state.tracks || [])[Number(ui.source.slice(6))] || null;
@@ -172,8 +175,8 @@ function chordSource(key: KeyRef, start: number, bars: number): { src: ChordSour
   return { src: { kind: "preset", id: p.id }, key: p.mode === key.mode ? key : relative(key) };
 }
 
-function request(): { req: InsertRequest; range: { start: number; end: number; bars: number } } | null {
-  const range = targetRange(); if (!range) return null;
+function request(fixed?: Range): { req: InsertRequest; range: Range } | null {
+  const range = fixed || targetRange(); if (!range) return null;
   const { key } = currentKey();
   const part = ui.part;
   const cs = part === "drums" ? null : chordSource(key, range.start, range.bars);
@@ -196,8 +199,8 @@ function kitOf(t: any): number[] {
   return pads.concat((t && t.notes || []).map((n: any) => n.p));
 }
 
-function preview() {
-  const r = request(); if (!r) return null;
+function preview(fixed?: Range) {
+  const r = request(fixed); if (!r) return null;
   try {
     const res = buildInsert(r.req);
     if (r.req.part === "drums" && isDrumTrack(state.curTrack)) {
@@ -210,18 +213,18 @@ function preview() {
 }
 
 /* ── Insert / replace / vary / undo ──────────────────────────────────────── */
-function doInsert(mode: "add" | "replace") {
+function doInsert(mode: "add" | "replace", fixed?: Range) {
   if (!editable()) { status("Open a clip to insert"); return; }
   if (state.uiCapo) { status("Set Capo to 0 first"); log("Insert: set Capo to 0 first (inserted chords and open strings would sit below the capo)"); return; }
   if (state.uiTranspose !== 0) { status("Set Trans to 0 first"); log("Insert: set Trans to 0 first (TAB positions are for the clip's pitches)"); return; }
   if (ui.part === "drums" ? !isDrumTrack(state.curTrack) : isDrumTrack(state.curTrack)) {
     status(ui.part === "drums" ? "Drums go into a drum track" : "Open a guitar or bass track"); return;
   }
-  const p = preview(); if (!p) { status("Put the cursor in the clip first"); return; }
+  const p = preview(fixed); if (!p) { status("Put the cursor in the clip first"); return; }
   const t = state.curTrack;
   const before = t.notes.map((n: any) => ({ ...n }));
   const deletedBefore = state.deletedOids.slice();
-  const m = mergeInsert(t.notes as any[], p.res.notes, { start: p.range.start, end: p.range.end, mode });
+  const m = mergeInsert(t.notes as any[], p.res.notes, { start: p.range.start, end: p.range.end, mode, drums: ui.part === "drums" });
   if (!m.add.length && !m.removed.length) { status("Nothing to insert"); return; }
   for (const n of m.removed) if ((n as any).oid !== undefined) state.deletedOids.push((n as any).oid);
   const tmpl = t.notes[0] || {};
@@ -230,7 +233,7 @@ function doInsert(mode: "add" | "replace") {
   t.notes = m.keep.concat(added as any[]);
   saveUndo(before, deletedBefore);
   if (ui.part === "chords") writeChordNames(p.res.chords, mode === "replace" ? p.range : null);
-  ui.lastInsert = { histLen: state.editHistory.length, mode };
+  ui.lastInsert = { entry: state.editHistory[state.editHistory.length - 1], track: t, mode, range: p.range, part: ui.part, sig: notesKey(p.res.notes) };
   rebuildScore(); renderInspector(t);
   (window.__editKeys as any)?.updateEditUi?.();
   const msg = (mode === "replace" ? "Replaced with " : "Inserted ") + added.length + " notes (" + PART_NOUN[ui.part] + ")";
@@ -265,17 +268,30 @@ function varies(): boolean {
   return false;
 }
 
-function lastIsInsert(): boolean { return !!ui.lastInsert && ui.lastInsert.histLen === state.editHistory.length; }
+const notesKey = (ns: { b: number; d: number; p: number }[]) => ns.map(n => n.b.toFixed(3) + ":" + n.d.toFixed(3) + ":" + n.p).join(",");
+
+/** The newest undo step of this tab is the panel's insert (not a later edit, an undone one or another tab's). */
+function lastIsInsert(): boolean {
+  const li = ui.lastInsert;
+  return !!li && li.track === state.curTrack && state.editHistory.length > 0 && state.editHistory[state.editHistory.length - 1] === li.entry;
+}
 function undoInsert() {
   if (!lastIsInsert()) return;
   (window.__editKeys as any)?.undo?.();
   ui.lastInsert = null;
   status("Insert undone"); render();
 }
+/** Undo the last insert and play it again with a new seed, in the same bars and part (the cursor may have moved).
+ *  Seeds that give the same notes are skipped. */
 function vary() {
-  ui.seed = (ui.seed % 9999) + 1;
-  if (lastIsInsert()) { const mode = ui.lastInsert!.mode; (window.__editKeys as any)?.undo?.(); ui.lastInsert = null; doInsert(mode); }
-  else render();
+  const li = lastIsInsert() ? ui.lastInsert! : null;
+  if (li) ui.part = li.part;
+  if (!varies()) { status(VARY_OFF); render(); return; }
+  const next = () => { ui.seed = (ui.seed % 9999) + 1; };
+  if (!li) { next(); render(); return; }
+  (window.__editKeys as any)?.undo?.(); ui.lastInsert = null;
+  for (let i = 0; i < 40; i++) { next(); const p = preview(li.range); if (!p || notesKey(p.res.notes) !== li.sig) break; }
+  doInsert(li.mode, li.range);
 }
 
 /* ── Rendering ───────────────────────────────────────────────────────────── */
@@ -338,7 +354,7 @@ function optionsBlock(chords: PlacedChordIn[], key: KeyRef): string {
     h.push('<div class="ip-label">Rhythm</div>' + seg("bassMode", kick ? "kick" : "style", [["style", "Bass line"], ["kick", "Lock to kick"]]));
     if (kick) {
       const dts = drumTracks();
-      h.push(dts.length ? select("kickTrack", String(ui.kickTrack), dts.map(x => [String(x.i), "Kick of " + x.t.name] as [string, string]))
+      h.push(dts.length ? select("kickTrack", String(ui.kickTrack), dts.map(x => [String(x.i), "From drum track: " + x.t.name] as [string, string]))
         : '<div class="ip-empty">No drum track with notes in this set: one note per chord</div>');
       h.push('<div class="ip-label">Extra notes</div>' + seg("fill", o.fill || "none", [["none", "None"], ["fifth", "5th"], ["octave", "Octave"]]));
     } else {
@@ -350,7 +366,9 @@ function optionsBlock(chords: PlacedChordIn[], key: KeyRef): string {
     h.push('<div class="ip-label">Shape</div>' + seg("contour", o.contour || "arch", [["up", "↗ Up"], ["down", "↘ Down"], ["arch", "⌒ Arch"], ["wave", "∿ Wave"]]));
     h.push('<div class="ip-label">Busy</div>' + seg("complexity", String(o.complexity ?? 3), [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]]));
   } else {
-    h.push('<div class="ip-label">Groove</div>' + select("groove", o.groove || "rock", DRUM_PATTERNS.filter(p => p.kind === "groove").map(p => [p.id, p.name] as [string, string])));
+    const grooves = DRUM_PATTERNS.filter(p => p.kind === "groove");
+    const fit = grooves.filter(p => Math.abs(p.beatsPerBar - beatsPerBar()) < 1e-6 || p.id === o.groove);
+    h.push('<div class="ip-label">Groove</div>' + select("groove", o.groove || "rock", (fit.length > 1 ? fit : grooves).map(p => [p.id, p.name] as [string, string])));
     h.push('<div class="ip-label">Energy</div>' + seg("energy", String(o.energy ?? 3), [["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5"]]));
     h.push('<div class="ip-label">Fill</div>' + seg("fillEvery", String(o.fillEvery ?? 0), [["0", "None"], ["2", "2 bars"], ["4", "4 bars"], ["8", "8 bars"]]));
     h.push('<div class="ip-label">Human feel</div>' + seg("humanizeAmount", String(o.humanizeAmount ?? 0), [["0", "Tight"], ["0.3", "Light"], ["0.6", "Loose"]]));
@@ -361,8 +379,8 @@ function optionsBlock(chords: PlacedChordIn[], key: KeyRef): string {
 /** Says so when a progression of the other mode is played in the relative key (same notes, other home chord). */
 function relativeNote(key: KeyRef, used: KeyRef): string {
   if (used.root === key.root && used.mode === key.mode) return "";
-  return '<div class="ip-note">' + esc((used.mode === "major" ? "Major" : "Minor") + " progression: played in " + keyLabel(used) +
-    " (same notes as " + keyLabel(key) + "). Pick a " + key.mode + " one to stay in " + keyLabel(key) + ".") + "</div>";
+  return '<div class="ip-note ip-rel" title="' + esc(keyLabel(used) + " uses the same notes as " + keyLabel(key) + ", with " + PC_NAMES[used.root] + " as home") + '">' +
+    esc("Plays in " + keyLabel(used) + " (relative key) · pick a " + key.mode + " progression for " + keyLabel(key)) + "</div>";
 }
 
 function keySelect(cur: { key: KeyRef; from: string }): string {
@@ -384,6 +402,8 @@ export function render() {
   if (drum && ui.part !== "drums") ui.part = "drums";
   if (!drum && ui.part === "drums") ui.part = "chords";
   if (ui.kickTrack < 0 || !(state.tracks || [])[ui.kickTrack]) { const d = drumTracks()[0]; ui.kickTrack = d ? d.i : -1; }
+  // a picked track that is no longer a pitched track (the tabs changed): back to the default source
+  if (ui.source.startsWith("track:") && !pitchedTrack(sourceTrack())) { ui.sourceSet = false; ui.source = "preset:pop"; defaultSource(); }
   const cur = currentKey();
   const p = preview();
   const chords = p ? p.res.chords : [];
@@ -394,10 +414,10 @@ export function render() {
     '<div class="ip-head"><span class="ip-title">Insert</span>' + (ui.part === "drums" ? '<span class="ip-sp"></span>' : keySelect(cur)) + '<button class="btn ip-x" data-act="close" title="Close the Insert panel">✕</button></div>' +
     '<div class="ip-parts">' + PARTS.map(x => {
       const off = drum ? x.id !== "drums" : x.id === "drums";
-      return '<button class="' + (x.id === ui.part ? "on" : "") + '" data-part="' + x.id + '"' + (off ? ' disabled title="' + (drum ? "This is a drum track" : "Open a drum track for drums") + '"' : "") + ">" + x.label + "</button>";
+      return '<button class="' + (x.id === ui.part ? "on" : off ? "is-off" : "") + '" data-part="' + x.id + '"' + (off ? ' aria-disabled="true" title="' + (drum ? "This is a drum track" : "Open a drum track for drums") + '"' : "") + ">" + x.label + "</button>";
     }).join("") + "</div>" +
     '<div class="ip-body">' +
-    '<div class="ip-row"><span class="ip-label">Where</span>' + select("target", ui.target, [["1", "1 bar from cursor"], ["2", "2 bars from cursor"], ["4", "4 bars from cursor"], ["8", "8 bars from cursor"], ["sel", "Selected bars"], ["clip", "Whole clip"]]) + "</div>" +
+    '<div class="ip-row"><span class="ip-label">Where</span>' + select("target", ui.target, whereItems(p ? p.range.bars : 0)) + "</div>" +
     '<div class="ip-label">Feel</div><div class="ip-feels">' + feels.map(f =>
       '<button class="' + (!ui.custom[ui.part] && ui.feel[ui.part] === f.id ? "on" : "") + '" data-feel="' + f.id + '" title="' + esc(f.hint) + '">' + esc(f.label) + "</button>").join("") +
     "</div>" + '<div class="ip-note">' + esc(feelSummary(p ? p.range.bars : 0)) + "</div>" +
@@ -407,11 +427,18 @@ export function render() {
     warn + "</div>" +
     '<div class="ip-foot"><div class="ip-util">' +
     (varies() ? '<button class="btn" data-act="vary" title="New variation (replaces the last insert)">⚄ Vary</button>'
-      : '<button class="btn" data-act="vary" disabled title="This feel plays the same every time: pick another feel or change More">⚄ Vary</button>') +
+      : '<button class="btn is-off" data-act="vary" aria-disabled="true" title="' + esc(VARY_OFF) + '">⚄ Vary</button>') +
     '<button class="btn" data-act="undo"' + (lastIsInsert() ? "" : " disabled") + ' title="Take back the last insert">↩ Undo</button>' +
     '<span class="ip-count">' + (p ? p.res.notes.length + " notes · " + p.range.bars + (p.range.bars === 1 ? " bar" : " bars") : editable() ? "Put the cursor in the clip" : "Open a clip to insert") + "</span></div>" +
     '<div class="ip-main"><button class="btn" data-act="replace"' + (can ? "" : " disabled") + ' title="Remove the notes in these bars, then insert">Replace</button>' +
     '<button class="btn ip-go" data-act="insert"' + (can ? "" : " disabled") + ">+ Insert " + PART_NOUN[ui.part] + "</button></div></div>";
+}
+
+/** "4 bars from cursor" says when the clip end leaves fewer bars (design D022). */
+function whereItems(bars: number): [string, string][] {
+  const items: [string, string][] = [["1", "1 bar from cursor"], ["2", "2 bars from cursor"], ["4", "4 bars from cursor"], ["8", "8 bars from cursor"], ["sel", "Selected bars"], ["clip", "Whole clip"]];
+  const n = Number(ui.target);
+  return items.map(([v, l]) => [v, v === ui.target && n && bars && bars < n ? l + " (" + bars + " to clip end)" : l] as [string, string]);
 }
 
 /** One line under the feels: what the current settings play (design D020). */
@@ -424,7 +451,8 @@ function feelSummary(bars: number): string {
   else if (ui.part === "bass") parts.push(o.bassStyle === "kick" ? "Follows the kick" + (o.fill && o.fill !== "none" ? " + " + o.fill : "") :
     ({ root: "Root notes", rootEighths: "Root 8ths", rootFifth: "Root and 5th", octave: "Octaves", walking: "Walking line" } as any)[o.bassStyle || "root"]);
   else if (ui.part === "riff") parts.push("Frets " + (o.position ?? 5) + "–" + ((o.position ?? 5) + 4), o.scale === "key" ? "whole key" : "pentatonic", "busy " + (o.complexity ?? 3));
-  else parts.push(name(DRUM_PATTERNS, o.groove || "rock"), "energy " + (o.energy ?? 3), o.fillEvery ? "fill every " + o.fillEvery : "no fills");
+  else parts.push(name(DRUM_PATTERNS, o.groove || "rock"), "energy " + (o.energy ?? 3),
+    !o.fillEvery ? "no fills" : bars && bars < o.fillEvery ? "no fill in " + bars + (bars === 1 ? " bar" : " bars") : "fill every " + o.fillEvery);
   if (bars) parts.push(bars + (bars === 1 ? " bar" : " bars"));
   return parts.join(" · ");
 }
@@ -439,6 +467,7 @@ function setOpt(name: string, v: string) {
 
 function onClick(e: Event) {
   const b = (e.target as Element).closest("button") as HTMLButtonElement | null; if (!b || b.disabled) return;
+  if (b.classList.contains("is-off")) { status(b.title); return; }   // greyed: say why (a tooltip may not show)
   if (b.dataset.part) { ui.part = b.dataset.part as InsertPart; defaultSource(); render(); return; }
   if (b.dataset.feel) {
     const f = feelOf(ui.part, b.dataset.feel); if (!f) return;

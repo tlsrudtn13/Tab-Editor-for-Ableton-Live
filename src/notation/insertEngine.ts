@@ -6,7 +6,7 @@ import { compChords } from "./comping.js";
 import { bassLine, type BassStyle } from "./bassLines.js";
 import { lockedBassLine, type LockedFill } from "./bandBass.js";
 import { generateRiff, type Contour } from "./riff.js";
-import { renderDrumPattern } from "./drumPresets.js";
+import { DRUM_PATTERNS, renderDrumPattern } from "./drumPresets.js";
 import { drumEnergy, addFills, humanize, type EnergyLevel } from "./drumTransform.js";
 import type { InstrumentConfig } from "./instruments.js";
 
@@ -143,7 +143,15 @@ export function loopChords<T extends { b: number; d: number }>(chords: T[], peri
       if (e1 - b1 > 1e-9) out.push({ ...c, b: round6(b1), d: round6(e1 - b1) });
     }
   }
-  return out.sort((a, b) => a.b - b.b);
+  out.sort((a, b) => a.b - b.b);
+  const merged: T[] = [];
+  const same = (x: any, y: any) => ["root", "quality", "bass"].every((k) => x[k] === y[k]);
+  for (const c of out) {
+    const last = merged[merged.length - 1];
+    if (last && "root" in c && same(last, c) && Math.abs(last.b + last.d - c.b) < 1e-6) last.d = round6(last.d + c.d);
+    else merged.push({ ...c });
+  }
+  return merged;
 }
 
 export function resolveChords(
@@ -276,7 +284,9 @@ export function buildInsert(req: InsertRequest): InsertResult {
     const humanizeAmount = req.humanizeAmount ?? 0;
     const seed = req.seed ?? 1;
 
-    let hits = renderDrumPattern(groove, { startBeat: req.startBeat, bars: req.bars });
+    const gBeats = DRUM_PATTERNS.find((x) => x.id === groove)?.beatsPerBar ?? beatsPerBar;
+    let hits = renderDrumPattern(groove, { startBeat: req.startBeat, bars: Math.ceil((req.bars * beatsPerBar - 1e-9) / gBeats) })
+      .filter((h) => h.b < req.startBeat + req.bars * beatsPerBar - 1e-9);
     hits = drumEnergy(hits, energy, { startBeat: req.startBeat, bars: req.bars, beatsPerBar, seed });
     if (fillEvery > 0) {
       hits = addFills(hits, {
@@ -356,6 +366,7 @@ export function buildInsert(req: InsertRequest): InsertResult {
         inst: req.inst,
         beatsPerBar,
         fill: req.fill ?? "none",
+        barOrigin: req.startBeat,
       });
     } else {
       raw = bassLine(resolved, bassStyle, { inst: req.inst, beatsPerBar });
@@ -394,7 +405,7 @@ export function buildInsert(req: InsertRequest): InsertResult {
 export function mergeInsert<T extends { b: number; d: number; p: number }>(
   existing: T[],
   inserted: InsertNote[],
-  opts: { start: number; end: number; mode: "add" | "replace" },
+  opts: { start: number; end: number; mode: "add" | "replace"; drums?: boolean },
 ): { keep: T[]; removed: T[]; add: InsertNote[] } {
   const keep: T[] = [];
   const removed: T[] = [];
@@ -410,7 +421,8 @@ export function mergeInsert<T extends { b: number; d: number; p: number }>(
 
   const add: InsertNote[] = [];
   for (const ins of inserted) {
-    const dup = keep.some((k) => k.p === ins.p && Math.abs(k.b - ins.b) < 1e-6);
+    const near = opts.drums ? 0.03 : 1e-6;
+    const dup = keep.some((k) => k.p === ins.p && Math.abs(k.b - ins.b) < near);
     if (!dup) add.push(ins);
   }
 
