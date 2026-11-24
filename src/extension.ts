@@ -239,7 +239,7 @@ function applySummary(stats: { changed: number; added: number; deleted: number; 
     if (stats.added) parts.push(`${stats.added} added`);
     if (stats.deleted) parts.push(`${stats.deleted} deleted`);
     let text = "Applied to clip: " + parts.join(", ") + ". Use Undo in Live to revert.";
-    if (stats.dropped) text += ` ${stats.dropped} invalid edit(s) skipped.`;
+    if (stats.dropped) text += ` ${stats.dropped} edit(s) skipped (before the clip start, or pitch / length out of range).`;
     return text;
 }
 

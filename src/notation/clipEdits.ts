@@ -36,8 +36,9 @@ export function mergeClipEdits(raw: RawNote[], edits: ClipEdits, regionStart: nu
     return { notes, stats };
 }
 
-/** A start before clip time 0 is valid: Live keeps such notes (checked in Live 12.4 beta, dev `probeNegative`). */
+/** A start before clip time 0 is refused on purpose: Live stores such a note, but a later write of the clip's notes
+ *  never removes it again (Live 12.4 beta, dev `probeNegative`), so it could not be undone by the editor. */
 function valid(pitch: number, start: number, duration: number, velocity: number): boolean {
-    return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 && Number.isFinite(start) &&
+    return Number.isInteger(pitch) && pitch >= 0 && pitch <= 127 && Number.isFinite(start) && start >= 0 &&
         Number.isFinite(duration) && duration > 0 && Number.isInteger(velocity) && velocity >= 1 && velocity <= 127;
 }

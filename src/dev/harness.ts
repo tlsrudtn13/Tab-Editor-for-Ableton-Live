@@ -316,6 +316,24 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));
         }
         case "payload":  return payloadFor(ctx, cmd.clip ?? "", !!cmd.full);
+        case "clearNegative": {   // remove notes before clip time 0 from a test clip (setNotes keeps them otherwise)
+            const f = findClip(ctx, cmd.clip ?? "LOOP Bass");
+            if (!f) throw new Error(`clip not found: ${cmd.clip}`);
+            const c: any = f.clip;
+            const keep = (c.notes as any[]).filter(n => n.startTime >= 0).map(n => ({ pitch: n.pitch, startTime: n.startTime, duration: n.duration, velocity: n.velocity }));
+            const steps: string[] = [];
+            const tries: [string, () => void][] = [
+                ["empty then set", () => { c.notes = []; c.notes = keep; }],
+                ["loopStart -4", () => { const ls = c.loopStart, sm = c.startMarker; c.startMarker = -4; c.loopStart = -4; c.notes = keep; c.loopStart = ls; c.startMarker = sm; }],
+            ];
+            for (const [name, fn] of tries) {
+                try { fn(); } catch (e: any) { steps.push(name + ": error " + String(e?.message ?? e)); continue; }
+                const left = (c.notes as any[]).filter(n => n.startTime < 0).length;
+                steps.push(name + ": " + left + " left");
+                if (!left) break;
+            }
+            return { steps, loopStart: c.loopStart, startMarker: c.startMarker };
+        }
         case "probeNegative": {   // can a clip hold a note before clip time 0? (ROADMAP 1.x: negative clip time)
             const f = findClip(ctx, cmd.clip ?? "LOOP Bass");
             if (!f) throw new Error(`clip not found: ${cmd.clip}`);
