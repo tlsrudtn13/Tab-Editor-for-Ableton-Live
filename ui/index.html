@@ -107,6 +107,7 @@
     <button class="btn rb" id="btn-insert" title="Insert chords, bass, a riff or drums into this clip">+ Insert</button>
     <button class="btn rb" id="btn-chord" title="Chord name at the cursor or selection (K): suggestions from the notes">Chord</button>
     <button class="btn rb" id="btn-autochords" title="Auto-detect chords (Shift+click clears auto)">Auto chords</button>
+    <button class="btn rb" id="btn-analysis" title="Show harmonic analysis">Analysis</button>
     <button class="btn rb" id="btn-lyrics" title="Lyrics (Ctrl+L): one syllable per note; Space / Tab next, - hyphen, Enter done">Lyrics</button>
     <div class="sp" id="sp-refinger"></div>
     <button class="btn rb" id="btn-refinger" title="Clear saved fingering and re-run auto fingering">Refinger</button>
@@ -186,7 +187,7 @@
 
   <div id="fretboard-panel">
     <div class="ph" id="fb-header">
-      <span>Fretboard</span>
+      <div class="seg an-tabs" id="an-bottom-tabs"><button class="sb on" id="an-tab-fretboard">Fretboard</button><button class="sb" id="an-tab-analysis">Analysis</button></div>
       <span id="fb-note-label"></span>
       <span id="fb-hover-label"></span>
       <span class="sb-spacer"></span>
@@ -214,6 +215,7 @@
       </span>
     </div>
     <div id="fretboard-wrap"><div id="fretboard-grid"></div></div>
+    <div id="analysis-panel" style="display:none"></div>
   </div>
 
   <div id="inspector" class="hidden">

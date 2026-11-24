@@ -7,6 +7,7 @@ import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi, numbe
 import { isDrumTrack, prepareDrumScore } from "./drums";
 import { scoreFonts } from "./theme";
 import { hideAlphaTabNotice } from "./alphaTabNotice";
+import { addAnalysisPdfPage } from "./analysisView";
 
 /* ── PDF Export (v2 그대로) ──────────────────────────────────────────────── */
 export var PDF_RENDER_W = 1406;
@@ -114,6 +115,8 @@ export function buildPdf(pc: HTMLElement) {
     pdf.addImage(cv.toDataURL("image/png"), "PNG", MARGIN, y, availW, hMm);
     y += hMm;
   }
+
+  addAnalysisPdfPage(pdf, state.curTrack.name);
 
   var fname = state.curTrack.name.replace(/[/\\?%*:|"<>]/g, "_") + ".pdf";
   var blob  = pdf.output("blob");

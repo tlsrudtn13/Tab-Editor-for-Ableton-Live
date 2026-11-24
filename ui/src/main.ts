@@ -33,6 +33,7 @@ import { bindApply } from "./apply";
 import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
 import { bindInsertPanel, refreshInsertPanel } from "./insertPanel";
+import { bindAnalysis, refreshAnalysisUi } from "./analysisView";
 import { initPractice } from "./practice";
 
 // Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
@@ -121,6 +122,7 @@ bindRb("rb-ins", () => ek()?.insertBeatAtCursor?.());
 bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 bindDrums();
 bindInsertPanel();
+bindAnalysis();
 bindAnnotations();
 initPractice();
 
@@ -163,6 +165,7 @@ export function loadTrack(id) {
   state.selectedNoteIndices = [];   // before updateEditUi: the old tab's indices must not be read against this tab's notes
   if (window.__editKeys) window.__editKeys.updateEditUi();
   refreshAnnUi();
+  refreshAnalysisUi();
   clearNoteOverlays();
   // 악기 드롭다운을 현재 트랙의 악기와 동기화
   var instSel = document.getElementById("ui-instrument") as HTMLSelectElement | null;
