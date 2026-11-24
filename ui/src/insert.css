@@ -5,10 +5,12 @@
 :root {
   --ip-safe: #3dd68c; --ip-tension: #ffb43a; --ip-color: #d770f5;
   --ip-card: #1e1e1e; --ip-line: #383838; --ip-muted: #a8a8a8; --ip-on-bg: #382518;
+  --ip-pop-border: #4a4a4a;
 }
 :root.light {
   --ip-safe: #0e8a4a; --ip-tension: #b86800; --ip-color: #8e25b8;
   --ip-card: #ffffff; --ip-line: #c8c8c8; --ip-muted: #6a6a6a; --ip-on-bg: #fff0e5;
+  --ip-pop-border: #ccc;
 }
 
 #insert-panel {
@@ -53,11 +55,15 @@
 .ip-more { margin-top:8px; border-top:1px solid var(--ip-line); padding-top:4px; }
 .ip-more > summary { cursor:pointer; font-size:10px; color:var(--p-live-text-secondary); padding:3px 0; }
 
-.ip-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:6px; }
-.ip-card { position:relative; height:42px; padding:5px 7px; background:var(--ip-card); border:1px solid var(--ip-line); border-radius:2px; display:flex; flex-direction:column; justify-content:center; }
+.ip-strip { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:6px; position:relative; }
+.ip-card { position:relative; height:42px; padding:5px 7px; background:var(--ip-card); border:1px solid var(--ip-line); border-radius:2px; display:flex; flex-direction:column; justify-content:center; text-align:left; width:100%; }
+.ip-card:hover, .ip-card:focus { border-color:var(--p-live-accent-primary); outline:none; }
 .ip-card b { font-size:12px; }
 .ip-card i, .ip-chip i { font-style:normal; font-size:9px; color:var(--ip-muted); }
 .ip-card .ip-dot { position:absolute; top:5px; right:5px; }
+.ip-card-rm { position:absolute; right:3px; bottom:3px; width:14px; height:14px; line-height:14px; text-align:center; font-size:12px; color:var(--ip-muted); display:none; border-radius:2px; }
+.ip-card:hover .ip-card-rm, .ip-card:focus .ip-card-rm, .ip-card:focus-within .ip-card-rm { display:block; }
+.ip-card-rm:hover { color:#ff764d; }
 .ip-dot { display:inline-block; width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 .ip-dot.t-safe { background:var(--ip-safe); } .ip-dot.t-tension { background:var(--ip-tension); } .ip-dot.t-color { background:var(--ip-color); }
 .ip-chips { display:flex; flex-wrap:wrap; gap:4px; }
@@ -78,3 +84,32 @@
 body.insert-open #alphaTab { min-width:0; }
 /* the status text must not push Close onto a second toolbar row while the panel is open (D020) */
 body.insert-open #status { max-width:160px; }
+
+.ip-key-pill {
+  height:20px; padding:0 7px; background:var(--ip-card); border:1px solid var(--ip-line);
+  font-size:10px; border-radius:2px; color:var(--p-live-text-primary);
+  display:inline-flex; align-items:center; gap:5px; white-space:nowrap;
+}
+.ip-key-pill:hover { border-color:var(--p-live-accent-primary); }
+.ip-key-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; display:inline-block; }
+#ui-key.ip-key-flash { outline:2px solid #ff764d; outline-offset:1px; }
+
+.ip-pop {
+  position:fixed; width:210px; background:var(--p-live-control-bg);
+  border:1px solid var(--ip-pop-border); border-radius:4px; padding:6px; z-index:1000;
+  font-size:11px; color:var(--p-live-text-primary);
+}
+.ip-pop-head { font-size:9px; text-transform:uppercase; color:var(--ip-muted); margin:2px 0 4px; letter-spacing:.04em; }
+.ip-pop-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:6px; }
+.ip-pop-chip {
+  height:24px; display:flex; align-items:center; gap:4px; padding:0 5px;
+  background:var(--ip-card); border:1px solid var(--ip-line); border-radius:2px;
+  color:var(--p-live-text-primary); font-size:10px; min-width:0;
+}
+.ip-pop-chip b { font-size:10px; font-weight:700; }
+.ip-pop-chip i { font-style:normal; font-size:9px; color:var(--ip-muted); margin-left:auto; }
+.ip-pop-chip.cur { border:1.5px solid #ff764d; background:var(--ip-on-bg); }
+.ip-pop-chip:hover, .ip-pop-chip:focus { border-color:var(--p-live-accent-primary); outline:none; }
+.ip-pop-foot { display:flex; align-items:center; gap:8px; border-top:1px solid var(--ip-line); padding-top:4px; }
+.ip-pop-rm { height:20px; padding:0 8px; font-size:10px; }
+.ip-pop-esc { font-size:9px; color:var(--ip-muted); }

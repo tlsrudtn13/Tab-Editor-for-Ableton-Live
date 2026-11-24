@@ -19,7 +19,8 @@ import { kickOnsets } from "../../src/notation/bandBass.js";
 import { fitToKit, kickPitches, kitPitchMap } from "../../src/notation/drumKit.js";
 import { suggestNext } from "../../src/notation/chordSuggest.js";
 import { romanOf, type ChordTier } from "../../src/notation/harmonyAnalysis.js";
-import { chordName, keyRefFromKeyInfo, PC_NAMES, type ChordSym, type KeyRef } from "../../src/notation/harmony.js";
+import { chordName, PC_NAMES, type ChordSym, type KeyRef } from "../../src/notation/harmony.js";
+import { effectiveKey, swapChoices, type EffectiveKeyResult, type SwapChoice } from "./effectiveKey.js";
 
 type Target = "sel" | "1" | "2" | "4" | "8" | "clip";
 type Range = { start: number; end: number; bars: number };
@@ -38,11 +39,11 @@ const ui = {
   source: "preset:pop",          // "preset:<id>" | "track:<index>" | "custom"
   sourceSet: false,              // the user picked the source: keep it
   customChords: [] as ChordSym[],
-  keyChoice: "auto",             // "auto" | "<root>:<mode>"
   target: "4" as Target,
   kickTrack: -1,                 // index in state.tracks, -1 = none
   seed: 1,
   moreOpen: false,
+  popCard: null as number | null, // index in the shown chord strip
   // the last insert: its undo entry and tab (so Undo/Vary never take back another edit), where it went and what it played
   lastInsert: null as null | { entry: any; track: any; mode: "add" | "replace"; range: Range; part: InsertPart; sig: string },
 };
@@ -91,6 +92,9 @@ function analysisOf(t: any): ClipAnalysis | null {
   return a;
 }
 
+/** Analysis of a tab (for the key pill / annotate); wraps the cached analysis. */
+export function tabAnalysis(t: any): ClipAnalysis | null { return analysisOf(t); }
+
 /** Chords sound at once in most of the track (a guitar strum, pads), not a single line. */
 function chordalTrack(t: any): boolean {
   if (!pitchedTrack(t)) return false;
@@ -103,25 +107,14 @@ function chordalTrack(t: any): boolean {
   return together >= 0.4 * ns.length && (analysisOf(t)?.chords.length || 0) > 0;
 }
 
-const sureWord = (c: number) => c >= 0.7 ? "sure" : c >= 0.4 ? "likely" : "est.";
 function sourceTrack(): any {
   if (!ui.source.startsWith("track:")) return null;
   return (state.tracks || [])[Number(ui.source.slice(6))] || null;
 }
 
-/** Key used to build: the panel's choice, else the clip's fixed key, else the analysis, else C major. */
-function currentKey(): { key: KeyRef; from: string } {
-  if (ui.keyChoice !== "auto") {
-    const [r, m] = ui.keyChoice.split(":");
-    return { key: { root: Number(r), mode: m === "minor" ? "minor" : "major" }, from: "set" };
-  }
-  const fixed = state.curTrack && state.curTrack.ann && state.curTrack.ann.key;
-  if (fixed) {
-    try { return { key: keyRefFromKeyInfo({ fifths: fixed.fifths, mode: fixed.minor ? "minor" : "major" } as any), from: "clip key" }; } catch {}
-  }
-  const a = analysisOf(sourceTrack()) || analysisOf(state.curTrack);
-  if (a && a.key) return { key: a.key, from: sureWord(a.confidence) };
-  return { key: { root: 0, mode: "major" }, from: "default" };
+/** Effective key for the whole editor (toolbar wins): fixed → Live scale → current tab analysis → C major. */
+function currentKey(): EffectiveKeyResult {
+  return effectiveKey(state.curTrack, analysisOf(state.curTrack));
 }
 
 /** Beat range the insert writes: whole bars from the cursor (or selection), inside the clip. */
@@ -298,18 +291,52 @@ function vary() {
 const TIER_CLASS: Record<ChordTier, string> = { safe: "t-safe", tension: "t-tension", color: "t-color" };
 const TIER_HINT: Record<ChordTier, string> = { safe: "Stable: feels at home", tension: "Tension: wants to move on", color: "Colour: borrowed or surprising" };
 
-function chordStrip(chords: PlacedChordIn[], key: KeyRef): string {
-  const seen: string[] = [];
-  const cards: string[] = [];
+function shownChordSyms(chords: PlacedChordIn[]): ChordSym[] {
+  const out: ChordSym[] = [];
   for (const c of chords) {
     const name = chordName(c);
-    if (seen.length < 8 && (seen.length === 0 || seen[seen.length - 1] !== name)) {
-      seen.push(name);
-      const r = romanOf(c, key);
-      cards.push('<div class="ip-card" title="' + esc(TIER_HINT[r.tier]) + '"><span class="ip-dot ' + TIER_CLASS[r.tier] + '"></span><b>' + esc(name) + '</b><i>' + esc(r.roman) + "</i></div>");
+    if (out.length < 8 && (out.length === 0 || chordName(out[out.length - 1]!) !== name)) {
+      out.push({ root: c.root, quality: c.quality, ...(c.bass !== undefined ? { bass: c.bass } : {}) });
     }
   }
-  return cards.length ? '<div class="ip-strip">' + cards.join("") + "</div>" : '<div class="ip-empty">No chords in this range</div>';
+  return out;
+}
+
+function chordStrip(chords: PlacedChordIn[], key: KeyRef): string {
+  const syms = shownChordSyms(chords);
+  if (!syms.length) { ui.popCard = null; return '<div class="ip-empty">No chords in this range</div>'; }
+  if (ui.popCard !== null && (ui.popCard < 0 || ui.popCard >= syms.length)) ui.popCard = null;
+  const cards = syms.map((c, i) => {
+    const name = chordName(c);
+    const r = romanOf(c, key);
+    const rm = syms.length > 1 ? '<span class="ip-card-rm" data-remove="' + i + '" title="Remove chord">×</span>' : "";
+    return '<button class="ip-card" data-card="' + i + '" title="' + esc(TIER_HINT[r.tier]) + '">' +
+      '<span class="ip-dot ' + TIER_CLASS[r.tier] + '"></span><b>' + esc(name) + '</b><i>' + esc(r.roman) + "</i>" + rm + "</button>";
+  });
+  const pop = ui.popCard !== null ? popoverHtml(key, ui.popCard, syms[ui.popCard]!, syms.length) : "";
+  return '<div class="ip-strip">' + cards.join("") + pop + "</div>";
+}
+
+function popoverHtml(key: KeyRef, cardIdx: number, curSym: ChordSym, cardCount: number): string {
+  const choices = swapChoices(key);
+  const keyChoices = choices.map((c, i) => ({ c, i })).filter(x => x.c.group === "key");
+  const borChoices = choices.map((c, i) => ({ c, i })).filter(x => x.c.group === "borrowed");
+  const chip = (x: { c: SwapChoice; i: number }) => {
+    const cur = chordName(curSym) === x.c.name && curSym.quality === x.c.chord.quality && (curSym.bass ?? -1) === (x.c.chord.bass ?? -1);
+    return '<button class="ip-pop-chip' + (cur ? " cur" : "") + '" data-pop-pick="' + x.i + '">' +
+      '<span class="ip-dot ' + TIER_CLASS[x.c.tier] + '"></span><b>' + esc(x.c.name) + '</b><i>' + esc(x.c.roman) + "</i></button>";
+  };
+  const head = (txt: string) => '<div class="ip-pop-head">' + esc(txt) + "</div>";
+  let h = '<div id="ip-chord-pop" class="ip-pop" data-card="' + cardIdx + '">';
+  h += head("IN KEY (" + keyLabel(key) + ")");
+  h += '<div class="ip-pop-grid">' + keyChoices.map(chip).join("") + "</div>";
+  if (borChoices.length) {
+    h += head("BORROWED");
+    h += '<div class="ip-pop-grid">' + borChoices.map(chip).join("") + "</div>";
+  }
+  h += '<div class="ip-pop-foot"><button class="btn ip-pop-rm" data-pop-rm="1"' + (cardCount <= 1 ? " disabled" : "") + '>Remove</button><span class="ip-pop-esc">Esc</span></div>';
+  h += "</div>";
+  return h;
 }
 
 function nextChips(chords: PlacedChordIn[], key: KeyRef): string {
@@ -383,13 +410,34 @@ function relativeNote(key: KeyRef, used: KeyRef): string {
     esc("Plays in " + keyLabel(used) + " (relative key) · pick a " + key.mode + " progression for " + keyLabel(key)) + "</div>";
 }
 
-function keySelect(cur: { key: KeyRef; from: string }): string {
-  const items: [string, string][] = [["auto", "Key: " + keyLabel(cur.key) + (ui.keyChoice === "auto" ? " (" + cur.from + ")" : "")]];
-  const groups = [
-    { label: "Major", items: PC_NAMES.map((n, r) => [r + ":major", n + " major"] as [string, string]) },
-    { label: "Minor", items: PC_NAMES.map((n, r) => [r + ":minor", n + " minor"] as [string, string]) },
-  ];
-  return select("key", ui.keyChoice, items, groups);
+function keyPill(cur: EffectiveKeyResult): string {
+  const dot = cur.source === "fixed" ? "#ff764d"
+    : cur.source === "live" ? "#3dd68c"
+    : cur.source === "analysis" ? (cur.sure === "likely" ? "#ffb43a" : cur.sure === "est." ? "#8e8e8e" : "#3dd68c")
+    : "#8e8e8e";
+  const text = keyLabel(cur.key) + (cur.source === "fixed" ? " (fixed)" : " (auto)");
+  return '<button class="ip-key-pill" data-act="key-pill" title="Change the key in the toolbar">' +
+    '<span class="ip-key-dot" style="background:' + dot + '"></span>' + esc(text) + "</button>";
+}
+
+function positionPopover() {
+  const pop = document.getElementById("ip-chord-pop") as HTMLElement | null;
+  if (!pop || ui.popCard === null) return;
+  const strip = pop.parentElement as HTMLElement | null;
+  const card = strip?.querySelector('.ip-card[data-card="' + ui.popCard + '"]') as HTMLElement | null;
+  if (!strip || !card) return;
+  const cr = card.getBoundingClientRect();
+  const popW = 210;
+  let left = cr.left;
+  left = Math.max(4, Math.min(left, window.innerWidth - popW - 4));
+  pop.style.width = popW + "px";
+  pop.style.left = left + "px";
+  pop.style.top = (cr.bottom + 4) + "px";
+  pop.style.bottom = "auto";
+  const pr = pop.getBoundingClientRect();
+  if (pr.bottom > window.innerHeight - 4) {
+    pop.style.top = (cr.top - pr.height - 4) + "px";
+  }
 }
 
 export function render() {
@@ -397,7 +445,7 @@ export function render() {
   el.classList.toggle("hidden", !ui.open);
   document.body.classList.toggle("insert-open", ui.open);
   document.getElementById("btn-insert")?.classList.toggle("on", ui.open);
-  if (!ui.open) return;
+  if (!ui.open) { ui.popCard = null; return; }
   const drum = isDrumTrack(state.curTrack);
   if (drum && ui.part !== "drums") ui.part = "drums";
   if (!drum && ui.part === "drums") ui.part = "chords";
@@ -411,7 +459,7 @@ export function render() {
   const feels = FEELS[ui.part];
   const can = editable() && !!p;
   el.innerHTML =
-    '<div class="ip-head"><span class="ip-title">Insert</span>' + (ui.part === "drums" ? '<span class="ip-sp"></span>' : keySelect(cur)) + '<button class="btn ip-x" data-act="close" title="Close the Insert panel">✕</button></div>' +
+    '<div class="ip-head"><span class="ip-title">Insert</span>' + (ui.part === "drums" ? '<span class="ip-sp"></span>' : keyPill(cur)) + '<button class="btn ip-x" data-act="close" title="Close the Insert panel">✕</button></div>' +
     '<div class="ip-parts">' + PARTS.map(x => {
       const off = drum ? x.id !== "drums" : x.id === "drums";
       return '<button class="' + (x.id === ui.part ? "on" : off ? "is-off" : "") + '" data-part="' + x.id + '"' + (off ? ' aria-disabled="true" title="' + (drum ? "This is a drum track" : "Open a drum track for drums") + '"' : "") + ">" + x.label + "</button>";
@@ -432,6 +480,7 @@ export function render() {
     '<span class="ip-count">' + (p ? p.res.notes.length + " notes · " + p.range.bars + (p.range.bars === 1 ? " bar" : " bars") : editable() ? "Put the cursor in the clip" : "Open a clip to insert") + "</span></div>" +
     '<div class="ip-main"><button class="btn" data-act="replace"' + (can ? "" : " disabled") + ' title="Remove the notes in these bars, then insert">Replace</button>' +
     '<button class="btn ip-go" data-act="insert"' + (can ? "" : " disabled") + ">+ Insert " + PART_NOUN[ui.part] + "</button></div></div>";
+  positionPopover();
 }
 
 /** "4 bars from cursor" says when the clip end leaves fewer bars (design D022). */
@@ -465,13 +514,85 @@ function setOpt(name: string, v: string) {
   ui.custom[ui.part] = true;
 }
 
+function flashToolbarKey() {
+  const sel = document.getElementById("ui-key") as HTMLElement | null;
+  if (!sel) return;
+  sel.focus();
+  sel.classList.add("ip-key-flash");
+  setTimeout(() => sel.classList.remove("ip-key-flash"), 600);
+}
+
+function ensureCustomChordsFromShown(): ChordSym[] | null {
+  const p = preview();
+  if (!p) return null;
+  if (ui.source !== "custom") ui.customChords = shownChordSyms(p.res.chords);
+  return ui.customChords;
+}
+
+function focusFirstPopChip() {
+  const pop = document.getElementById("ip-chord-pop");
+  if (!pop) return;
+  const cur = pop.querySelector(".ip-pop-chip.cur") as HTMLElement | null;
+  const first = cur || pop.querySelector(".ip-pop-chip") as HTMLElement | null;
+  first?.focus();
+}
+
+function closePopover(focusCard = false) {
+  const cardIdx = ui.popCard;
+  ui.popCard = null;
+  if (focusCard && cardIdx !== null) {
+    render();
+    const card = document.querySelector('#insert-panel .ip-card[data-card="' + cardIdx + '"]') as HTMLElement | null;
+    card?.focus();
+  } else {
+    render();
+  }
+}
+
+function removeCard(cardIdx: number) {
+  const syms = ensureCustomChordsFromShown();
+  if (!syms || syms.length <= 1) return;
+  if (cardIdx < 0 || cardIdx >= syms.length) return;
+  syms.splice(cardIdx, 1);
+  ui.source = "custom";
+  ui.popCard = null;
+  render();
+  const next = Math.min(cardIdx, syms.length - 1);
+  const card = document.querySelector('#insert-panel .ip-card[data-card="' + next + '"]') as HTMLElement | null;
+  card?.focus();
+}
+
+function pickSwap(choiceIdx: number) {
+  if (ui.popCard === null) return;
+  const p = preview(); if (!p) return;
+  const choices = swapChoices(p.req.key);
+  const choice = choices[choiceIdx]; if (!choice) return;
+  const syms = ensureCustomChordsFromShown(); if (!syms) return;
+  if (ui.popCard < 0 || ui.popCard >= syms.length) return;
+  syms[ui.popCard] = { ...choice.chord };
+  ui.source = "custom";
+  const cardIdx = ui.popCard;
+  ui.popCard = null;
+  render();
+  const card = document.querySelector('#insert-panel .ip-card[data-card="' + cardIdx + '"]') as HTMLElement | null;
+  card?.focus();
+}
+
 function onClick(e: Event) {
-  const b = (e.target as Element).closest("button") as HTMLButtonElement | null; if (!b || b.disabled) return;
+  const target = e.target as Element;
+  const rm = target.closest(".ip-card-rm") as HTMLElement | null;
+  if (rm && rm.dataset.remove !== undefined) { e.stopPropagation(); removeCard(Number(rm.dataset.remove)); return; }
+
+  const b = target.closest("button") as HTMLButtonElement | null; if (!b) return;
+  if (b.dataset.popPick !== undefined) { pickSwap(Number(b.dataset.popPick)); return; }
+  if (b.dataset.popRm !== undefined) { if (!b.disabled) removeCard(ui.popCard ?? -1); return; }
+  if (b.disabled) return;
   if (b.classList.contains("is-off")) { status(b.title); return; }   // greyed: say why (a tooltip may not show)
-  if (b.dataset.part) { ui.part = b.dataset.part as InsertPart; defaultSource(); render(); return; }
+  if (b.dataset.card !== undefined) { ui.popCard = Number(b.dataset.card); render(); focusFirstPopChip(); return; }
+  if (b.dataset.part) { ui.part = b.dataset.part as InsertPart; ui.popCard = null; defaultSource(); render(); return; }
   if (b.dataset.feel) {
     const f = feelOf(ui.part, b.dataset.feel); if (!f) return;
-    ui.feel[ui.part] = f.id; ui.opts[ui.part] = { ...f.opts }; ui.custom[ui.part] = false; render(); return;
+    ui.feel[ui.part] = f.id; ui.opts[ui.part] = { ...f.opts }; ui.custom[ui.part] = false; ui.popCard = null; render(); return;
   }
   if (b.dataset.next !== undefined) { addNext(Number(b.dataset.next)); return; }
   const segEl = b.closest(".ip-seg") as HTMLElement | null;
@@ -482,6 +603,7 @@ function onClick(e: Event) {
     case "replace": doInsert("replace"); break;
     case "vary": vary(); break;
     case "undo": undoInsert(); break;
+    case "key-pill": flashToolbarKey(); break;
   }
 }
 
@@ -499,17 +621,17 @@ function addNext(i: number) {
   if (ui.customChords.length >= 8) ui.customChords.shift();
   ui.customChords.push(sug.chord);
   ui.source = "custom";
-  if (ui.keyChoice === "auto") ui.keyChoice = key.root + ":" + key.mode;   // keep the key the chords were picked in
+  ui.popCard = null;
   render();
 }
 
 function onChange(e: Event) {
   const s = e.target as HTMLSelectElement; const name = s.dataset && s.dataset.sel; if (!name) return;
   if (name === "source") { ui.source = s.value; ui.sourceSet = true; }
-  else if (name === "key") ui.keyChoice = s.value;
   else if (name === "target") ui.target = s.value as Target;
   else if (name === "kickTrack") ui.kickTrack = Number(s.value);
   else setOpt(name, s.value);
+  ui.popCard = null;
   render();
 }
 
@@ -535,12 +657,96 @@ export function toggleInsertPanel(force?: boolean) {
 /** Called after a tab switch or an edit elsewhere: refresh the counts and chords. */
 export function refreshInsertPanel() { if (ui.open) { defaultSource(); render(); } }
 
+function onKeyDown(e: KeyboardEvent) {
+  const panel = document.getElementById("insert-panel");
+  if (!panel || panel.classList.contains("hidden")) return;
+  const t = e.target as HTMLElement | null;
+  if (!t || !panel.contains(t)) return;
+  const pop = document.getElementById("ip-chord-pop");
+  const inPop = !!(pop && pop.contains(t));
+
+  if (e.key === "Escape" && ui.popCard !== null) { e.preventDefault(); e.stopPropagation(); closePopover(true); return; }
+
+  if (inPop) {
+    const chips = Array.from(pop!.querySelectorAll<HTMLButtonElement>(".ip-pop-chip"));
+    const idx = chips.indexOf(t as HTMLButtonElement);
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closePopover(true); return; }
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); e.stopPropagation(); if (ui.popCard !== null) removeCard(ui.popCard); return; }
+    if (e.key === "Enter") {
+      if (idx >= 0) { e.preventDefault(); e.stopPropagation(); pickSwap(Number(chips[idx]!.dataset.popPick)); }
+      return;
+    }
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+      e.preventDefault(); e.stopPropagation();
+      if (idx < 0 || !chips.length) return;
+      const cols = 2;
+      let next = idx;
+      if (e.key === "ArrowLeft") next = idx - 1;
+      if (e.key === "ArrowRight") next = idx + 1;
+      if (e.key === "ArrowUp") next = idx - cols;
+      if (e.key === "ArrowDown") next = idx + cols;
+      if (next >= 0 && next < chips.length) chips[next]!.focus();
+      return;
+    }
+    // Stop other keys from leaking while in popover? spec says "Stop these keys..." but be safe for nav
+    if (e.key === " " ) { e.preventDefault(); e.stopPropagation(); if (idx >= 0) pickSwap(Number(chips[idx]!.dataset.popPick)); return; }
+    return;
+  }
+
+  const card = t.closest(".ip-card") as HTMLButtonElement | null;
+  if (card && card.dataset.card !== undefined) {
+    const cards = Array.from(panel.querySelectorAll<HTMLButtonElement>(".ip-card"));
+    const ci = cards.indexOf(card);
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault(); e.stopPropagation();
+      const dir = e.key === "ArrowRight" ? 1 : -1;
+      const ni = ci + dir;
+      if (ni >= 0 && ni < cards.length) cards[ni]!.focus();
+      return;
+    }
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); e.stopPropagation();
+      ui.popCard = Number(card.dataset.card);
+      render();
+      focusFirstPopChip();
+      return;
+    }
+    if ((e.key === "Delete" || e.key === "Backspace") && cards.length > 1) {
+      e.preventDefault(); e.stopPropagation();
+      removeCard(Number(card.dataset.card));
+      return;
+    }
+  }
+
+  // While focus is inside the panel, stop handled nav keys from reaching editor global handler.
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " ", "Delete", "Backspace", "Escape"].includes(e.key)) {
+    // Only stop propagation if this is a panel-interactive element (buttons, selects, etc.)
+    // but spec says "Stop these keys from reaching the editor's global key handler (stopPropagation) while the focus is inside the panel".
+    e.stopPropagation();
+  }
+}
+
 export function bindInsertPanel() {
   const el = document.getElementById("insert-panel"); if (!el) return;
   el.addEventListener("click", onClick);
   el.addEventListener("change", onChange);
+  el.addEventListener("keydown", onKeyDown);
   // the cursor moves on the score while the panel is open: refresh range and count when the mouse comes back
   el.addEventListener("pointerenter", () => { if (ui.open && !el.contains(document.activeElement)) render(); });
   el.addEventListener("toggle", e => { if ((e.target as Element).classList?.contains("ip-more")) ui.moreOpen = (e.target as HTMLDetailsElement).open; }, true);
+  el.addEventListener("scroll", () => { if (ui.popCard !== null) positionPopover(); }, true);
+  window.addEventListener("resize", () => { if (ui.popCard !== null) positionPopover(); });
   document.getElementById("btn-insert")?.addEventListener("click", () => toggleInsertPanel());
+  document.addEventListener("mousedown", (e) => {
+    if (ui.popCard === null) return;
+    const pop = document.getElementById("ip-chord-pop");
+    const panel = document.getElementById("insert-panel");
+    if (!panel) return;
+    const target = e.target as Element;
+    if (pop && pop.contains(target)) return;
+    if (target.closest?.(".ip-card")) return;
+    ui.popCard = null;
+    if (panel.contains(target)) { pop?.remove(); }
+    else { closePopover(false); }
+  }, true);
 }

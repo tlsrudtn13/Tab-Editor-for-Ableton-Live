@@ -181,3 +181,9 @@ describe("relative key from the chords", () => {
     expect(analyzeChords(notes, { start: 0, end: 20 })[0]!.roman).toBe("i");
   });
 });
+
+describe("secondary dominant of V in minor", () => {
+  it("F#7 in E minor reads V7/V (the minor key's V is major)", () => {
+    expect(romanOf({ root: 6, quality: "7" }, { root: 4, mode: "minor" }).roman).toBe("V7/V");
+  });
+});

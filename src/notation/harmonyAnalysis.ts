@@ -153,7 +153,8 @@ function secondaryDominant(chord: ChordSym, key: KeyRef, diatonic: boolean): Rom
   // A diminished degree (vii° in major, ii° in minor) is not tonicised.
   if ((key.mode === "major" && targetDeg === 6) || (key.mode === "minor" && targetDeg === 1)) return undefined;
   // target numeral in key - use diatonic case for that degree
-  const targetMinorCase = key.mode === "major" ? [1, 2, 5, 6].includes(targetDeg) : [0, 1, 3, 4].includes(targetDeg);
+  // a secondary dominant points at a major-sounding V in minor too ("V7/V", as the minor key's V chord is major)
+  const targetMinorCase = key.mode === "major" ? [1, 2, 5, 6].includes(targetDeg) : [0, 1, 3].includes(targetDeg);
   const targetNumeral = numeralForDegree(targetDeg, targetMinorCase);
   const roman = (triad ? "V/" : "V7/") + targetNumeral;
   return { roman, fn: "D", tier: "color", diatonic: false };

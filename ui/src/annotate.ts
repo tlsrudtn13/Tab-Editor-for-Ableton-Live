@@ -14,6 +14,9 @@ import { isDrumTrack } from "./drums";
 import { findBeatBoundsAt, tabBarBoundsAt } from "./overlay";
 import { saveAnnUndo } from "./keys";
 import { chordCandidates, autoChord, type ChordCandidate } from "../../src/notation/chordDetect.js";
+import { majorFifths } from "../../src/notation/music.js";
+import { effectiveKey } from "./effectiveKey.js";
+import { tabAnalysis } from "./insertPanel.js";
 
 const MAJ = ["Cb","Gb","Db","Ab","Eb","Bb","F","C","G","D","A","E","B","F#","C#"];   // fifths -7..7
 const MIN = ["Ab","Eb","Bb","F","C","G","D","A","E","B","F#","C#","G#","D#","A#"];
@@ -291,9 +294,23 @@ export function refreshAnnUi() {
   const t = state.curTrack;
   const sel = document.getElementById("ui-key") as HTMLSelectElement | null;
   if (sel) {
-    const live = scoreKeyLiveLabel();
-    const first = sel.options[0]; if (first) first.textContent = "Key: " + (live || "auto");   // follows Live's scale (tooltip); a fixed key gets an orange border
     const k = t && t.ann && t.ann.key;
+    const first = sel.options[0];
+    if (first) {
+      if (k) {
+        const live = scoreKeyLiveLabel();
+        first.textContent = "Key: " + (live || "auto");   // a fixed key keeps today's behaviour
+        first.removeAttribute("title");
+      } else {
+        const e0 = t ? effectiveKey(t, tabAnalysis(t)) : null;
+        const ek = e0 && e0.source !== "default" ? e0 : null;   // a drum tab or an empty clip: plain "Key: auto"
+        const fifths = ek ? (ek.key.mode === "major" ? majorFifths(ek.key.root) : majorFifths((ek.key.root + 3) % 12)) : 0;
+        const short = ek ? keyLabel({ fifths, minor: ek.key.mode === "minor" }) : "auto";
+        first.textContent = ek ? "Key: " + short + " (auto)" : "Key: auto";
+        const from = ek?.source === "live" ? "Live scale" : "the notes (" + (ek?.sure || "est.") + ")";
+        if (ek) first.title = "Auto key from " + from; else first.removeAttribute("title");
+      }
+    }
     sel.value = k ? k.fifths + ":" + (k.minor ? "min" : "maj") : "live";
     sel.classList.toggle("fixed", !!k);
     sel.disabled = !t;
