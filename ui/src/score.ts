@@ -20,6 +20,7 @@ import { applyTechniquesToScore } from "./techUi";
 import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection, stringAtY, tabBarBoundsAt } from "./overlay";
 import { drawLoopOverlay } from "./practice";
 import { drawAnalysisOverlay, refreshAnalysisUi } from "./analysisView";
+import { applyChordDiagrams, refreshDiagramsUi } from "./chordDiagramsUi";
 import { ensureCursor, rebuildSlotsFromApi, setCursor, slotAt, noteAtCursor } from "./cursor";
 import { bindDragSelection, consumeRecentDrag, isDragSelecting } from "./dragSelect";
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
@@ -187,7 +188,7 @@ export function createApi() {
   });
 
   api.scoreLoaded.on(function(score) {
-    hideChordDiagrams(score);
+    applyChordDiagrams(score);
     numberEveryFourBars(score);
     applyStaffMode(score);
     colorizeOutOfRange(score);   // ★ 음역 밖 노트 빨간색, 편집한 노트 주황
@@ -213,6 +214,7 @@ export function createApi() {
     try { drawLoopOverlay(); } catch(e) {}
     try { drawAnalysisOverlay(); } catch(e) {}
     try { refreshAnalysisUi(); } catch(e) {}
+    try { refreshDiagramsUi(); } catch(e) {}
   });
   api.soundFontLoaded.on(function() { log("Soundfont loaded"); });
   if (api.playerReady) api.playerReady.on(function() { log("Player ready"); });

@@ -34,6 +34,7 @@ import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
 import { bindInsertPanel, refreshInsertPanel } from "./insertPanel";
 import { bindAnalysis, refreshAnalysisUi } from "./analysisView";
+import { bindDiagrams, refreshDiagramsUi } from "./chordDiagramsUi";
 import { initPractice } from "./practice";
 
 // Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
@@ -123,6 +124,7 @@ bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 bindDrums();
 bindInsertPanel();
 bindAnalysis();
+bindDiagrams(rebuildScore);
 bindAnnotations();
 initPractice();
 
@@ -171,6 +173,7 @@ export function loadTrack(id) {
   var instSel = document.getElementById("ui-instrument") as HTMLSelectElement | null;
   if (instSel) instSel.value = instrumentKeyOf(trk.instrument);
   buildFretboard();          // 트랙별 악기(줄 수) 반영
+  refreshDiagramsUi();
   log("Loading: \"" + trk.name + "\" (" + trk.noteCount + " notes)");
   clearFretboard();
   showSelection(null);

@@ -3,7 +3,8 @@ import { jsPDF } from "jspdf";
 import bravuraFontUrl from "@alphatab-font/Bravura.otf?inline";
 import { state } from "./state";
 import { log, status } from "./log";
-import { applyStaffMode, getXmlForMode, hideChordDiagrams, loadXmlIntoApi, numberEveryFourBars } from "./score";
+import { applyStaffMode, getXmlForMode, loadXmlIntoApi, numberEveryFourBars } from "./score";
+import { applyChordDiagrams } from "./chordDiagramsUi";
 import { isDrumTrack, prepareDrumScore } from "./drums";
 import { scoreFonts } from "./theme";
 import { hideAlphaTabNotice } from "./alphaTabNotice";
@@ -53,7 +54,7 @@ export function exportPDF() {
     player: { enablePlayer: false }
   });
 
-  printApi.scoreLoaded.on(function(score) { hideChordDiagrams(score); numberEveryFourBars(score); applyStaffMode(score); });
+  printApi.scoreLoaded.on(function(score) { applyChordDiagrams(score); numberEveryFourBars(score); applyStaffMode(score); });
   printApi.error.on(function(e) {
     log("PDF render error: " + (e.message || JSON.stringify(e)));
     cleanup();
