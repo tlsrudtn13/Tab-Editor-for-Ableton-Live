@@ -33,6 +33,7 @@ import { bindApply } from "./apply";
 import "./style.css";
 import { bindDrums, enterDrumMode, isDrumTrack, leaveDrumMode } from "./drums";
 import { bindInsertPanel, refreshInsertPanel } from "./insertPanel";
+import { initPractice } from "./practice";
 
 // Duration buttons: + = shorter (halve), - = longer (double), per T010 keymap.
 function adjustDuration(mode: string) {
@@ -121,6 +122,7 @@ bindRb("rb-del", () => ek()?.deleteBeatAtCursor?.());
 bindDrums();
 bindInsertPanel();
 bindAnnotations();
+initPractice();
 
 /* ── loadTrack ────────────────────────────────────────────────────────────── */
 export function loadTrack(id) {

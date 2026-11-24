@@ -18,6 +18,7 @@ import { getAtRes } from "./theme";
 import { buildFretboard, clearFretboard, getOpenStrings, getStringCount, lightFret, updateScaleOverlay } from "./fretboard";
 import { applyTechniquesToScore } from "./techUi";
 import { clearNoteOverlays, matchTrackNote, overlayBeatNotes, overlayOneNote, overlaySelectedNotes, showSelection, stringAtY, tabBarBoundsAt } from "./overlay";
+import { drawLoopOverlay } from "./practice";
 import { ensureCursor, rebuildSlotsFromApi, setCursor, slotAt, noteAtCursor } from "./cursor";
 import { bindDragSelection, consumeRecentDrag, isDragSelecting } from "./dragSelect";
 import { soundFontUrl, soundFontArrayBuffer, loadSoundFont } from "./soundfont";
@@ -208,6 +209,7 @@ export function createApi() {
       }
       overlaySelectedNotes();
     } catch(e) {}
+    try { drawLoopOverlay(); } catch(e) {}
   });
   api.soundFontLoaded.on(function() { log("Soundfont loaded"); });
   if (api.playerReady) api.playerReady.on(function() { log("Player ready"); });

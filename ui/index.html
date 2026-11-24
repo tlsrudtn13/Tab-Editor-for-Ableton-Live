@@ -33,7 +33,8 @@
 
     <!-- Group 2: Transport -->
     <button class="btn" id="btn-play" onclick="togglePlay()">&#9654; Play</button>
-    <button class="btn" id="btn-stop" onclick="stopPlay()">&#9632; Stop</button>
+    <button class="btn" id="btn-stop" onclick="stopPlay()" title="Stop">&#9632;</button>
+    <button class="btn" id="btn-practice">Practice</button>
     <div class="sp"></div>
 
     <!-- Group 3: Rhythm & Tuning -->
@@ -67,6 +68,24 @@
     <span id="edit-count" class="hidden">* 0 edits</span>
     <button class="btn edit-cancel" id="btn-cancel">Cancel</button>
     <button class="btn edit-apply" id="btn-apply">Apply to Clip</button>
+  </div>
+
+  <div id="practice-bar" style="display:none">
+    <button class="btn" id="btn-loop" style="width:56px;height:20px">&#8634; Loop</button>
+    <span id="loop-range" style="font-size:10px;color:var(--p-live-text-secondary);padding:0 6px">All</span>
+    <div class="sp"></div>
+    <span style="font-size:9.5px;color:var(--p-live-text-secondary)">Speed</span>
+    <div class="seg">
+      <button class="sb" data-speed="50" style="width:34px;height:20px">50%</button>
+      <button class="sb" data-speed="75" style="width:34px;height:20px">75%</button>
+      <button class="sb" data-speed="90" style="width:34px;height:20px">90%</button>
+      <button class="sb on" data-speed="100" style="width:34px;height:20px">100%</button>
+    </div>
+    <input type="range" id="ui-speed" min="50" max="100" step="5" value="100" style="width:72px;height:20px;accent-color:var(--p-live-accent-primary)">
+    <span id="speed-val" style="width:34px;font-size:10px;font-weight:700">100%</span>
+    <div class="sp"></div>
+    <button class="btn" id="btn-countin" style="width:64px;height:20px" title="Count in 1 bar before playing">1-bar in</button>
+    <button class="btn" id="btn-metro" style="width:58px;height:20px" title="Metronome">&#9833; Click</button>
   </div>
 
   <div id="edit-toolbar" class="hidden">
