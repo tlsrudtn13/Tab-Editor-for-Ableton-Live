@@ -13,7 +13,7 @@ import "./insert.css";
 import { analyzeClip, buildInsert, loopChords, loopOnsets, mergeInsert, type ChordSource, type ClipAnalysis, type InsertRequest, type PlacedChordIn } from "../../src/notation/insertEngine.js";
 import { FEELS, feelOf, type FeelOptions, type InsertPart } from "../../src/notation/insertFeels.js";
 import { PROGRESSIONS } from "../../src/notation/progressions.js";
-import { COMP_PATTERNS } from "../../src/notation/comping.js";
+import { COMP_PATTERNS, VARIABLE_PATTERNS } from "../../src/notation/comping.js";
 import { DRUM_PATTERNS } from "../../src/notation/drumPresets.js";
 import { kickOnsets } from "../../src/notation/bandBass.js";
 import { fitToKit, kickPitches, kitPitchMap } from "../../src/notation/drumKit.js";
@@ -258,6 +258,7 @@ function varies(): boolean {
   const o = ui.opts[ui.part];
   if (ui.part === "riff") return true;
   if (ui.part === "drums") return (o.energy ?? 3) >= 4 || (o.humanizeAmount ?? 0) > 0;
+  if (ui.part === "chords") return VARIABLE_PATTERNS.includes(o.pattern || "pop");   // other upstrokes / arpeggio order
   return false;
 }
 
