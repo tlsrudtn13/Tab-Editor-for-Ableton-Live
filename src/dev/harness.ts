@@ -36,7 +36,8 @@ const TEST_TRACK_BIG = "TAB-TEST-BIG";
 const TEST_TRACK_DRUMS = "TAB-TEST-DRUMS";
 const TEST_TRACK_DRUMS_NORACK = "TAB-TEST Drums";
 const TEST_TRACK_ADJ = "TAB-TEST-ADJ";
-const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_TRACK_DRUMS, TEST_TRACK_DRUMS_NORACK, TEST_TRACK_ADJ].includes(t?.name);
+const TEST_LOOP = ["TAB-TEST-LOOP Chords", "TAB-TEST-LOOP Drums", "TAB-TEST-LOOP Bass"];
+const isTestTrack = (t: any) => [TEST_TRACK, TEST_TRACK_2, TEST_TRACK_BIG, TEST_TRACK_DRUMS, TEST_TRACK_DRUMS_NORACK, TEST_TRACK_ADJ, ...TEST_LOOP].includes(t?.name);
 
 let devDir = "";
 let tempDir = "";
@@ -97,6 +98,25 @@ function summarize(ctx: Ctx) {
             })),
         })),
     };
+}
+
+/** Scene 1: a 2-bar chord loop (C, G strummed), a 1-bar drum loop (kicks 0 and 2.5) and a 4-bar bass
+ *  clip, for Insert's loop tiling (kicks and chords repeat over the bass range). */
+async function createLoopFixture(ctx: Ctx) {
+    const song: any = ctx.application.song;
+    for (const t of [...song.tracks]) if (TEST_LOOP.includes(t?.name)) await song.deleteTrack(t);
+    const mk = async (name: string, len: number, notes: any[]) => {
+        const t: any = await song.createMidiTrack(); t.name = name;
+        const c: any = await t.clipSlots[0].createMidiClip(len); c.name = name.replace("TAB-TEST-LOOP ", "LOOP ");
+        c.notes = notes; return c.name;
+    };
+    const tri = (ps: number[], b: number) => ps.map(p => ({ pitch: p, startTime: b, duration: 4, velocity: 90 }));
+    const hit = (p: number, b: number) => ({ pitch: p, startTime: b, duration: 0.25, velocity: 100 });
+    return { created: [
+        await mk(TEST_LOOP[0]!, 8, [...tri([48, 52, 55, 60], 0), ...tri([43, 47, 50, 55], 4)]),
+        await mk(TEST_LOOP[1]!, 4, [hit(36, 0), hit(36, 2.5), hit(38, 1), hit(38, 3), ...[0, 1, 2, 3].map(b => hit(42, b))]),
+        await mk(TEST_LOOP[2]!, 16, [{ pitch: 36, startTime: 0, duration: 1, velocity: 90 }]),   // empty clips open no tab
+    ] };
 }
 
 async function createFixtures(ctx: Ctx) {
@@ -290,6 +310,7 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
         case "bigFixture": return createBigFixture(ctx, Number(cmd.clip ?? 2000));
         case "drumFixture": return createDrumFixture(ctx);
         case "adjFixture": return createAdjacentFixture(ctx);
+        case "loopFixture": return createLoopFixture(ctx);
         case "drumInfo": {
             // Drum detection for every track (Drum Rack search, pads, pad labels)
             return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));
