@@ -145,6 +145,8 @@ function secondaryDominant(chord: ChordSym, key: KeyRef, diatonic: boolean): Rom
   if (!triad && !["7", "9"].includes(chord.quality)) return undefined;
   // In a minor key the major IV (dorian, e.g. D in A minor) reads better as IV than as V/VII.
   if (triad && key.mode === "minor" && mod12(chord.root - key.root) === 5) return undefined;
+  // ... and the major tonic (picardy third, E in E minor) as I, not V/iv.
+  if (triad && key.mode === "minor" && mod12(chord.root - key.root) === 0) return undefined;
   const targetRoot = mod12(chord.root + 5);
   const scale = scaleOfMode(key);
   const targetDeg = scale.indexOf(mod12(targetRoot - key.root));

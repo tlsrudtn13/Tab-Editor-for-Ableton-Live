@@ -92,6 +92,8 @@ function syncUi() {
   const range = ps.loop ? currentLoop() : null;
   const lr = document.getElementById("loop-range");
   if (lr) lr.textContent = ps.loop ? (range ? range.label : "All") : "All";
+  const clear = document.getElementById("loop-clear");
+  if (clear) clear.style.display = (ps.loop && range) ? "" : "none";
   const slider = document.getElementById("ui-speed") as HTMLInputElement | null;
   if (slider) slider.value = String(ps.speedPct);
   const val = document.getElementById("speed-val");
@@ -268,6 +270,12 @@ export function initPractice() {
 
   const loopBtn = document.getElementById("btn-loop");
   if (loopBtn) loopBtn.addEventListener("click", () => { ps.loop = !ps.loop; refresh(); });
+
+  const loopClear = document.getElementById("loop-clear");
+  if (loopClear) loopClear.addEventListener("click", () => {
+    state.selectionAnchor = state.cursor ? state.cursor.b : null;
+    refresh();
+  });
 
   const countIn = document.getElementById("btn-countin");
   if (countIn) countIn.addEventListener("click", () => { ps.countIn = !ps.countIn; refresh(); });

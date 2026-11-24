@@ -187,3 +187,10 @@ describe("secondary dominant of V in minor", () => {
     expect(romanOf({ root: 6, quality: "7" }, { root: 4, mode: "minor" }).roman).toBe("V7/V");
   });
 });
+
+describe("major tonic in minor", () => {
+  it("E major in E minor reads I (picardy), E7 still V7/iv", () => {
+    expect(romanOf({ root: 4, quality: "" }, { root: 4, mode: "minor" }).roman).toBe("I");
+    expect(romanOf({ root: 4, quality: "7" }, { root: 4, mode: "minor" }).roman).toBe("V7/iv");
+  });
+});

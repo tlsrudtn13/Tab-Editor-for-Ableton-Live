@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.0 (unreleased, branch feature/v2-insert-engine)
+
+**Insert** (right-side panel, `+ Insert` in the edit toolbar)
+- Chords, bass, a riff or drums into the open clip at the cursor, the selected bars or the whole clip, from feel
+  presets; Replace or add; Vary for a new variation (riffs, busy drums, strummed or arpeggiated chords); Undo.
+- Chord source: a progression preset in the clip's key, another track's chords, or your own progression. Click a
+  chord card to swap it for a chord of the key or a common borrowed chord, or remove it (mouse or keyboard).
+- Bass can lock to the kick of a drum track; a looping drum or chord clip repeats under the whole range.
+
+**Analyse**
+- One key for the whole editor: a fixed clip key, else Live's scale, else the notes ("sure / likely / est.").
+- Analysis toggle: roman numerals over the score coloured by function, cadence marks (PAC, PC, HC, DC, ii–V–I),
+  and an Analysis tab next to the fretboard with bar, chord, numeral, what the chord does and the scale that fits.
+  It can be added to the PDF.
+- Chord diagrams above the chord names, drawn from the frets in the TAB.
+
+**Practice**
+- Practice strip: loop the selected bars or the whole clip, speed 50–100 %, 1-bar count-in, metronome.
+
+**Fixes**
+- Selection tabs edit only the selected part of each clip (Insert beat, Paste and Move can no longer reach the
+  clip's unshown notes).
+- The drum kit map is saved per track in every view.
+- Apply names the reason when it skips an edit (before the clip start, or pitch / length out of range).
+
 ## 1.0.0 (2026-11-18)
 
 First public release.

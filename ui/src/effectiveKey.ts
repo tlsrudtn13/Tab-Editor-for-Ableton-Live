@@ -40,6 +40,24 @@ export function effectiveKey(trk: any, analysis: { key: KeyRef | null; confidenc
 
 export type SwapChoice = { chord: ChordSym; name: string; roman: string; tier: ChordTier; group: "key" | "borrowed" };
 
+function transformRomanPart(part: string): string {
+  if (part.startsWith("b") || part.startsWith("#")) return part;
+  const m = /^(iii|vii|vi|III|VII|VI)(.*)$/.exec(part);
+  if (!m) return part;
+  const base = m[1]!;
+  const rest = m[2]!;
+  // vii° / viiø7 are the raised leading tone - already correct.
+  if (base === "vii" && (rest.startsWith("°") || rest.startsWith("ø"))) return part;
+  return "b" + part;
+}
+
+/** Display a roman numeral in a key: in minor keys, natural III/VI/VII (and their lower-case/extended forms,
+ *  except the raised leading tone vii°/viiø7) get a flat prefix. Major keys unchanged. */
+export function displayRoman(roman: string, key: KeyRef): string {
+  if (key.mode !== "minor") return roman;
+  return roman.split("/").map(transformRomanPart).join("/");
+}
+
 function diatonicTriads(key: KeyRef): ChordSym[] {
   const sc = scaleOf(key);
   if (key.mode === "major") {
@@ -70,6 +88,14 @@ function chordEq(a: ChordSym, b: ChordSym): boolean {
 
 function borrowedChords(key: KeyRef): ChordSym[] {
   const sc = scaleOf(key);
+  if (key.mode === "minor") {
+    return [
+      { root: mod12(key.root + 5), quality: "" },      // IV
+      { root: key.root, quality: "" },                 // I (picardy)
+      { root: mod12(key.root + 1), quality: "" },      // bII
+      { root: mod12(sc[4]! + 7), quality: "7" },       // V7/V
+    ];
+  }
   return [
     { root: mod12(key.root + 10), quality: "" },     // bVII
     { root: sc[3]!, quality: "m" },                  // iv
@@ -82,17 +108,17 @@ export function chordDisplayName(c: ChordSym): string {
   return PC_NAMES[mod12(c.root)] + c.quality;
 }
 
-/** 7 diatonic triads of the key, then borrowed bVII, iv, V7/V, bVI not already in the key. */
+/** 7 diatonic triads of the key, then borrowed chords not already in the key. */
 export function swapChoices(key: KeyRef): SwapChoice[] {
   const diatonic = diatonicTriads(key);
   const out: SwapChoice[] = diatonic.map(chord => {
     const r = romanOf(chord, key);
-    return { chord, name: chordDisplayName(chord), roman: r.roman, tier: r.tier, group: "key" as const };
+    return { chord, name: chordDisplayName(chord), roman: displayRoman(r.roman, key), tier: r.tier, group: "key" as const };
   });
   for (const chord of borrowedChords(key)) {
     if (diatonic.some(d => chordEq(d, chord))) continue;
     const r = romanOf(chord, key);
-    out.push({ chord, name: chordDisplayName(chord), roman: r.roman, tier: "color", group: "borrowed" });
+    out.push({ chord, name: chordDisplayName(chord), roman: displayRoman(r.roman, key), tier: "color", group: "borrowed" });
   }
   return out;
 }

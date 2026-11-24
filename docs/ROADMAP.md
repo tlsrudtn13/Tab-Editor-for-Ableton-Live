@@ -22,6 +22,10 @@ with alphaTab's General MIDI sounds. Revisit with each SDK release.
 Ideas from the owner (2026-11-19). Goal: the editor not only shows a part, it helps guitarists,
 bassists and drummers write and learn one inside Live.
 
+Status on the 2.0 branch (2026-11-25): Insert, the analysis view (numerals, cadences, list, PDF page), chord
+diagrams, practice mode (loop, speed, count-in, metronome) and one shared key are built; learning samples,
+customisable shortcuts and the "Also considered" items are not started.
+
 **Insert**
 - Basic drum beats to insert at the cursor or into an empty clip: rock, pop, funk, shuffle, half-time,
   hip-hop, house, bossa, 6/8, fills. Written as real MIDI notes on the Drum Rack's pads.

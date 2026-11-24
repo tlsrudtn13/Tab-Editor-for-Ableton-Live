@@ -4,7 +4,7 @@ export type ProgressionAnalysis = ReturnType<typeof analyzeProgression>;
 import { chordName, parseRoman, type KeyRef } from "../../src/notation/harmony.js";
 import { state } from "./state.js";
 import { isDrumTrack } from "./drums.js";
-import { effectiveKey } from "./effectiveKey.js";
+import { displayRoman, effectiveKey } from "./effectiveKey.js";
 import { tabAnalysis } from "./insertPanel.js";
 import { findBeatBoundsAt, overlaySelectedNotes } from "./overlay.js";
 import { setCursor } from "./cursor.js";
@@ -81,7 +81,7 @@ export function pdfRows(result: ProgressionAnalysis, bpb: number): PdfRow[] {
     return {
       bar: barBeatLabel(ch.b, bpb),
       chord: chordName(ch),
-      numeral: ch.roman + (ch.borrowed ? " · borrowed" : ""),
+      numeral: displayRoman(ch.roman, result.key) + (ch.borrowed ? " · borrowed" : ""),
       fn: cadence ? `${fn}; ${cadenceShort(cadence)}` : fn,
       scale: i === 0 ? result.scale.name : "",
     };
@@ -213,14 +213,15 @@ export function drawAnalysisOverlay() {
       if (!vb || !barVb) continue;
       const el = document.createElement("div");
       el.className = "analysis-overlay an-numeral";
-      el.textContent = ch.roman;
+      const roman = displayRoman(ch.roman, result.key);
+      el.textContent = roman;
       const firstInBar = Math.abs(vb.x - barVb.x) < 16;   // the bar number sits there on bars 1, 5, 9 ...
       el.style.left = (vb.x + (firstInBar ? 12 : 0)) + "px";
       el.style.top = (Math.min(barVb.y, vb.y) - 18) + "px";
       el.style.color = tierColor(ch.tier);
       if (ch.tier === "color") el.style.borderBottom = `1px dotted ${tierColor(ch.tier)}`;
       const borrowed = ch.borrowed ? `\n${ch.borrowed.label}` : "";
-      el.title = `${chordName(ch)}\n${ch.roman}\n${chordRole(ch, result.key)}${borrowed}`;
+      el.title = `${chordName(ch)}\n${roman}\n${chordRole(ch, result.key)}${borrowed}`;
       host.appendChild(el);
     }
 
@@ -304,7 +305,8 @@ function renderAnalysisPanel() {
     html += '<tr data-an-idx="' + i + '" data-b="' + ch.b + '">';
     html += '<td class="an-col-bar">' + esc(barBeatLabel(ch.b, bpb)) + '</td>';
     html += '<td class="an-col-chord">' + esc(chordName(ch)) + '</td>';
-    html += '<td class="an-col-num" style="color:' + tierColor(ch.tier) + '">' + esc(ch.roman) + borrowed + '</td>';
+    const roman = result ? displayRoman(ch.roman, result.key) : ch.roman;
+    html += '<td class="an-col-num" style="color:' + tierColor(ch.tier) + '">' + esc(roman) + borrowed + '</td>';
     html += '<td class="an-col-fn">' + fnCell + '</td>';
     html += '<td class="an-col-scale">' + (i === 0 ? esc(scaleName) : "") + '</td>';
     html += '</tr>';

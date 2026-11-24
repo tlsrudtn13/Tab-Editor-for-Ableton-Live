@@ -119,6 +119,7 @@ body { display:flex; flex-direction:row; }
 }
 #practice-bar .btn, #practice-bar .sb { height:20px; padding:0 6px; font-size:10px; line-height:18px; }
 #practice-bar .seg { height:22px; align-items:center; }
+#practice-bar .sp { width:1px; height:14px; background:var(--p-live-control-border); }
 #edit-toolbar .rb { padding:1px 6px; font-size:10px; min-width:22px; }
 #edit-toolbar .rb.on { color:var(--p-live-accent-primary); border-color:var(--p-live-accent-primary); }
 #edit-toolbar .btn:disabled { opacity:.38; cursor:default; }   /* Auto chords / Lyrics on drum tabs (designer D012) */

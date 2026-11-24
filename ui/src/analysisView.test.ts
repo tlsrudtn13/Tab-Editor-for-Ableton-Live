@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./state.js", () => ({ state: {} }));
 vi.mock("./drums.js", () => ({ isDrumTrack: () => false }));
-vi.mock("./effectiveKey.js", () => ({ effectiveKey: () => ({ key: { root: 0, mode: "major" }, source: "default" }) }));
+vi.mock("./effectiveKey.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./effectiveKey.js")>();
+  return { ...actual, effectiveKey: () => ({ key: { root: 0, mode: "major" }, source: "default" }) };
+});
 vi.mock("./insertPanel.js", () => ({ tabAnalysis: () => null }));
 vi.mock("./overlay.js", () => ({ findBeatBoundsAt: () => null, overlaySelectedNotes: () => {} }));
 vi.mock("./cursor.js", () => ({ setCursor: () => {} }));
@@ -50,6 +53,20 @@ describe("analysisView helpers", () => {
       { bar: "2.1", chord: "B", numeral: "V", fn: "Pulls home (dominant)", scale: "" },
       { bar: "3.1", chord: "Em", numeral: "i", fn: "Home (tonic); PAC", scale: "" },
     ]);
+  });
+
+  it("pdfRows shows minor-key flats in numerals", () => {
+    const result: ProgressionAnalysis = {
+      key: { root: 4, mode: "minor" },
+      chords: [
+        { root: 7, quality: "", name: "G", b: 0, d: 4, roman: "III", fn: "T", tier: "safe", diatonic: true },
+        { root: 0, quality: "", name: "C", b: 4, d: 4, roman: "VI", fn: "T", tier: "safe", diatonic: true },
+        { root: 2, quality: "", name: "D", b: 8, d: 4, roman: "VII", fn: "D", tier: "tension", diatonic: true },
+      ],
+      cadences: [],
+      scale: { id: "minorPent", root: 4, name: "E minor pentatonic", coverage: 0.9, outside: [] },
+    };
+    expect(pdfRows(result, 4).map(r => r.numeral)).toEqual(["bIII", "bVI", "bVII"]);
   });
 
   it("chordRole speaks plainly (design D024)", () => {

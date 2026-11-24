@@ -20,7 +20,7 @@ import { fitToKit, kickPitches, kitPitchMap } from "../../src/notation/drumKit.j
 import { suggestNext } from "../../src/notation/chordSuggest.js";
 import { romanOf, type ChordTier } from "../../src/notation/harmonyAnalysis.js";
 import { chordName, PC_NAMES, type ChordSym, type KeyRef } from "../../src/notation/harmony.js";
-import { effectiveKey, swapChoices, type EffectiveKeyResult, type SwapChoice } from "./effectiveKey.js";
+import { displayRoman, effectiveKey, swapChoices, type EffectiveKeyResult, type SwapChoice } from "./effectiveKey.js";
 
 type Target = "sel" | "1" | "2" | "4" | "8" | "clip";
 type Range = { start: number; end: number; bars: number };
@@ -310,9 +310,10 @@ function chordStrip(chords: PlacedChordIn[], key: KeyRef): string {
   const cards = syms.map((c, i) => {
     const name = chordName(c);
     const r = romanOf(c, key);
+    const roman = displayRoman(r.roman, key);
     const rm = syms.length > 1 ? '<span class="ip-card-rm" data-remove="' + i + '" title="Remove chord">×</span>' : "";
     return '<button class="ip-card" data-card="' + i + '" title="' + esc(TIER_HINT[r.tier]) + '">' +
-      '<span class="ip-dot ' + TIER_CLASS[r.tier] + '"></span><b>' + esc(name) + '</b><i>' + esc(r.roman) + "</i>" + rm + "</button>";
+      '<span class="ip-dot ' + TIER_CLASS[r.tier] + '"></span><b>' + esc(name) + '</b><i>' + esc(roman) + "</i>" + rm + "</button>";
   });
   const pop = ui.popCard !== null ? popoverHtml(key, ui.popCard, syms[ui.popCard]!, syms.length) : "";
   return '<div class="ip-strip">' + cards.join("") + pop + "</div>";
@@ -346,7 +347,7 @@ function nextChips(chords: PlacedChordIn[], key: KeyRef): string {
   if (!sug.length) return "";
   return '<div class="ip-label">Next chord ideas</div><div class="ip-chips">' + sug.map((s, i) =>
     '<button class="ip-chip" data-next="' + i + '" title="' + esc(TIER_HINT[s.tier] + " — click to add it to your own progression") + '">' +
-    '<span class="ip-dot ' + TIER_CLASS[s.tier] + '"></span>' + esc(s.name) + ' <i>' + esc(s.roman) + "</i></button>").join("") + "</div>";
+    '<span class="ip-dot ' + TIER_CLASS[s.tier] + '"></span>' + esc(s.name) + ' <i>' + esc(displayRoman(s.roman, key)) + "</i></button>").join("") + "</div>";
 }
 
 function seg(name: string, value: string, items: [string, string][]): string {
