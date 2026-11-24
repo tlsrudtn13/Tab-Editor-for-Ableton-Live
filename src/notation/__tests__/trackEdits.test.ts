@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { collectNotes } from "../collectNotes.js";
-import { splitTrackEdits } from "../trackEdits.js";
+import { editableSpans, splitTrackEdits } from "../trackEdits.js";
 import { mergeClipEdits } from "../clipEdits.js";
 
 const clip = (notes: any[], extra: any = {}) => ({ notes, name: "c", ...extra });
@@ -64,5 +64,18 @@ describe("track view clips", () => {
             [{ cref: 0, oid: 0 }], spans, () => 1);
         expect(perClip.length).toBe(1);
         expect(perClip[0]!.edits.changed).toEqual([{ oid: 0, pitch: 60, velocity: 100, start: 10 }]);
+    });
+});
+
+describe("editableSpans (Selection tabs)", () => {
+    const spans = [{ index: 0, start: -4, end: 8, offset: -4 }, { index: 1, start: 8, end: 16, offset: 8 }, { index: 2, start: 20, end: 24, offset: 20 }];
+    it("keeps whole spans when the tab shows whole clips", () => {
+        expect(editableSpans(spans)).toEqual(spans);
+    });
+    it("clips each span to the shown part and drops clips outside it", () => {
+        expect(editableSpans(spans, 12)).toEqual([
+            { index: 0, start: 0, end: 8, offset: -4 },
+            { index: 1, start: 8, end: 12, offset: 8 },
+        ]);
     });
 });

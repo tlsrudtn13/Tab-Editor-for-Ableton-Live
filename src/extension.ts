@@ -25,7 +25,7 @@ import { collectNotes, notesFromClip, clipRegion } from "./notation/collectNotes
 import { buildPayload } from "./notation/payload.js";
 import { injectableJson } from "./inject.js";
 import { mergeClipEdits } from "./notation/clipEdits.js";
-import { splitTrackEdits, type TrackNoteRef } from "./notation/trackEdits.js";
+import { editableSpans, splitTrackEdits, type TrackNoteRef } from "./notation/trackEdits.js";
 import type { TrackClipSpan } from "./notation/collectNotes.js";
 import { startDevHarness, devEditorUrl } from "./dev/harness.js";
 import { safeStr }      from "./notation/music.js";
@@ -183,11 +183,13 @@ function saveDrumLayer(context: any, key: string | undefined, raw: unknown) {
     catch (e) { console.warn("[TAB] drum map save failed:", e); }
 }
 /** Drum payload when the track holds a Drum Rack (or, narrowly, looks like drums); else null. */
-function drumPayloadFor(context: any, track: any, id: string, name: string, notes: Note[], tempo: number, live: any, storageKey: string, timeSig?: any) {
+/** The kit map belongs to the track's Drum Rack: saved per track in every view. `legacyKey` is read when the track has
+ *  none yet (1.0 saved clip-view maps per clip). */
+function drumPayloadFor(context: any, track: any, id: string, name: string, notes: Note[], tempo: number, live: any, storageKey: string, timeSig?: any, legacyKey?: string) {
     const rack = track ? drumRackInfo(track) : null;
     const trackName = String(track?.name ?? "");
     if (!rack && !looksLikeDrums(trackName, notes)) return null;
-    const layer = readDrumLayer(context, storageKey);
+    const layer = readDrumLayer(context, storageKey) ?? (legacyKey ? readDrumLayer(context, legacyKey) : undefined);
     const p = buildDrumPayload(id, name, notes, tempo, live, { timeSig, override: layer?.map, hints: rack?.hints, pads: rack?.pads, source: rack ? "drum-rack" : "heuristic" });
     if (p) (p as any).layerStorageKey = storageKey;
     console.log(`[TAB] drum track "${trackName}" (${rack ? `Drum Rack, ${rack.pads.length} pads` : "name heuristic"})`);
@@ -392,7 +394,7 @@ export function activate(activation: ActivationContext) {
         const drum = drumPayloadFor(context, rawTrack, trackId, shownName, allNotes, tempo, live, storageKey);
         if (drum) {
             if (editCtx) {
-                drum.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+                drum.edit = { mode: "track", spans: editableSpans(editCtx.spans, range ? range.end - range.start : undefined).map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
                 drum.ann = trackAnnToDisplay(clipAnns, editCtx.spans, range ? range.end - range.start : undefined);
             }
             return drum;
@@ -406,7 +408,7 @@ export function activate(activation: ActivationContext) {
             (p as any).layerHint = { track: trackName, clip: "" };
         }
         if (p && editCtx) {
-            p.edit = { mode: "track", spans: editCtx.spans.map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
+            p.edit = { mode: "track", spans: editableSpans(editCtx.spans, range ? range.end - range.start : undefined).map(s => ({ start: s.start, end: s.end, offset: s.offset, index: s.index })), noteCount: allNotes.length };
             (p as any).layerV2IdsByClip = Object.fromEntries([...editCtx.v2Ids.entries()]);
             p.ann = trackAnnToDisplay(clipAnns, editCtx.spans, range ? range.end - range.start : undefined);
         }
@@ -700,7 +702,7 @@ export function activate(activation: ActivationContext) {
         } catch { /* default to 4/4 */ }
         const name = `${trackName} · ${clipName}`;
         const drumKey = layerKey(trackName, "");
-        let p: TrackPayload | null = drumPayloadFor(context, track, id, name, notes, tempo, live, drumKey, timeSig);
+        let p: TrackPayload | null = drumPayloadFor(context, track, id, name, notes, tempo, live, drumKey, timeSig, storageKey);
         const drum = !!p;
         if (!p && foundV2.layer) {
             const inst = INSTRUMENT_BY_KEY[foundV2.layer.instrument] || DEFAULT_INSTRUMENT;
@@ -923,7 +925,8 @@ export function activate(activation: ActivationContext) {
             if (!timeSig && beats >= 1 && beats <= 32 && [1,2,4,8,16].includes(type)) timeSig = { beats, type };
         } catch { /* default to 4/4 */ }
         // Drum clips: percussion staff, no TAB layer; the kit map comes back with Close / Apply.
-        const drum = drumPayloadFor(context, where?.track, "clip_0", clipName, regioned, tempo, live, storageKey, timeSig);
+        const drumStoreKey = layerKey(trackName, "");
+        const drum = drumPayloadFor(context, where?.track, "clip_0", clipName, regioned, tempo, live, drumStoreKey, timeSig, storageKey);
         let p: TrackPayload | null;
         if (drum) {
             p = drum;
@@ -942,7 +945,7 @@ export function activate(activation: ActivationContext) {
         const regionEnd = clip.looping ? clip.loopEnd : clip.endMarker;
         p.edit = { mode: "clip", regionStart, regionLength: regionEnd - regionStart, noteCount: clip.notes.length };
         p.ann = annToDisplay(foundV2.layer?.ann, -regionStart);
-        (p as any).layerStorageKey = storageKey;
+        (p as any).layerStorageKey = drum ? drumStoreKey : storageKey;
         (p as any).layerHint = hint;
         (p as any).layerV2Id = v2Id;
         // Snapshot of the notes as opened: edits refer to them by index (oid).
@@ -951,7 +954,7 @@ export function activate(activation: ActivationContext) {
         if (!result) return;
         let message: any;
         try { message = JSON.parse(result); } catch { console.log(`[TAB] modal closed without a message (${result.slice(0, 40)})`); return; }
-        if (drum && message?.drumLayer) saveDrumLayer(context, message.layerKey || storageKey, message.drumLayer);
+        if (drum && message?.drumLayer) saveDrumLayer(context, drumStoreKey, message.drumLayer);
         // annotations (chords, key, title) are saved on every close, whatever happens to the note edits
         if (message && "ann" in message) {
             try { v2Id = saveClipAnn(context, v2Id, hint, sanitizeAnn(message.ann), annBase(message, foundV2.layer), clip); }

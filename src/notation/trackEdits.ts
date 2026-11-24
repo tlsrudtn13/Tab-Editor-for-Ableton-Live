@@ -57,3 +57,14 @@ export function splitTrackEdits(
     }
     return { perClip: [...byClip.values()].sort((a, b) => a.cref - b.cref), dropped };
 }
+
+/**
+ * The clip spans the editor may edit in. A Selection tab (`shownLength`, rebased to 0) shows only part of each
+ * clip: editing stays inside the shown part, so Insert beat / Paste / Move never land on the clip's unshown notes.
+ */
+export function editableSpans(spans: TrackClipSpan[], shownLength?: number): TrackClipSpan[] {
+    if (shownLength === undefined) return spans.map(s => ({ ...s }));
+    return spans
+        .map(s => ({ ...s, start: Math.max(s.start, 0), end: Math.min(s.end, shownLength) }))
+        .filter(s => s.end - s.start > 1e-9);
+}

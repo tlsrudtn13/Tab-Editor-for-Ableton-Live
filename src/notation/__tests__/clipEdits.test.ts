@@ -29,4 +29,13 @@ describe("mergeClipEdits", () => {
         expect(r.notes).toEqual([{ pitch: 64, startTime: 3, duration: 0.5, velocity: 100 }]);
         expect(r.stats).toEqual({ changed: 0, added: 1, deleted: 1, dropped: 1 });
     });
+    it("keeps a note moved before clip time 0 (Live holds negative start times)", () => {
+        const raw = [{ id: 1, pitch: 60, startTime: 0.5, duration: 0.5, velocity: 90 }];
+        const r = mergeClipEdits(raw, { changed: [{ oid: 0, pitch: 60, start: 0.25, velocity: 90 }], added: [{ pitch: 62, start: 0, duration: 0.5, velocity: 80 }], deleted: [] }, -1);
+        expect(r.notes).toEqual([
+            { pitch: 60, startTime: -0.75, duration: 0.5, velocity: 90 },
+            { pitch: 62, startTime: -1, duration: 0.5, velocity: 80 },
+        ]);
+        expect(r.stats.dropped).toBe(0);
+    });
 });

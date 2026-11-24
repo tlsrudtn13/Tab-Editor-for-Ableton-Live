@@ -524,7 +524,7 @@ function insertBeatAtCursor() {
   state.selectedNoteIndices = [];
   saveUndo(before, deletedBefore);
   render();
-  const msg = pushedOut ? `Insert beat: ${pushedOut} note(s) pushed past the clip end were removed (Ctrl+Z to undo)` : "Insert beat";
+  const msg = pushedOut ? `Insert beat: ${pushedOut} note(s) pushed past the end of the clip (or selection) were removed (Ctrl+Z to undo)` : "Insert beat";
   log(msg); status(msg);
 }
 

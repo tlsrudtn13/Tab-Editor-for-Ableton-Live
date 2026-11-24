@@ -316,6 +316,16 @@ async function handle(ctx: Ctx, id: string, cmd: Cmd): Promise<unknown> {
             return (ctx.application.song.tracks as any[]).map(t => ({ name: t.name, devices: (t.devices ?? []).map((d: any) => `${d.constructor?.name}:${d.name}`), drum: drumRackInfo(t) }));
         }
         case "payload":  return payloadFor(ctx, cmd.clip ?? "", !!cmd.full);
+        case "probeNegative": {   // can a clip hold a note before clip time 0? (ROADMAP 1.x: negative clip time)
+            const f = findClip(ctx, cmd.clip ?? "LOOP Bass");
+            if (!f) throw new Error(`clip not found: ${cmd.clip}`);
+            const before = (f.clip.notes as any[]).map(n => ({ pitch: n.pitch, startTime: n.startTime, duration: n.duration, velocity: n.velocity }));
+            let error: string | undefined;
+            try { f.clip.notes = [...before, { pitch: 40, startTime: -1, duration: 0.5, velocity: 90 }]; } catch (e: any) { error = String(e?.message ?? e); }
+            const after = (f.clip.notes as any[]).map(n => ({ p: n.pitch, t: n.startTime, d: n.duration }));
+            f.clip.notes = before;
+            return { error, after, loopStart: f.clip.loopStart, startMarker: f.clip.startMarker };
+        }
         case "rawNotes": {   // the clip's notes exactly as Live holds them (write-back checks)
             const f = findClip(ctx, cmd.clip ?? "");
             if (!f) throw new Error(`clip not found: ${cmd.clip}`);

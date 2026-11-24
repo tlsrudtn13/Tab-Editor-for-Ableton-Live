@@ -4,9 +4,9 @@
 
 - Fixes from user reports; a rebuild for each Live / Extensions SDK beta update.
 - macOS test pass.
-- From the 1.0 bug review, not fixed yet: in a selection tab, Insert beat / paste near the selection end can
-  shift notes onto unshown notes of the same clip; a drum pad remap is stored per clip in clip view but per
-  track in track / scene views; notes moved before a clip's region start (negative clip time) are skipped.
+- From the 1.0 bug review, fixed on the 2.0 branch (2026-11-24): editing in a selection tab stays inside the
+  selection (Insert beat / Paste / Move no longer reach the clip's unshown notes); the drum kit map is saved per
+  track in every view (a 1.0 clip-view map is still read); notes before clip time 0 are written (Live keeps them).
 - Playback with your own SoundFont (.sf2) instead of the built-in General MIDI one.
 
 **Playback through Live's own instruments** (asked 2026-11-21, blocked by the SDK). The Extensions API

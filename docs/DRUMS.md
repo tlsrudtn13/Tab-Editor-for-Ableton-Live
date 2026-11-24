@@ -59,7 +59,7 @@ Rhythm rules (drum-chart practice):
 
 Drum Rack information is used only as **labels** (`hints`): pad sample names never
 change the mapping (a pad named "Snare" on C1 is still drawn as a kick until the user
-maps it). The kit map is saved per track/clip next to the TAB layers
+maps it). The kit map is saved per track (in every view: clip, track, scene, selection) next to the TAB layers
 (`<storage>/tablayers/<sha256("drum\0" + layerKey)>.json`, `{ v:1, kind:"drum", map }`).
 The user changes it from the legend under the score; it is sent back on Close.
 
