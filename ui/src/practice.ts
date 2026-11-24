@@ -1,5 +1,5 @@
 import { state } from "./state";
-import { tabBarBoundsAt } from "./overlay";
+import { masterBarBoundsAt } from "./overlay";
 import { log } from "./log";
 
 /* ── Pure helpers (tested) ─────────────────────────────────────────────── */
@@ -151,7 +151,7 @@ function barBoundsForRange(start: number, end: number): any[] {
   const out: any[] = [];
   const seen = new Set<string>();
   for (let b = start; b < end - 1e-6; b += bpb) {
-    const bar = tabBarBoundsAt(b + 1e-6);
+    const bar = masterBarBoundsAt(b + 1e-6);   // staff and TAB together (design D024)
     const vb = bar && bar.visualBounds;
     if (!vb) continue;
     const key = `${Math.round(vb.x)}:${Math.round(vb.y)}:${Math.round(vb.w)}:${Math.round(vb.h)}`;

@@ -1,7 +1,7 @@
 import { analyzeProgression, type CadenceKind } from "../../src/notation/progressionAnalysis.js";
 
 export type ProgressionAnalysis = ReturnType<typeof analyzeProgression>;
-import { chordName } from "../../src/notation/harmony.js";
+import { chordName, parseRoman, type KeyRef } from "../../src/notation/harmony.js";
 import { state } from "./state.js";
 import { isDrumTrack } from "./drums.js";
 import { effectiveKey } from "./effectiveKey.js";
@@ -24,6 +24,26 @@ export function fnWords(fn: "T" | "S" | "D" | "other"): string {
     case "D": return "Dominant: wants to go home";
     default: return "Colour chord";
   }
+}
+
+/**
+ * What a chord does, in words a player with shallow theory reads (design D024): a secondary dominant names the
+ * chord it pulls to, the minor key's bVII is a gentle subtonic, tonic-family chords other than I are "stable".
+ */
+export function chordRole(ch: { root: number; roman: string; fn: "T" | "S" | "D" | "other"; borrowed?: unknown }, key: KeyRef): string {
+  const sec = /^V7?\/(.+)$/.exec(ch.roman);
+  if (sec) {
+    let target = sec[1]!;
+    try { target = chordName(parseRoman(sec[1]!, key)) + " (" + sec[1] + ")"; } catch { /* keep the numeral */ }
+    return "Pulls to " + target;
+  }
+  const deg = (((ch.root - key.root) % 12) + 12) % 12;
+  if (ch.borrowed) return "Borrowed colour";
+  if (key.mode === "minor" && deg === 10) return "Subtonic: gentle pull home";
+  if (ch.fn === "T") return deg === 0 ? "Home (tonic)" : "Stable (tonic family)";
+  if (ch.fn === "S") return "Moves away (subdominant)";
+  if (ch.fn === "D") return "Pulls home (dominant)";
+  return "Colour chord";
 }
 
 export function cadenceShort(kind: CadenceKind): string {
@@ -57,7 +77,7 @@ export function pdfRows(result: ProgressionAnalysis, bpb: number): PdfRow[] {
   for (const c of result.cadences) arrivalByTo.set(c.to, c.kind);
   return result.chords.map((ch, i) => {
     const cadence = arrivalByTo.get(i);
-    const fn = fnWords(ch.fn);
+    const fn = chordRole(ch, result.key);
     return {
       bar: barBeatLabel(ch.b, bpb),
       chord: chordName(ch),
@@ -194,12 +214,13 @@ export function drawAnalysisOverlay() {
       const el = document.createElement("div");
       el.className = "analysis-overlay an-numeral";
       el.textContent = ch.roman;
-      el.style.left = vb.x + "px";
-      el.style.top = (barVb.y - 14) + "px";
+      const firstInBar = Math.abs(vb.x - barVb.x) < 16;   // the bar number sits there on bars 1, 5, 9 ...
+      el.style.left = (vb.x + (firstInBar ? 12 : 0)) + "px";
+      el.style.top = (Math.min(barVb.y, vb.y) - 18) + "px";
       el.style.color = tierColor(ch.tier);
-      el.style.borderBottom = `1px dotted ${tierColor(ch.tier)}`;
+      if (ch.tier === "color") el.style.borderBottom = `1px dotted ${tierColor(ch.tier)}`;
       const borrowed = ch.borrowed ? `\n${ch.borrowed.label}` : "";
-      el.title = `${chordName(ch)}\n${ch.roman}\n${fnWords(ch.fn)}${borrowed}`;
+      el.title = `${chordName(ch)}\n${ch.roman}\n${chordRole(ch, result.key)}${borrowed}`;
       host.appendChild(el);
     }
 
@@ -216,7 +237,7 @@ export function drawAnalysisOverlay() {
       const left = Math.min(fromVb.x, toVb.x);
       const right = Math.max(fromVb.x + (fromVb.w || 12), toVb.x + (toVb.w || 12));
       const width = Math.max(16, right - left);
-      const top = barVb.y - 2;
+      const top = Math.min(barVb.y, fromVb.y, toVb.y) - 4;
       const wrap = document.createElement("div");
       wrap.className = "analysis-overlay an-cadence";
       wrap.style.left = left + "px";
@@ -247,6 +268,8 @@ function syncBottomTab() {
   const showAnalysis = ui.bottomTab === "analysis";
   if (wrap) wrap.style.display = showAnalysis ? "none" : "";
   if (panel) panel.style.display = showAnalysis ? "flex" : "none";
+  document.querySelectorAll<HTMLElement>("#fb-header .fb-ctl, #fb-note-label, #fb-hover-label")
+    .forEach(el => { el.style.display = showAnalysis ? "none" : ""; });
   fbBtn?.classList.toggle("on", !showAnalysis);
   anBtn?.classList.toggle("on", showAnalysis);
 }
@@ -275,7 +298,7 @@ function renderAnalysisPanel() {
   html += '</tr></thead><tbody>';
   rows.forEach((ch, i) => {
     const cadence = arrivalByTo.get(i);
-    const fn = fnWords(ch.fn);
+    const fn = result ? chordRole(ch, result.key) : fnWords(ch.fn);
     const fnCell = cadence ? esc(fn) + "; " + esc(cadenceShort(cadence)) : esc(fn);
     const borrowed = ch.borrowed ? ' <span class="an-borrowed">· borrowed</span>' : "";
     html += '<tr data-an-idx="' + i + '" data-b="' + ch.b + '">';

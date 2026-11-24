@@ -413,9 +413,9 @@ function relativeNote(key: KeyRef, used: KeyRef): string {
 
 function keyPill(cur: EffectiveKeyResult): string {
   const dot = cur.source === "fixed" ? "#ff764d"
-    : cur.source === "live" ? "#3dd68c"
-    : cur.source === "analysis" ? (cur.sure === "likely" ? "#ffb43a" : cur.sure === "est." ? "#8e8e8e" : "#3dd68c")
-    : "#8e8e8e";
+    : cur.source === "live" ? "var(--ip-safe)"
+    : cur.source === "analysis" ? (cur.sure === "likely" ? "var(--ip-tension)" : cur.sure === "est." ? "var(--ip-muted)" : "var(--ip-safe)")
+    : "var(--ip-muted)";   // theme tokens: the light theme gets the darker green / amber
   const text = keyLabel(cur.key) + (cur.source === "fixed" ? " (fixed)" : " (auto)");
   return '<button class="ip-key-pill" data-act="key-pill" title="Change the key in the toolbar">' +
     '<span class="ip-key-dot" style="background:' + dot + '"></span>' + esc(text) + "</button>";

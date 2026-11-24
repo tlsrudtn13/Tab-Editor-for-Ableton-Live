@@ -8,7 +8,7 @@ vi.mock("./overlay.js", () => ({ findBeatBoundsAt: () => null, overlaySelectedNo
 vi.mock("./cursor.js", () => ({ setCursor: () => {} }));
 vi.mock("./log.js", () => ({ status: () => {}, log: () => {} }));
 
-import { barBeatLabel, cadenceShort, fnWords, pdfRows } from "./analysisView.js";
+import { barBeatLabel, cadenceShort, chordRole, fnWords, pdfRows } from "./analysisView.js";
 import type { ProgressionAnalysis } from "./analysisView.js";
 
 describe("analysisView helpers", () => {
@@ -46,9 +46,20 @@ describe("analysisView helpers", () => {
       scale: { id: "minorPent", root: 4, name: "E minor pentatonic", coverage: 0.9, outside: [] },
     };
     expect(pdfRows(result, 4)).toEqual([
-      { bar: "1.1", chord: "Em", numeral: "i", fn: "Tonic: home", scale: "E minor pentatonic" },
-      { bar: "2.1", chord: "B", numeral: "V", fn: "Dominant: wants to go home", scale: "" },
-      { bar: "3.1", chord: "Em", numeral: "i", fn: "Tonic: home; PAC", scale: "" },
+      { bar: "1.1", chord: "Em", numeral: "i", fn: "Home (tonic)", scale: "E minor pentatonic" },
+      { bar: "2.1", chord: "B", numeral: "V", fn: "Pulls home (dominant)", scale: "" },
+      { bar: "3.1", chord: "Em", numeral: "i", fn: "Home (tonic); PAC", scale: "" },
     ]);
+  });
+
+  it("chordRole speaks plainly (design D024)", () => {
+    const em = { root: 4, mode: "minor" as const };
+    expect(chordRole({ root: 4, roman: "i", fn: "T" }, em)).toBe("Home (tonic)");
+    expect(chordRole({ root: 7, roman: "III", fn: "T" }, em)).toBe("Stable (tonic family)");
+    expect(chordRole({ root: 2, roman: "VII", fn: "D" }, em)).toBe("Subtonic: gentle pull home");
+    expect(chordRole({ root: 4, roman: "V/iv", fn: "D" }, em)).toBe("Pulls to Am (iv)");
+    expect(chordRole({ root: 9, roman: "IV", fn: "other", borrowed: { label: "x" } }, em)).toBe("Borrowed colour");
+    expect(chordRole({ root: 11, roman: "V", fn: "D" }, em)).toBe("Pulls home (dominant)");
+    expect(chordRole({ root: 9, roman: "iv", fn: "S" }, em)).toBe("Moves away (subdominant)");
   });
 });

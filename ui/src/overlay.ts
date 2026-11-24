@@ -149,6 +149,24 @@ export function tabBarBoundsAt(b: number): any {
   return tabBar;
 }
 
+/** Bounds of the whole bar (staff and TAB together) for the beat at b: alphaTab's master bar bounds. */
+export function masterBarBoundsAt(b: number): any {
+  try {
+    const bl = state.api && state.api.renderer ? state.api.renderer.boundsLookup : null;
+    if (!bl || !bl.staffSystems) return null;
+    for (const sys of bl.staffSystems) for (const mb of (sys.bars || [])) for (const bar of (mb.bars || [])) {
+      const mBar = bar.bar ? bar.bar.masterBar : bar.masterBar;
+      if (!mBar) continue;
+      const hit = (bar.beats || []).some((bb: any) => {
+        const beat = bb.beat || bb;
+        return beat.playbackStart !== undefined && Math.abs((mBar.start + beat.playbackStart) / 960 - b) < 0.03;
+      });
+      if (hit) return mb;
+    }
+  } catch {}
+  return null;
+}
+
 /** String (1 = highest) at a y position inside the TAB bar bounds, or null when y is off the TAB lines. */
 export function stringAtY(bar: any, y: number): number | null {
   const vb = bar && bar.visualBounds; if (!vb) return null;
