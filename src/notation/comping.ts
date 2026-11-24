@@ -1,4 +1,5 @@
 import type { VoicedNote } from "./chordVoicing.js";
+import { mulberry32 } from "./rng.js";
 
 export type CompPattern = { id: string; name: string; steps: string }; // one char per 16th of a 4/4 bar
 
@@ -88,6 +89,36 @@ function arpCycleOrder(count: number, mode: "up" | "updown"): number[] {
   for (let i = 0; i < count; i++) out.push(i);
   for (let i = count - 2; i >= 1; i--) out.push(i);
   return out;
+}
+
+/** Patterns Vary can change (a held whole / half / quarter chord stays as it is). */
+export const VARIABLE_PATTERNS: readonly string[] = ["eighths", "pop", "rock8", "funk16", "reggae", "arpUp", "arp16"];
+
+/**
+ * A variation of a strum pattern for Vary (seed 1 = the pattern as written). Beat downstrokes stay; on the "and"
+ * of a beat an upstroke may be added or left out. Arpeggios keep their steps (Vary changes their order instead).
+ * Same seed, same result.
+ */
+export function varyPattern(steps: string, seed: number): string {
+  if (seed === 1 || !steps.length) return steps;
+  const rnd = mulberry32(seed);
+  const out = steps.split("");
+  if (!out.some((c) => c === "D" || c === "U")) return steps;
+  let changed = false;
+  for (let i = 0; i < out.length; i++) {
+    if (i % 4 !== 2) continue;                       // only the "and" of each beat
+    const c = out[i]!;
+    if (c === "U" && rnd() < 0.35) { out[i] = "-"; changed = true; }
+    else if (c === "-" && rnd() < 0.35) { out[i] = "U"; changed = true; }
+  }
+  if (!changed) {
+    // always give something new: flip the last "and" that can flip
+    for (let i = out.length - 2; i >= 2; i -= 4) {
+      if (out[i] === "U") { out[i] = "-"; break; }
+      if (out[i] === "-") { out[i] = "U"; break; }
+    }
+  }
+  return out.join("");
 }
 
 export function compChords(

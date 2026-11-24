@@ -2,7 +2,7 @@ import { PC_NAMES, chordName, type ChordSym, type KeyRef } from "./harmony.js";
 import { analyzeChords, analyzeKeys, keyConfidence, type ChordSegment } from "./harmonyAnalysis.js";
 import { PROGRESSIONS, realizeProgression } from "./progressions.js";
 import { voiceChord, type VoicingStyle } from "./chordVoicing.js";
-import { compChords } from "./comping.js";
+import { COMP_PATTERNS, VARIABLE_PATTERNS, compChords, varyPattern } from "./comping.js";
 import { bassLine, type BassStyle } from "./bassLines.js";
 import { lockedBassLine, type LockedFill } from "./bandBass.js";
 import { generateRiff, type Contour } from "./riff.js";
@@ -338,7 +338,12 @@ export function buildInsert(req: InsertRequest): InsertResult {
       }
       voiced.push({ b: ch.b, d: ch.d, notes: vnotes });
     }
-    const comp = compChords(voiced, pattern, { beatsPerBar });
+    // Vary (seed > 1): a strum gets other upstrokes on the "and"s, an arpeggio goes up and down
+    const seed = req.seed ?? 1;
+    const steps = COMP_PATTERNS.find((x) => x.id === pattern)?.steps;
+    const arp = pattern.startsWith("arp");
+    const varied = seed !== 1 && steps && VARIABLE_PATTERNS.includes(pattern) && !arp ? varyPattern(steps, seed) : pattern;
+    const comp = compChords(voiced, varied, { beatsPerBar, ...(arp && seed % 2 === 0 ? { arp: "updown" as const } : {}) });
     const notes = finalizeNotes(
       comp.map((n) => ({ b: n.b, d: n.d, p: n.p, v: n.v, s: n.s, f: n.f })),
       start,

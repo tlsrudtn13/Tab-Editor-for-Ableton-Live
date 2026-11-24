@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GUITAR_6 } from "../instruments.js";
 import { voiceChord } from "../chordVoicing.js";
-import { COMP_PATTERNS, compChords } from "../comping.js";
+import { COMP_PATTERNS, compChords, varyPattern } from "../comping.js";
 
 const C = voiceChord({ root: 0, quality: "" }, "open", GUITAR_6);
 const G = voiceChord({ root: 7, quality: "" }, "open", GUITAR_6);
@@ -98,5 +98,29 @@ describe("pattern by id", () => {
     const byId = compChords([{ b: 0, d: 4, notes: C }], "pop");
     const byObj = compChords([{ b: 0, d: 4, notes: C }], COMP_PATTERNS.find((p) => p.id === "pop")!);
     expect(byId).toEqual(byObj);
+  });
+});
+
+describe("varyPattern (Vary for chords)", () => {
+  const pop = COMP_PATTERNS.find((p) => p.id === "pop")!.steps;
+  it("seed 1 is the pattern as written", () => {
+    expect(varyPattern(pop, 1)).toBe(pop);
+  });
+  it("other seeds change only the 'and' of a beat, keep every beat downstroke, and differ from the pattern", () => {
+    for (let seed = 2; seed < 30; seed++) {
+      const v = varyPattern(pop, seed);
+      expect(v).toHaveLength(16);
+      expect(v).not.toBe(pop);
+      for (let i = 0; i < 16; i++) if (i % 4 !== 2) expect(v[i]).toBe(pop[i]);
+    }
+  });
+  it("is deterministic and gives several different variations", () => {
+    expect(varyPattern(pop, 7)).toBe(varyPattern(pop, 7));
+    const set = new Set(Array.from({ length: 20 }, (_, i) => varyPattern(pop, i + 2)));
+    expect(set.size).toBeGreaterThan(3);
+  });
+  it("leaves a pattern without strums alone", () => {
+    const arp = COMP_PATTERNS.find((p) => p.id === "arpUp")!.steps;
+    expect(varyPattern(arp, 5)).toBe(arp);
   });
 });

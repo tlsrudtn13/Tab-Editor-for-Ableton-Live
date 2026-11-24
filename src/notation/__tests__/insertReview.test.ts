@@ -130,3 +130,15 @@ describe("confidence and merge", () => {
     expect(m.add.map(n => [n.b, n.p])).toEqual([[0.5, 42], [1.01, 36]]);
   });
 });
+
+describe("Vary for chords", () => {
+  it("a new seed plays other strums for a strum pattern; a whole-note pattern stays", async () => {
+    const { buildInsert: runInsert } = await import("../insertEngine.js");
+    const { GUITAR_6 } = await import("../instruments.js");
+    const base = { part: "chords" as const, inst: GUITAR_6, key: { root: 0, mode: "major" as const }, startBeat: 0, bars: 2,
+      chords: { kind: "preset" as const, id: "pop" } };
+    const sig = (r: any) => r.notes.map((n: any) => n.b + ":" + n.p).join(",");
+    expect(sig(runInsert({ ...base, pattern: "pop", seed: 2 }))).not.toBe(sig(runInsert({ ...base, pattern: "pop", seed: 1 })));
+    expect(sig(runInsert({ ...base, pattern: "whole", seed: 2 }))).toBe(sig(runInsert({ ...base, pattern: "whole", seed: 1 })));
+  });
+});
